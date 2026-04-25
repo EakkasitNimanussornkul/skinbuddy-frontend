@@ -1,21 +1,26 @@
 # =======================
-# Vue / Node - Frontend
+# Dependencies & Package Managers
 # =======================
-
-# Dependencies
 node_modules/
 .pnp
 .pnp.js
+# Lock files: Uncomment the one you DON'T use
+# yarn.lock
+# pnpm-lock.yaml
 
-# Build output
+# =======================
+# Build & Distribution
+# =======================
 dist/
 dist-ssr/
 build/
-
-# Vite
 .vite/
+*.tsbuildinfo
+*.timestamp-*-*.mjs
 
-# Environment variables
+# =======================
+# Environment & Secrets
+# =======================
 .env
 .env.local
 .env.*.local
@@ -23,16 +28,38 @@ build/
 .env.production
 .env.staging
 
-# Logs
+# =======================
+# Logs & Debugging
+# =======================
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
+# =======================
+# Testing
+# =======================
+# General
+coverage/
+*.lcov
+.nyc_output/
+
+# Cypress
+/cypress/videos/
+/cypress/screenshots/
+
+# Vitest / Playwright
+__screenshots__/
+test-results/
+playwright-report/
+
+# =======================
 # Editor / IDE
-.vscode/
+# =======================
+.vscode/*
 !.vscode/extensions.json
 .idea/
 *.suo
@@ -41,28 +68,20 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-# OS
+# =======================
+# Cache & Linting
+# =======================
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# =======================
+# OS Specific
+# =======================
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 Thumbs.db
-
-# Testing
-coverage/
-*.lcov
-.nyc_output/
-
-# Cache
-.eslintcache
-.stylelintcache
-.cache/
-.parcel-cache/
-
-# TypeScript
-*.tsbuildinfo
-
-# Package manager locks (keep only one — remove what you don't use)
-# yarn.lock
-# pnpm-lock.yaml
