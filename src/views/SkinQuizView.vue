@@ -1,3 +1,50 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useQuizStore } from '../stores/quizStore'
+import { useShelfStore } from '../stores/shelfStore'
+import { baumannQuiz } from '../data/baumannQuiz'
+import QuestionCard from '../components/QuestionCard.vue'
+
+// Initialize Stores and Router
+const quizStore = useQuizStore()
+const shelfStore = useShelfStore()
+const router = useRouter()
+
+const totalQuestions = baumannQuiz.length
+
+// Grab the specific question object based on the user's current index
+const currentQuestionData = computed(() => {
+  return baumannQuiz[quizStore.currentQuestionIndex]
+})
+
+// Check if they have answered all questions in the array
+const isQuizFinished = computed(() => {
+  return quizStore.currentQuestionIndex >= totalQuestions
+})
+
+// This receives the points emitted from your QuestionCard component
+const handleAnswer = (points: number) => {
+  if (currentQuestionData.value) {
+    quizStore.answerQuestion(currentQuestionData.value.category, points)
+  }
+}
+
+// Generates the routine in Pinia and navigates to the Digital Shelf
+const buildRecommendedRoutine = () => {
+  shelfStore.generateRoutine(quizStore.finalSkinType)
+  router.push('/shelf')
+}
+// Navigate directly to the Digital Shelf (Routine generation temporarily disabled)
+const goToShelf = () => {
+  router.push('/shelf')
+}
+// Simple mock save function for the "Save Only" button
+const saveAndContinue = () => {
+  console.log("Saving Skin Type:", quizStore.finalSkinType)
+  alert(`Successfully saved ${quizStore.finalSkinType} to your profile!`)
+}
+</script>
 <template>
   <div class="min-h-screen bg-slate-50 pt-8 pb-20 font-sans text-slate-800">
 
@@ -174,44 +221,30 @@
 
       </div>
 
-      <div class="flex flex-col sm:flex-row justify-center gap-4 max-w-lg mx-auto">
-        <button @click="saveAndContinue" class="flex-1 bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-blue-800 shadow-sm">
-          Save Analysis to Profile
+      <div class="flex flex-col gap-3 max-w-lg mx-auto">
+      <button
+          @click="goToShelf"
+          class="w-full bg-teal-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-teal-700 shadow-sm flex justify-center items-center"
+        >
+          <span class="mr-2">📦</span> Go to Shelf to Add Products
         </button>
-        <button @click="quizStore.resetQuiz" class="flex-1 bg-white text-slate-700 border border-slate-300 font-semibold py-4 px-6 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
-          Retake Quiz
-        </button>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button
+            @click="saveAndContinue"
+            class="flex-1 bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors hover:bg-blue-800 shadow-sm"
+          >
+            Save Analysis Only
+          </button>
+          <button
+            @click="quizStore.resetQuiz"
+            class="flex-1 bg-white text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            Retake Quiz
+          </button>
+        </div>
       </div>
 
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useQuizStore } from '../stores/quizStore'
-import { baumannQuiz } from '../data/baumannQuiz'
-import QuestionCard from '../components/QuestionCard.vue'
-
-const quizStore = useQuizStore()
-const totalQuestions = baumannQuiz.length
-
-const currentQuestionData = computed(() => {
-  return baumannQuiz[quizStore.currentQuestionIndex]
-})
-
-const isQuizFinished = computed(() => {
-  return quizStore.currentQuestionIndex >= totalQuestions
-})
-
-const handleAnswer = (points: number) => {
-  if (currentQuestionData.value) {
-    quizStore.answerQuestion(currentQuestionData.value.category, points)
-  }
-}
-
-const saveAndContinue = () => {
-  console.log("Saving Skin Type:", quizStore.finalSkinType)
-  alert(`Successfully saved ${quizStore.finalSkinType} to your profile!`)
-}
-</script>
