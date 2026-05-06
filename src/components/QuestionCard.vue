@@ -51,7 +51,7 @@
     </div>
 
     <!-- Action Buttons -->
-    <button
+<button
       @click="submitAnswer"
       :disabled="selectedIndex === null"
       class="w-full bg-blue-700 text-white font-semibold p-4 rounded-xl mb-2 transition-colors hover:bg-blue-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-sm"
@@ -60,6 +60,7 @@
     </button>
 
     <button
+      v-if="question.options.length < 5"
       @click="submitUnsure"
       class="text-slate-500 font-semibold text-sm p-3 mb-8 hover:text-slate-800 transition-colors"
     >
