@@ -14,6 +14,11 @@ const router = createRouter({
       path: '/quiz',
       name: 'quiz',
       component: SkinQuizView
+    },
+    {
+      path: '/shelf',
+      name: 'shelf',
+      component: () => import('../views/ShelfView.vue')
     }
   ]
 })
