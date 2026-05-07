@@ -169,8 +169,7 @@ const getCategoryEmoji = (category: string) => {
       </div>
     </div>
 
-    <button @click="isAddModalOpen = true" class="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#2E5BFF] text-white rounded-full shadow-lg shadow-blue-700/30 dark:shadow-none flex items-center justify-center text-3xl hover:bg-blue-700 active:scale-95 transition-all z-40">
-      <span class="leading-none mb-1">+</span>
+<button @click="isAddModalOpen = true" class="sm:hidden fixed bottom-24 right-6 w-14 h-14 bg-[#2E5BFF] text-white rounded-full shadow-lg shadow-blue-700/30 dark:shadow-none flex items-center justify-center text-3xl hover:bg-blue-700 active:scale-95 transition-all z-[90]">      <span class="leading-none mb-1">+</span>
     </button>
 
     <div v-if="isAddModalOpen" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">

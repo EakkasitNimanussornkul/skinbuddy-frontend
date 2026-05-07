@@ -33,11 +33,11 @@ const morningRoutine = [
           </div>
         </div>
 
-        <div class="flex justify-around items-center gap-1 pt-1 pb-1">
-          <div v-for="day in days" :key="day.day" class="flex flex-col items-center group cursor-pointer">
+<div class="flex justify-between items-center gap-0 sm:gap-1 pt-1 pb-1 px-1">
+            <div v-for="day in days" :key="day.day" class="flex flex-col items-center group cursor-pointer">
             <span class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">{{ day.day }}</span>
             <div
-              class="w-10 h-10 flex items-center justify-center text-sm font-semibold rounded-full transition-colors"
+              class="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-semibold rounded-full transition-colors"
               :class="day.active ? 'bg-[#2E5BFF] text-white' : 'text-slate-800 dark:text-slate-200 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'"
             >
               {{ day.date }}
