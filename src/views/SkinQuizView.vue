@@ -2,13 +2,13 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '../stores/quizStore'
-import { useShelfStore } from '../stores/shelfStore'
+//import { useShelfStore } from '../stores/shelfStore' // --- IGNORE --- (We will need this later when we connect the quiz results to the shelf recommendations)
 import { baumannQuiz } from '../data/baumannQuiz'
 import QuestionCard from '../components/QuestionCard.vue'
 
 // Initialize Stores and Router
 const quizStore = useQuizStore()
-const shelfStore = useShelfStore()
+// const shelfStore = useShelfStore() --- IGNORE --- (Uncomment when connecting to shelf)
 const router = useRouter()
 
 const totalQuestions = baumannQuiz.length
