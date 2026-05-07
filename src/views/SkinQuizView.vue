@@ -23,28 +23,45 @@ const isQuizFinished = computed(() => {
   return quizStore.currentQuestionIndex >= totalQuestions
 })
 
-// This receives the points emitted from your QuestionCard component
+// Receives points emitted from your QuestionCard component
 const handleAnswer = (points: number) => {
   if (currentQuestionData.value) {
     quizStore.answerQuestion(currentQuestionData.value.category, points)
   }
 }
 
-// Generates the routine in Pinia and navigates to the Digital Shelf
-const buildRecommendedRoutine = () => {
-  shelfStore.generateRoutine(quizStore.finalSkinType)
-  router.push('/shelf')
+// Create a TypeScript interface so the linter knows what 'liff' is
+interface LiffWindow extends Window {
+  liff?: { closeWindow: () => void }
 }
-// Navigate directly to the Digital Shelf (Routine generation temporarily disabled)
-const goToShelf = () => {
-  router.push('/shelf')
+
+// PHASE 1: Generates recommendations, saves status, and closes the app
+const viewRecommendedProducts = () => {
+  // 1. Generate the wishlist recommendations in Pinia
+  shelfStore.recommendProducts(quizStore.finalSkinType)
+
+  // 2. Set the permanent flag so they are recognized as a returning user
+  localStorage.setItem('hasCompletedQuiz', 'true')
+
+  // 3. Handle the LINE Redirect/Close safely for TypeScript
+  const win = window as LiffWindow
+  if (typeof window !== 'undefined' && win.liff) {
+    win.liff.closeWindow()
+  } else {
+    // Localhost fallback
+    alert("Analysis Saved! [LINE app window would close here]. Redirecting to Home.")
+    router.push('/')
+  }
 }
-// Simple mock save function for the "Save Only" button
+
+// Simple save function for the secondary button
 const saveAndContinue = () => {
-  console.log("Saving Skin Type:", quizStore.finalSkinType)
+  localStorage.setItem('hasCompletedQuiz', 'true')
   alert(`Successfully saved ${quizStore.finalSkinType} to your profile!`)
+  router.push('/')
 }
 </script>
+
 <template>
   <div class="min-h-screen bg-slate-50 pt-8 pb-20 font-sans text-slate-800">
 
@@ -65,7 +82,7 @@ const saveAndContinue = () => {
           ANALYSIS COMPLETE
         </span>
         <h1 class="text-3xl md:text-4xl text-slate-900 font-serif mb-2">
-          Your Comprehensive Result: <span class="text-blue-700 font-bold">{{ quizStore.finalSkinType }}</span>
+          Your Comprehensive Result: <span class="text-[#2E5BFF] font-bold">{{ quizStore.finalSkinType }}</span>
         </h1>
         <p class="text-slate-500">Based on your dermatological markers and quiz responses.</p>
       </div>
@@ -73,57 +90,57 @@ const saveAndContinue = () => {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
 
         <div class="flex flex-col gap-6">
-          <div class="bg-[#fcfbf9] p-6 rounded-2xl border border-[#e5e0d8] shadow-sm">
+          <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
             <h2 class="text-4xl font-serif text-center mb-6 text-slate-800">{{ quizStore.finalSkinType }}</h2>
 
             <div class="space-y-5">
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600">💧</div>
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mr-3 text-blue-600">💧</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.hydration >= 10 ? 'Oily' : 'Dry' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.hydration }}/16</span>
                   </div>
-                  <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div class="h-full bg-blue-400" :style="{ width: (quizStore.scores.hydration / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center mr-3 text-teal-600">🌿</div>
+                <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center mr-3 text-teal-600">🌿</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.sensitivity >= 10 ? 'Sensitive' : 'Resistant' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.sensitivity }}/16</span>
                   </div>
-                  <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div class="h-full bg-teal-400" :style="{ width: (quizStore.scores.sensitivity / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center mr-3 text-orange-600">☀️</div>
+                <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center mr-3 text-orange-600">☀️</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.pigmentation >= 10 ? 'Pigmented' : 'Non-Pigmented' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.pigmentation }}/16</span>
                   </div>
-                  <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div class="h-full bg-orange-400" :style="{ width: (quizStore.scores.pigmentation / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3 text-purple-600">⏳</div>
+                <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mr-3 text-purple-600">⏳</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.aging >= 10 ? 'Wrinkle-Prone' : 'Tight' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.aging }}/16</span>
                   </div>
-                  <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div class="h-full bg-purple-400" :style="{ width: (quizStore.scores.aging / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
@@ -131,7 +148,7 @@ const saveAndContinue = () => {
             </div>
           </div>
 
-          <div class="bg-[#fcfbf9] p-6 rounded-2xl border border-[#e5e0d8] shadow-sm flex-grow">
+          <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex-grow">
             <h3 class="text-xl font-serif mb-4 text-center">Skin Profile Details</h3>
             <p class="text-sm text-slate-600 leading-relaxed mb-3">
               <strong class="text-slate-900">Hydration:</strong> Your skin barrier indicates a tendency toward {{ quizStore.scores.hydration >= 10 ? 'excess sebum production' : 'moisture loss and flakiness' }}.
@@ -142,8 +159,8 @@ const saveAndContinue = () => {
           </div>
         </div>
 
-        <div class="bg-[#fcfbf9] p-6 rounded-2xl border border-[#e5e0d8] shadow-sm flex flex-col">
-          <h3 class="text-xl font-serif mb-6 text-center border-b border-[#e5e0d8] pb-4">Key Characteristics</h3>
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+          <h3 class="text-xl font-serif mb-6 text-center border-b border-slate-100 pb-4">Key Characteristics</h3>
 
           <div class="flex-grow space-y-6">
             <div class="flex items-start">
@@ -178,30 +195,30 @@ const saveAndContinue = () => {
         </div>
 
         <div class="flex flex-col gap-6">
-          <div class="bg-[#fcfbf9] p-6 rounded-2xl border border-[#e5e0d8] shadow-sm">
+          <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <h3 class="font-serif text-center border-b border-[#e5e0d8] pb-2 mb-4">Morning ☀️</h3>
+                <h3 class="font-serif text-center border-b border-slate-100 pb-2 mb-4">Morning ☀️</h3>
                 <ul class="space-y-3 text-xs text-slate-600">
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> Gentle Cleanser</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> Antioxidant Serum</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> Light Moisturizer</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> SPF 50+</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Gentle Cleanser</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Antioxidant Serum</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Light Moisturizer</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> SPF 50+</li>
                 </ul>
               </div>
               <div>
-                <h3 class="font-serif text-center border-b border-[#e5e0d8] pb-2 mb-4">Evening 🌙</h3>
+                <h3 class="font-serif text-center border-b border-slate-100 pb-2 mb-4">Evening 🌙</h3>
                 <ul class="space-y-3 text-xs text-slate-600">
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> Double Cleanse</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> Treatment Serum</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-200 rounded-full mr-2"></span> Barrier Cream</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Double Cleanse</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Treatment Serum</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Barrier Cream</li>
                 </ul>
               </div>
             </div>
           </div>
 
-          <div class="bg-[#fcfbf9] p-6 rounded-2xl border border-[#e5e0d8] shadow-sm flex-grow">
-            <h3 class="text-lg font-serif mb-4 text-center border-b border-[#e5e0d8] pb-2">Top Ingredients</h3>
+          <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex-grow">
+            <h3 class="text-lg font-serif mb-4 text-center border-b border-slate-100 pb-2">Top Ingredients</h3>
             <div class="grid grid-cols-3 gap-2 text-center">
               <div class="flex flex-col items-center">
                 <div class="text-3xl mb-2">🌿</div>
@@ -221,20 +238,21 @@ const saveAndContinue = () => {
 
       </div>
 
-      <div class="flex flex-col gap-3 max-w-lg mx-auto">
-      <button
-          @click="goToShelf"
-          class="w-full bg-teal-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-teal-700 shadow-sm flex justify-center items-center"
+      <div class="flex flex-col gap-3 max-w-lg mx-auto mt-8">
+
+        <button
+          @click="viewRecommendedProducts"
+          class="w-full bg-[#2E5BFF] text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-blue-700 shadow-sm flex justify-center items-center"
         >
-          <span class="mr-2">📦</span> Go to Shelf to Add Products
+          <span class="mr-2">✨</span> View Recommended Products
         </button>
 
         <div class="flex flex-col sm:flex-row gap-3">
           <button
             @click="saveAndContinue"
-            class="flex-1 bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors hover:bg-blue-800 shadow-sm"
+            class="flex-1 bg-slate-800 text-white font-semibold py-3 px-6 rounded-xl transition-colors hover:bg-slate-900 shadow-sm"
           >
-            Save Analysis Only
+            Save analysis and continue
           </button>
           <button
             @click="quizStore.resetQuiz"
