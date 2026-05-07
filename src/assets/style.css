@@ -1,16 +1,5 @@
 @import "tailwindcss";
 
-/* Changed from @custom-variant to @variant */
-@variant dark (&:where(.dark, .dark *));
-
-@theme {
-  --color-clinical-primary: #2E5BFF;
-  --color-clinical-secondary: #8DAA91;
-  --color-clinical-tertiary: #F7D0B9;
-  --color-clinical-neutral: #757682;
-  --color-clinical-bg: #121217;
-  --color-clinical-surface: #1E1E26;
-}
 body {
   @apply bg-slate-50 text-slate-900;
 }
