@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useShelfStore, type ShelfItem } from '../stores/shelfStore'
 import { useQuizStore } from '../stores/quizStore'
 
@@ -23,6 +23,12 @@ const form = ref({
   opened_date: new Date().toISOString().split('T')[0],
   expiration_type: '6',
   custom_expiration_date: ''
+})
+
+// --- LIFECYCLE ---
+// Fetch the shelf data from FastAPI when the page loads
+onMounted(() => {
+  shelfStore.loadShelf()
 })
 
 // --- COMPUTED ---
@@ -54,7 +60,6 @@ const checkConflicts = (product: ShelfItem | null) => {
   return conflicts
 }
 
-// NEW: Expiration Status Calculator (Checks if expired, or expiring in < 30 days)
 const getExpirationStatus = (expDate: string | null | undefined) => {
   if (!expDate) return 'safe'
 
@@ -85,7 +90,8 @@ const handleAddSubmit = () => {
   else forceAddProduct()
 }
 
-const forceAddProduct = () => {
+// Now Async to wait for Backend save
+const forceAddProduct = async () => {
   let expDate = null;
   if (form.value.status === 'active') {
     if (form.value.expiration_type === 'custom') {
@@ -97,7 +103,7 @@ const forceAddProduct = () => {
     }
   }
 
-  shelfStore.addProduct({
+  await shelfStore.addProduct({
     brand: form.value.brand,
     name: form.value.name,
     category: form.value.category,
@@ -105,6 +111,7 @@ const forceAddProduct = () => {
     opened_date: form.value.status === 'active' ? form.value.opened_date : null,
     expiration_date: expDate
   })
+
   closeAddModal()
 }
 
@@ -139,7 +146,12 @@ const getCategoryEmoji = (category: string) => {
         </button>
       </div>
 
-      <div v-if="filteredShelf.length === 0" class="text-center py-20 text-slate-500 dark:text-slate-400">
+      <div v-if="shelfStore.isLoading" class="flex flex-col items-center justify-center py-20 text-slate-400">
+        <span class="text-4xl animate-spin mb-4">🌀</span>
+        <p class="text-sm font-semibold uppercase tracking-widest">Syncing with server...</p>
+      </div>
+
+      <div v-else-if="filteredShelf.length === 0" class="text-center py-20 text-slate-500 dark:text-slate-400">
         <p>{{ searchQuery ? 'No products match your search.' : 'Your shelf is empty. Add some products!' }}</p>
       </div>
 
@@ -169,10 +181,11 @@ const getCategoryEmoji = (category: string) => {
       </div>
     </div>
 
-<button @click="isAddModalOpen = true" class="sm:hidden fixed bottom-24 right-6 w-14 h-14 bg-[#2E5BFF] text-white rounded-full shadow-lg shadow-blue-700/30 dark:shadow-none flex items-center justify-center text-3xl hover:bg-blue-700 active:scale-95 transition-all z-[90]">      <span class="leading-none mb-1">+</span>
+    <button @click="isAddModalOpen = true" class="sm:hidden fixed bottom-24 right-6 w-14 h-14 bg-[#2E5BFF] text-white rounded-full shadow-lg shadow-blue-700/30 dark:shadow-none flex items-center justify-center text-3xl hover:bg-blue-700 active:scale-95 transition-all z-[90]">
+      <span class="leading-none mb-1">+</span>
     </button>
 
-    <div v-if="isAddModalOpen" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div v-if="isAddModalOpen" class="fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
       <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" @click="closeAddModal"></div>
       <div class="bg-white dark:bg-clinical-surface w-full sm:w-[400px] rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 relative z-10 animate-slide-up sm:animate-fade-in border dark:border-slate-800">
         <div class="flex justify-between items-center mb-6">
@@ -238,12 +251,14 @@ const getCategoryEmoji = (category: string) => {
             </div>
           </div>
 
-          <button v-if="!addConflictWarning" type="submit" class="w-full bg-[#2E5BFF] text-white font-semibold py-3.5 rounded-xl mt-4 hover:bg-blue-700 transition-colors">Analyze & Save</button>
+          <button v-if="!addConflictWarning" type="submit" :disabled="shelfStore.isLoading" class="w-full bg-[#2E5BFF] disabled:bg-blue-400 text-white font-semibold py-3.5 rounded-xl mt-4 hover:bg-blue-700 transition-colors">
+            {{ shelfStore.isLoading ? 'Saving...' : 'Analyze & Save' }}
+          </button>
         </form>
       </div>
     </div>
 
-    <div v-if="selectedProduct && !isCompareListOpen" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div v-if="selectedProduct && !isCompareListOpen" class="fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
       <div class="absolute inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm" @click="selectedProduct = null"></div>
       <div class="bg-white dark:bg-clinical-surface w-full sm:w-[450px] rounded-t-3xl sm:rounded-3xl p-6 relative z-10 animate-slide-up max-h-[85vh] overflow-y-auto border dark:border-slate-800">
         <button @click="selectedProduct = null" class="absolute top-4 right-4 text-slate-400 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full w-8 h-8 flex items-center justify-center text-xl transition-colors">&times;</button>
@@ -293,7 +308,7 @@ const getCategoryEmoji = (category: string) => {
       </div>
     </div>
 
-    <div v-if="isCompareListOpen && !comparingProduct" class="fixed inset-0 z-60 bg-white dark:bg-clinical-surface flex flex-col animate-slide-up">
+    <div v-if="isCompareListOpen && !comparingProduct" class="fixed inset-0 z-[120] bg-white dark:bg-clinical-surface flex flex-col animate-slide-up">
       <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-clinical-bg">
         <div>
           <h2 class="text-lg font-serif font-semibold text-slate-900 dark:text-white">Select to Compare</h2>
@@ -315,7 +330,7 @@ const getCategoryEmoji = (category: string) => {
       </div>
     </div>
 
-    <div v-if="comparingProduct" class="fixed inset-0 z-[70] bg-white dark:bg-clinical-surface flex flex-col animate-slide-up">
+    <div v-if="comparingProduct" class="fixed inset-0 z-[130] bg-white dark:bg-clinical-surface flex flex-col animate-slide-up">
       <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-clinical-bg">
         <h2 class="text-lg font-serif font-semibold text-slate-900 dark:text-white">Side-by-Side Analysis</h2>
         <button @click="closeCompare" class="text-blue-700 dark:text-blue-300 font-bold px-4 py-1.5 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/60 rounded-lg transition-colors">Done</button>

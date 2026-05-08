@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '../stores/quizStore'
+import { saveSkinType } from '../stores/quizapi'
 //import { useShelfStore } from '../stores/shelfStore' // --- IGNORE --- (We will need this later when we connect the quiz results to the shelf recommendations)
 import { baumannQuiz } from '../data/baumannQuiz'
 import QuestionCard from '../components/QuestionCard.vue'
@@ -35,18 +36,24 @@ interface LiffWindow extends Window {
   liff?: { closeWindow: () => void }
 }
 // PHASE 1: Saves the flag and closes the app to return to LINE Chat
-const saveAndContinue = () => {
-  // 1. Set the permanent flag so they are recognized as a returning user
-  localStorage.setItem('hasCompletedQuiz', 'true')
+const saveAndContinue = async () => {
+  try {
+    // Attempt to send data to your FastAPI backend
+    await saveSkinType(quizStore.finalSkinType, quizStore.scores)
 
-  // 2. Handle the LINE Redirect/Close safely for TypeScript
-  const win = window as LiffWindow
-  if (typeof window !== 'undefined' && win.liff) {
-    win.liff.closeWindow()
-  } else {
-    // Localhost fallback for testing on your PC
-    alert(`Analysis Saved: ${quizStore.finalSkinType}! [LINE app window would close here]. Redirecting to Home.`)
-    router.push('/')
+    // If successful, save the local flag
+    localStorage.setItem('hasCompletedQuiz', 'true')
+
+    const win = window as LiffWindow
+    if (typeof window !== 'undefined' && win.liff) {
+      win.liff.closeWindow()
+    } else {
+      alert(`Analysis Saved to Database!`)
+      router.push('/')
+    }
+  } catch (error) {
+    console.error(error)
+    alert("Failed to save to database. Please try again.")
   }
 }
 </script>
