@@ -91,13 +91,15 @@ const handleAddSubmit = () => {
 }
 
 // Now Async to wait for Backend save
+// Now Async to wait for Backend save
 const forceAddProduct = async () => {
   let expDate = null;
   if (form.value.status === 'active') {
     if (form.value.expiration_type === 'custom') {
       expDate = form.value.custom_expiration_date || null
     } else if (form.value.expiration_type !== 'none') {
-      const date = new Date(form.value.opened_date)
+      // Add "as string" here to fix the Date overload error
+      const date = new Date(form.value.opened_date as string)
       date.setMonth(date.getMonth() + parseInt(form.value.expiration_type))
       expDate = date.toISOString().split('T')[0]
     }
@@ -108,7 +110,8 @@ const forceAddProduct = async () => {
     name: form.value.name,
     category: form.value.category,
     status: form.value.status,
-    opened_date: form.value.status === 'active' ? form.value.opened_date : null,
+    // Add "as string" here to fix the null assignment error
+    opened_date: form.value.status === 'active' ? (form.value.opened_date as string) : null,
     expiration_date: expDate
   })
 
