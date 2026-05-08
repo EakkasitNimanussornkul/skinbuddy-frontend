@@ -34,31 +34,20 @@ const handleAnswer = (points: number) => {
 interface LiffWindow extends Window {
   liff?: { closeWindow: () => void }
 }
-
-// PHASE 1: Generates recommendations, saves status, and closes the app
-const viewRecommendedProducts = () => {
-  // 1. Generate the wishlist recommendations in Pinia
-  shelfStore.recommendProducts(quizStore.finalSkinType)
-
-  // 2. Set the permanent flag so they are recognized as a returning user
+// PHASE 1: Saves the flag and closes the app to return to LINE Chat
+const saveAndContinue = () => {
+  // 1. Set the permanent flag so they are recognized as a returning user
   localStorage.setItem('hasCompletedQuiz', 'true')
 
-  // 3. Handle the LINE Redirect/Close safely for TypeScript
+  // 2. Handle the LINE Redirect/Close safely for TypeScript
   const win = window as LiffWindow
   if (typeof window !== 'undefined' && win.liff) {
     win.liff.closeWindow()
   } else {
-    // Localhost fallback
-    alert("Analysis Saved! [LINE app window would close here]. Redirecting to Home.")
+    // Localhost fallback for testing on your PC
+    alert(`Analysis Saved: ${quizStore.finalSkinType}! [LINE app window would close here]. Redirecting to Home.`)
     router.push('/')
   }
-}
-
-// Simple save function for the secondary button
-const saveAndContinue = () => {
-  localStorage.setItem('hasCompletedQuiz', 'true')
-  alert(`Successfully saved ${quizStore.finalSkinType} to your profile!`)
-  router.push('/')
 }
 </script>
 
@@ -238,29 +227,21 @@ const saveAndContinue = () => {
 
       </div>
 
-      <div class="flex flex-col gap-3 max-w-lg mx-auto mt-8">
+    <div class="flex flex-col gap-3 max-w-lg mx-auto mt-8">
 
         <button
-          @click="viewRecommendedProducts"
+          @click="saveAndContinue"
           class="w-full bg-[#2E5BFF] text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-blue-700 shadow-sm flex justify-center items-center"
         >
-          <span class="mr-2">✨</span> View Recommended Products
+          <span class="mr-2">💾</span> Save analysis and continue
         </button>
 
-        <div class="flex flex-col sm:flex-row gap-3">
-          <button
-            @click="saveAndContinue"
-            class="flex-1 bg-slate-800 text-white font-semibold py-3 px-6 rounded-xl transition-colors hover:bg-slate-900 shadow-sm"
-          >
-            Save analysis and continue
-          </button>
-          <button
-            @click="quizStore.resetQuiz"
-            class="flex-1 bg-white text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
-          >
-            Retake Quiz
-          </button>
-        </div>
+        <button
+          @click="quizStore.resetQuiz"
+          class="w-full bg-white text-slate-700 border border-slate-300 font-semibold py-4 px-6 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          Retake Quiz
+        </button>
       </div>
 
     </div>
