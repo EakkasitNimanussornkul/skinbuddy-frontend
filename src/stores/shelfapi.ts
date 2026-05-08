@@ -1,3 +1,4 @@
+import type { ShelfItem } from '../stores/shelfStore'
 const getToken = () => localStorage.getItem('token') || ''
 
 // 1. Fetch user's shelf from database
@@ -13,7 +14,7 @@ export const fetchUserShelf = async () => {
 }
 
 // 2. Add a new product to the database
-export const addProductToBackend = async (productData: any) => {
+export const addProductToBackend = async (productData: Omit<ShelfItem, 'id'>) => {
   const response = await fetch(`${import.meta.env.VITE_API_URL}/shelf/add`, {
     method: 'POST',
     headers: {

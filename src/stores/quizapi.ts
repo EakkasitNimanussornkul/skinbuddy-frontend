@@ -1,6 +1,6 @@
 const getToken = () => localStorage.getItem('token') || ''
 
-export const saveSkinType = async (skinType: string, scores: any) => {
+export const saveSkinType = async (skinType: string, scores: Record<string, number>) => {
   const response = await fetch(`${import.meta.env.VITE_API_URL}/quiz/save`, {
     method: 'POST',
     headers: {
