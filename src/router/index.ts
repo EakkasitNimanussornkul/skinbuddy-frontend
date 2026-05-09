@@ -37,11 +37,17 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated()) {
-    next({ name: 'error', query: { message: 'You must be logged in to view this page.' } })
-  } else {
+  if (to.name === 'authCallback' || to.name === 'error') {
     next()
+    return
   }
+
+  if (!authStore.isAuthenticated()) {
+    authStore.loginWithLine()
+    return
+  }
+
+  next()
 })
 
 export default router

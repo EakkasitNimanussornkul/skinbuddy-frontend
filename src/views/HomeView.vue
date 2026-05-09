@@ -23,8 +23,13 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore()
+
+onMounted(() => {
+  console.log('Access token:', authStore.token)
+})
 </script>
