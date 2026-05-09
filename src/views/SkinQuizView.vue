@@ -2,13 +2,12 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '../stores/quizStore'
-//import { useShelfStore } from '../stores/shelfStore' // --- IGNORE --- (We will need this later when we connect the quiz results to the shelf recommendations)
-import QuestionCard from '../components/QuestionCard.vue'
+import { saveSkinType } from '../api/quizapi'
 import { baumannQuiz } from '../data/baumannQuiz'
+import QuestionCard from '../components/QuestionCard.vue'
 
 // Initialize Stores and Router
 const quizStore = useQuizStore()
-// const shelfStore = useShelfStore() --- IGNORE --- (Uncomment when connecting to shelf)
 const router = useRouter()
 
 const totalQuestions = baumannQuiz.length
@@ -34,31 +33,26 @@ const handleAnswer = (points: number) => {
 interface LiffWindow extends Window {
   liff?: { closeWindow: () => void }
 }
+// PHASE 1: Saves the flag and closes the app to return to LINE Chat
+const saveAndContinue = async () => {
+  try {
+    // Attempt to send data to your FastAPI backend
+    await saveSkinType(quizStore.finalSkinType, quizStore.scores)
 
-// PHASE 1: Generates recommendations, saves status, and closes the app
-const viewRecommendedProducts = () => {
-  // 1. Generate the wishlist recommendations in Pinia
-  // shelfStore.recommendProducts(quizStore.finalSkinType)
+    // If successful, save the local flag
+    localStorage.setItem('hasCompletedQuiz', 'true')
 
-  // 2. Set the permanent flag so they are recognized as a returning user
-  localStorage.setItem('hasCompletedQuiz', 'true')
-
-  // 3. Handle the LINE Redirect/Close safely for TypeScript
-  const win = window as LiffWindow
-  if (typeof window !== 'undefined' && win.liff) {
-    win.liff.closeWindow()
-  } else {
-    // Localhost fallback
-    alert("Analysis Saved! [LINE app window would close here]. Redirecting to Home.")
-    router.push('/')
+    const win = window as LiffWindow
+    if (typeof window !== 'undefined' && win.liff) {
+      win.liff.closeWindow()
+    } else {
+      alert(`Analysis Saved to Database!`)
+      router.push('/')
+    }
+  } catch (error) {
+    console.error(error)
+    alert("Failed to save to database. Please try again.")
   }
-}
-
-// Simple save function for the secondary button
-const saveAndContinue = () => {
-  localStorage.setItem('hasCompletedQuiz', 'true')
-  alert(`Successfully saved ${quizStore.finalSkinType} to your profile!`)
-  router.push('/')
 }
 </script>
 
@@ -66,15 +60,19 @@ const saveAndContinue = () => {
   <div class="min-h-screen bg-slate-50 pt-8 pb-20 font-sans text-slate-800">
 
     <div v-if="!isQuizFinished" class="pt-10">
-      <QuestionCard v-if="currentQuestionData" :question="currentQuestionData"
-        :current-step="quizStore.currentQuestionIndex + 1" :total-steps="totalQuestions" @answer="handleAnswer" />
+      <QuestionCard
+        v-if="currentQuestionData"
+        :question="currentQuestionData"
+        :current-step="quizStore.currentQuestionIndex + 1"
+        :total-steps="totalQuestions"
+        @answer="handleAnswer"
+      />
     </div>
 
     <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
       <div class="text-center mb-10">
-        <span
-          class="bg-indigo-100 text-indigo-800 text-xs font-bold px-4 py-1.5 rounded-full tracking-wider mb-4 inline-block">
+        <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-4 py-1.5 rounded-full tracking-wider mb-4 inline-block">
           ANALYSIS COMPLETE
         </span>
         <h1 class="text-3xl md:text-4xl text-slate-900 font-serif mb-2">
@@ -91,61 +89,53 @@ const saveAndContinue = () => {
 
             <div class="space-y-5">
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mr-3 text-blue-600">💧
-                </div>
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mr-3 text-blue-600">💧</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.hydration >= 10 ? 'Oily' : 'Dry' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.hydration }}/16</span>
                   </div>
                   <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full bg-blue-400" :style="{ width: (quizStore.scores.hydration / 16) * 100 + '%' }">
-                    </div>
+                    <div class="h-full bg-blue-400" :style="{ width: (quizStore.scores.hydration / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center mr-3 text-teal-600">🌿
-                </div>
+                <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center mr-3 text-teal-600">🌿</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.sensitivity >= 10 ? 'Sensitive' : 'Resistant' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.sensitivity }}/16</span>
                   </div>
                   <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full bg-teal-400" :style="{ width: (quizStore.scores.sensitivity / 16) * 100 + '%' }">
-                    </div>
+                    <div class="h-full bg-teal-400" :style="{ width: (quizStore.scores.sensitivity / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center mr-3 text-orange-600">☀️
-                </div>
+                <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center mr-3 text-orange-600">☀️</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.pigmentation >= 10 ? 'Pigmented' : 'Non-Pigmented' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.pigmentation }}/16</span>
                   </div>
                   <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full bg-orange-400"
-                      :style="{ width: (quizStore.scores.pigmentation / 16) * 100 + '%' }"></div>
+                    <div class="h-full bg-orange-400" :style="{ width: (quizStore.scores.pigmentation / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mr-3 text-purple-600">⏳
-                </div>
+                <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mr-3 text-purple-600">⏳</div>
                 <div class="flex-grow">
                   <div class="flex justify-between text-sm font-semibold mb-1">
                     <span>{{ quizStore.scores.aging >= 10 ? 'Wrinkle-Prone' : 'Tight' }}</span>
                     <span class="text-slate-500">{{ quizStore.scores.aging }}/16</span>
                   </div>
                   <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full bg-purple-400" :style="{ width: (quizStore.scores.aging / 16) * 100 + '%' }">
-                    </div>
+                    <div class="h-full bg-purple-400" :style="{ width: (quizStore.scores.aging / 16) * 100 + '%' }"></div>
                   </div>
                 </div>
               </div>
@@ -155,13 +145,10 @@ const saveAndContinue = () => {
           <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex-grow">
             <h3 class="text-xl font-serif mb-4 text-center">Skin Profile Details</h3>
             <p class="text-sm text-slate-600 leading-relaxed mb-3">
-              <strong class="text-slate-900">Hydration:</strong> Your skin barrier indicates a tendency toward {{
-                quizStore.scores.hydration >= 10 ? 'excess sebum production' : 'moisture loss and flakiness' }}.
+              <strong class="text-slate-900">Hydration:</strong> Your skin barrier indicates a tendency toward {{ quizStore.scores.hydration >= 10 ? 'excess sebum production' : 'moisture loss and flakiness' }}.
             </p>
             <p class="text-sm text-slate-600 leading-relaxed mb-3">
-              <strong class="text-slate-900">Sensitivity:</strong> You have a {{ quizStore.scores.sensitivity >= 10 ?
-                'highly reactive' : 'robust' }} baseline, meaning active ingredients should be {{
-                quizStore.scores.sensitivity >= 10 ? 'introduced slowly' : 'tolerated well' }}.
+              <strong class="text-slate-900">Sensitivity:</strong> You have a {{ quizStore.scores.sensitivity >= 10 ? 'highly reactive' : 'robust' }} baseline, meaning active ingredients should be {{ quizStore.scores.sensitivity >= 10 ? 'introduced slowly' : 'tolerated well' }}.
             </p>
           </div>
         </div>
@@ -171,43 +158,31 @@ const saveAndContinue = () => {
 
           <div class="flex-grow space-y-6">
             <div class="flex items-start">
-              <div
-                class="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">
-                🛡️</div>
+              <div class="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">🛡️</div>
               <div>
                 <h4 class="font-semibold text-sm mb-1">Barrier Integrity</h4>
-                <p class="text-xs text-slate-500">Focus on strengthening the stratum corneum before introducing strong
-                  exfoliants.</p>
+                <p class="text-xs text-slate-500">Focus on strengthening the stratum corneum before introducing strong exfoliants.</p>
               </div>
             </div>
             <div class="flex items-start">
-              <div
-                class="w-12 h-12 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">
-                ✨</div>
+              <div class="w-12 h-12 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">✨</div>
               <div>
                 <h4 class="font-semibold text-sm mb-1">Melanin Reactivity</h4>
-                <p class="text-xs text-slate-500">Prone to post-inflammatory hyperpigmentation after breakouts or sun
-                  exposure.</p>
+                <p class="text-xs text-slate-500">Prone to post-inflammatory hyperpigmentation after breakouts or sun exposure.</p>
               </div>
             </div>
             <div class="flex items-start">
-              <div
-                class="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">
-                💧</div>
+              <div class="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">💧</div>
               <div>
                 <h4 class="font-semibold text-sm mb-1">Moisture Retention</h4>
-                <p class="text-xs text-slate-500">Requires humectants that bind water to the skin without clogging
-                  pores.</p>
+                <p class="text-xs text-slate-500">Requires humectants that bind water to the skin without clogging pores.</p>
               </div>
             </div>
             <div class="flex items-start">
-              <div
-                class="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">
-                🧬</div>
+              <div class="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-xl flex-shrink-0 mr-4">🧬</div>
               <div>
                 <h4 class="font-semibold text-sm mb-1">Collagen Support</h4>
-                <p class="text-xs text-slate-500">Needs proactive collagen synthesis support to maintain long-term
-                  elasticity.</p>
+                <p class="text-xs text-slate-500">Needs proactive collagen synthesis support to maintain long-term elasticity.</p>
               </div>
             </div>
           </div>
@@ -219,25 +194,18 @@ const saveAndContinue = () => {
               <div>
                 <h3 class="font-serif text-center border-b border-slate-100 pb-2 mb-4">Morning ☀️</h3>
                 <ul class="space-y-3 text-xs text-slate-600">
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Gentle
-                    Cleanser</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Antioxidant
-                    Serum</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Light
-                    Moisturizer</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> SPF 50+
-                  </li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Gentle Cleanser</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Antioxidant Serum</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Light Moisturizer</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> SPF 50+</li>
                 </ul>
               </div>
               <div>
                 <h3 class="font-serif text-center border-b border-slate-100 pb-2 mb-4">Evening 🌙</h3>
                 <ul class="space-y-3 text-xs text-slate-600">
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Double
-                    Cleanse</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Treatment
-                    Serum</li>
-                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Barrier
-                    Cream</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Double Cleanse</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Treatment Serum</li>
+                  <li class="flex items-center"><span class="w-4 h-4 bg-slate-100 rounded-full mr-2"></span> Barrier Cream</li>
                 </ul>
               </div>
             </div>
@@ -264,23 +232,21 @@ const saveAndContinue = () => {
 
       </div>
 
-      <div class="flex flex-col gap-3 max-w-lg mx-auto mt-8">
+    <div class="flex flex-col gap-3 max-w-lg mx-auto mt-8">
 
-        <button @click="viewRecommendedProducts"
-          class="w-full bg-[#2E5BFF] text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-blue-700 shadow-sm flex justify-center items-center">
-          <span class="mr-2">✨</span> View Recommended Products
+        <button
+          @click="saveAndContinue"
+          class="w-full bg-[#2E5BFF] text-white font-semibold py-4 px-6 rounded-xl transition-colors hover:bg-blue-700 shadow-sm flex justify-center items-center"
+        >
+          <span class="mr-2">💾</span> Save analysis and continue
         </button>
 
-        <div class="flex flex-col sm:flex-row gap-3">
-          <button @click="saveAndContinue"
-            class="flex-1 bg-slate-800 text-white font-semibold py-3 px-6 rounded-xl transition-colors hover:bg-slate-900 shadow-sm">
-            Save analysis and continue
-          </button>
-          <button @click="quizStore.resetQuiz"
-            class="flex-1 bg-white text-slate-700 border border-slate-300 font-semibold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
-            Retake Quiz
-          </button>
-        </div>
+        <button
+          @click="quizStore.resetQuiz"
+          class="w-full bg-white text-slate-700 border border-slate-300 font-semibold py-4 px-6 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          Retake Quiz
+        </button>
       </div>
 
     </div>
