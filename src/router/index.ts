@@ -5,6 +5,7 @@ import ErrorView from '../views/ErrorView.vue'
 import HomeView from '../views/HomeView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
 import ShelfView from '../views/ShelfView.vue'
+import SettingsView from '../views/SettingsView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -33,6 +34,12 @@ const router = createRouter({
       name: 'shelf',
       component: ShelfView,
     },
+    {
+  path: '/settings',
+  name: 'settings',
+  component: SettingsView,
+  meta: { requiresAuth: true }
+}
   ],
 })
 // If you want the any link to be protected, write the line below:
