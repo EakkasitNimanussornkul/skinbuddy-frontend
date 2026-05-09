@@ -7,11 +7,9 @@ const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const router = useRouter()
 
-// We can use the authStore's logout, and then double-check the router pushes to landing
 const handleLogout = () => {
   authStore.logout()
-  // The store already pushes to '/', but this is a safe fallback
-  router.push('/')
+  router.push('/login') // Make sure this points to your new login page!
 }
 </script>
 
@@ -23,19 +21,53 @@ const handleLogout = () => {
         <h1 class="text-3xl font-serif font-bold text-slate-900 dark:text-white">Settings</h1>
       </div>
 
-      <div class="bg-white dark:bg-clinical-surface rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 mb-6 flex items-center gap-5">
-        <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-slate-100 flex-shrink-0">
+      <div class="bg-white dark:bg-clinical-surface rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 mb-4 flex items-center gap-5">
+        <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-slate-100 flex-shrink-0 flex items-center justify-center">
           <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full flex items-center justify-center text-slate-400 text-2xl">👤</div>
+          <div v-else class="text-slate-400 text-2xl">👤</div>
         </div>
-        <div>
+
+        <div class="flex-grow">
           <h2 class="text-xl font-bold text-slate-900 dark:text-white leading-tight">
             {{ authStore.user?.name || 'Guest User' }}
           </h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-3">
             Logged in via LINE
           </p>
+
+          <div
+            v-if="authStore.user?.skin_type"
+            class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-[#2E5BFF]/10 border border-blue-100 dark:border-[#2E5BFF]/30 rounded-lg"
+          >
+            <span class="text-xs font-bold text-blue-700 dark:text-[#2E5BFF] tracking-wider">
+              TYPE: {{ authStore.user.skin_type }}
+            </span>
+          </div>
+          <button
+            v-else
+            @click="router.push('/quiz')"
+            class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors rounded-lg border border-slate-200 dark:border-slate-700"
+          >
+            <span class="text-xs font-bold text-slate-600 dark:text-slate-300">
+              + Take Skin Quiz
+            </span>
+          </button>
         </div>
+      </div>
+
+      <div
+        v-if="authStore.user?.skin_type"
+        class="bg-blue-50/50 dark:bg-[#2E5BFF]/5 rounded-2xl p-4 mb-8 border border-blue-100 dark:border-[#2E5BFF]/20 flex items-center justify-between"
+      >
+        <p class="text-sm text-slate-600 dark:text-slate-300 font-medium pr-4">
+          Not sure about your current skin type?
+        </p>
+        <button
+          @click="router.push('/quiz')"
+          class="whitespace-nowrap px-4 py-2.5 bg-white dark:bg-clinical-surface text-[#2E5BFF] text-xs font-bold rounded-xl border border-blue-200 dark:border-[#2E5BFF]/30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+        >
+          Retake Quiz
+        </button>
       </div>
 
       <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 px-2">App Preferences</h3>
@@ -49,7 +81,7 @@ const handleLogout = () => {
           <button
             @click="themeStore.toggleTheme"
             class="w-12 h-6 rounded-full relative transition-colors duration-300 focus:outline-none"
-            :class="themeStore.isDark ? 'bg-[#2E5BFF]' : 'bg-slate-300'"
+            :class="themeStore.isDark ? 'bg-[#2E5BFF]' : 'bg-slate-700'"
           >
             <div
               class="absolute top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 shadow-sm"
