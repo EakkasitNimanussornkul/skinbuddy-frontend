@@ -24,8 +24,7 @@ onMounted(async () => {
         // Save token and user info to Pinia/LocalStorage
         authStore.setAuth(data.access_token, data.user)
 
-        // Redirect to the SkinBuddies chat interface
-        router.push('/chat')
+        router.push('/')
       }
     } catch (error) {
       console.error('Authentication failed:', error)
@@ -33,7 +32,7 @@ onMounted(async () => {
       setTimeout(() => router.push('/'), 3000)
     }
   } else {
-    router.push('/')
+    router.push({ path: '/error', query: { message: 'Failed to log in. Please try again.' } })
   }
 })
 </script>
