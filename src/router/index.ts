@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
+import ErrorView from '../views/ErrorView.vue'
 import HomeView from '../views/HomeView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
 
@@ -22,6 +23,11 @@ const router = createRouter({
       name: 'authCallback',
       component: AuthCallbackView,
     },
+    {
+      path: '/error',
+      name: 'error',
+      component: ErrorView,
+    },
   ],
 })
 // If you want the any link to be protected, write the line below:
@@ -31,15 +37,9 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
-  // Use the isAuthenticated() function we defined in Pinia instead of .session
   if (to.meta.requiresAuth && !authStore.isAuthenticated()) {
-    // If they need to be logged in but aren't, send to Home
-    next({ name: 'home' })
-  } else if (to.name === 'home' && authStore.isAuthenticated()) {
-    // If they are already logged in and try to hit the login page, send to Chat
-    next({ name: 'chat' })
+    next({ name: 'error', query: { message: 'You must be logged in to view this page.' } })
   } else {
-    // Otherwise, let them go to the page they requested
     next()
   }
 })
