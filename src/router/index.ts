@@ -4,7 +4,7 @@ import AuthCallbackView from '../views/AuthCallbackView.vue'
 import ErrorView from '../views/ErrorView.vue'
 import HomeView from '../views/HomeView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
-
+import ShelfView from '../views/ShelfView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -27,6 +27,11 @@ const router = createRouter({
       path: '/error',
       name: 'error',
       component: ErrorView,
+    },
+    {
+      path: '/shelf',
+      name: 'shelf',
+      component: ShelfView,
     },
   ],
 })
