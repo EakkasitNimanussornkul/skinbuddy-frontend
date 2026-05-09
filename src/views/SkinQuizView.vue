@@ -5,11 +5,11 @@ import { useQuizStore } from '../stores/quizStore'
 import { saveSkinType } from '../api/quizapi'
 import { baumannQuiz } from '../data/baumannQuiz'
 import QuestionCard from '../components/QuestionCard.vue'
-
+import { useAuthStore } from '../stores/auth'
 // Initialize Stores and Router
 const quizStore = useQuizStore()
 const router = useRouter()
-
+const authStore = useAuthStore()
 const totalQuestions = baumannQuiz.length
 
 // Grab the specific question object based on the user's current index
@@ -34,19 +34,23 @@ interface LiffWindow extends Window {
   liff?: { closeWindow: () => void }
 }
 // PHASE 1: Saves the flag and closes the app to return to LINE Chat
+// PHASE 1: Saves the flag, updates local memory, and returns to Home/LINE
 const saveAndContinue = async () => {
   try {
-    // Attempt to send data to your FastAPI backend
+    // 1. Send data to your FastAPI backend
     await saveSkinType(quizStore.finalSkinType, quizStore.scores)
 
-    // If successful, save the local flag
+    // 2. NEW: Tell the Auth Store to update the user's profile card instantly!
+    authStore.updateSkinType(quizStore.finalSkinType)
+
+    // 3. Save the local flag
     localStorage.setItem('hasCompletedQuiz', 'true')
 
     const win = window as LiffWindow
     if (typeof window !== 'undefined' && win.liff) {
       win.liff.closeWindow()
     } else {
-      alert(`Analysis Saved to Database!`)
+      // Pushes the user back to the HomeView!
       router.push('/')
     }
   } catch (error) {
