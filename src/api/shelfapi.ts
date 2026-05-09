@@ -1,14 +1,23 @@
 import { apiClient } from './index'
-import type { ShelfItem } from '../stores/shelfStore'
 
-// 1. Fetch user's shelf from database
-export const fetchUserShelf = async () => {
-  const response = await apiClient.get('/shelf')
+// --- Product Search ---
+export const searchProducts = async (query: string) => {
+  const response = await apiClient.get(`/products/search?q=${query}`)
   return response.data
 }
 
-// 2. Add a new product to the database
-export const addProductToBackend = async (productData: Omit<ShelfItem, 'id'>) => {
-  const response = await apiClient.post('/shelf/add', productData)
+// --- Shelf Operations ---
+export const getMyShelf = async () => {
+  const response = await apiClient.get('/shelf/')
+  return response.data
+}
+
+export const addToShelf = async (shelfData: { product_id: string, status: string, expiration_date?: string | null }) => {
+  const response = await apiClient.post('/shelf/add', shelfData)
+  return response.data
+}
+
+export const removeFromShelf = async (itemId: string) => {
+  const response = await apiClient.delete(`/shelf/${itemId}`)
   return response.data
 }
