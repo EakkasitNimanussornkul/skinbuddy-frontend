@@ -2,14 +2,12 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '../stores/quizStore'
-import { saveSkinType } from '../stores/quizapi'
-//import { useShelfStore } from '../stores/shelfStore' // --- IGNORE --- (We will need this later when we connect the quiz results to the shelf recommendations)
+import { saveSkinType } from '../api/quizapi'
 import { baumannQuiz } from '../data/baumannQuiz'
 import QuestionCard from '../components/QuestionCard.vue'
 
 // Initialize Stores and Router
 const quizStore = useQuizStore()
-// const shelfStore = useShelfStore() --- IGNORE --- (Uncomment when connecting to shelf)
 const router = useRouter()
 
 const totalQuestions = baumannQuiz.length
