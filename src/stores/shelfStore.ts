@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchUserShelf, addProductToBackend } from '../stores/shelfapi'
+import { fetchUserShelf, addProductToBackend } from '../api/shelfapi'
 
 // 1. Export the interface so other files can use it
 export interface ShelfItem {
