@@ -1,16 +1,49 @@
 <script setup lang="ts">
-// --- STATE & MOCK DATA ---
-const days = [
-  { day: 'M', date: 26 },
-  { day: 'T', date: 27 },
-  { day: 'W', date: 28 },
-  { day: 'T', date: 29 },
-  { day: 'F', date: 30 },
-  { day: 'S', date: 31 },
-  { day: 'S', date: 1, active: true } // Circled current date
-]
+import { ref } from 'vue'
 
-// Mock data directly matching product names and brands from image_5.png
+// --- DYNAMIC CALENDAR LOGIC (Locked Mon-Sun) ---
+const generateWeek = () => {
+  const daysArray = []
+  const today = new Date()
+
+  // In JavaScript, Sunday is 0, Monday is 1.
+  // We calculate how many days to jump backwards to find Monday.
+  const currentDay = today.getDay()
+  const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1
+
+  const startOfWeek = new Date(today)
+  startOfWeek.setDate(today.getDate() - distanceToMonday)
+
+  // Hardcoding the labels ensures it perfectly matches your requested layout
+  const weekLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+  for (let i = 0; i < 7; i++) {
+    const targetDate = new Date(startOfWeek)
+    targetDate.setDate(startOfWeek.getDate() + i)
+
+    daysArray.push({
+      day: weekLabels[i],
+      date: targetDate.getDate(),
+      // Checks if this specific loop iteration matches exactly today
+      active: targetDate.toDateString() === today.toDateString()
+    })
+  }
+  return daysArray
+}
+
+const days = ref(generateWeek())
+
+// --- HEADER DATE LOGIC ---
+const getHeaderDate = () => {
+  const today = new Date()
+  const day = today.getDate()
+  const month = today.toLocaleString('en-US', { month: 'short' }) // Gets "May", "Jun", etc.
+  return `Today, ${day} ${month}`
+}
+
+const headerTitle = ref(getHeaderDate())
+
+// --- MOCK ROUTINE DATA ---
 const morningRoutine = [
   { step: 1, type: 'Cleanser', name: 'Hydrating Facial Cleanser', brand: 'CeraVe' },
   { step: 2, type: 'Moisturizer', name: 'Hydration Station', brand: 'Geek & Gorgeous' },
@@ -27,8 +60,7 @@ const morningRoutine = [
           <div class="flex gap-2 text-slate-400 dark:text-slate-500 text-xs">
             <span class="flex items-center">⚡ 1 <span class="ml-1 opacity-60">☁️ 0</span></span>
           </div>
-          <h1 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Today</h1>
-          <div class="flex gap-3 text-slate-400 dark:text-slate-500">
+  <h1 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{{ headerTitle }}</h1>          <div class="flex gap-3 text-slate-400 dark:text-slate-500">
             <span>🔔</span><span>🀱</span>
           </div>
         </div>
