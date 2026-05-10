@@ -115,7 +115,7 @@ const closeModal = () => {
       </div>
 
       <div v-if="isLoading" class="text-center py-10 text-slate-500">
-        Loading your routine...
+        Loading your skincare products....
       </div>
 
       <div v-else-if="myShelf.length === 0" class="bg-white dark:bg-clinical-surface rounded-2xl p-8 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
