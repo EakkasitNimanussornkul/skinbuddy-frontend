@@ -125,7 +125,7 @@ const closeDetails = () => viewingItem.value = null
       </div>
 
       <div v-if="isLoading" class="text-center py-10 text-slate-500 animate-pulse">
-        Loading your routine...
+        Loading your skincare shelf...
       </div>
 
       <div v-else-if="myShelf.length === 0" class="bg-white dark:bg-clinical-surface rounded-3xl p-10 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-10">
