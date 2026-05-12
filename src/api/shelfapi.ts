@@ -12,7 +12,6 @@ export const getMyShelf = async () => {
   return response.data
 }
 
-// UPDATED: Added opened_date and pao so TypeScript knows to accept them!
 export const addToShelf = async (shelfData: {
   product_id: string,
   status: string,
@@ -24,14 +23,11 @@ export const addToShelf = async (shelfData: {
   return response.data
 }
 
-// Replace your old analyzeProduct with this:
 export const analyzeProduct = async (productId: string) => {
-  // apiClient automatically adds the base URL and the Token!
   const response = await apiClient.get(`/shelf/analyze/${productId}`);
   return response.data;
 };
 
-// Replace your old markItemOpened with this:
 export const markItemOpened = async (itemId: string, openedDate: string, expirationDate: string) => {
   const response = await apiClient.patch(`/shelf/${itemId}/open`, {
     opened_date: openedDate,
