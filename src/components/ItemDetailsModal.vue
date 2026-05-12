@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { markItemOpened } from '../api/shelfApi'
+import { markItemOpened } from '../api/shelfapi'
 
 const props = defineProps<{
   item: any
