@@ -20,6 +20,9 @@ const isOpened = ref(true)
 const isAnalyzing = ref(false)
 const analysisWarnings = ref<any[]>([])
 const showWarningModal = ref(false)
+const isEditingExpiration = ref(false)
+const editExpirationDate = ref('')
+
 
 // --- Fetch Initial Data ---
 const fetchShelf = async () => {
@@ -118,27 +121,29 @@ const handleAddToShelf = async (forceSave = false) => {
   }
 }
 // --- Start PAO Clock ---
+// --- Start PAO Clock (Now Handles Missing PAOs!) ---
 const handleStartPAO = async () => {
-  if (!viewingItem.value || !viewingItem.value.pao) return;
+  if (!viewingItem.value) return;
 
   // Get today's date
   const today = new Date();
   const openedDateStr = today.toISOString().split('T')[0];
 
-  // Calculate the future expiration date by adding the PAO months
-  const expDate = new Date();
-  expDate.setMonth(expDate.getMonth() + viewingItem.value.pao);
-  const expDateStr = expDate.toISOString().split('T')[0];
+  // Only calculate future date IF they actually have a PAO set
+  let expDateStr = null;
+  if (viewingItem.value.pao) {
+    const expDate = new Date();
+    expDate.setMonth(expDate.getMonth() + viewingItem.value.pao);
+    expDateStr = expDate.toISOString().split('T')[0];
+  }
 
   try {
-    // Send to database
+    // Send to database (expDateStr will safely pass as null if no PAO)
     await markItemOpened(viewingItem.value.id, openedDateStr, expDateStr);
 
-    // Update the UI instantly without needing a full reload
+    // Update UI
     viewingItem.value.opened_date = openedDateStr;
     viewingItem.value.expiration_date = expDateStr;
-
-    // Refresh the background shelf so the main list updates too
     fetchShelf();
   } catch (error) {
     console.error("Failed to start PAO", error);
@@ -171,7 +176,42 @@ const closeAddModal = () => {
 }
 
 const openDetails = (item: any) => viewingItem.value = item
-const closeDetails = () => viewingItem.value = null
+const closeDetails = () => {
+  viewingItem.value = null
+  isEditingExpiration.value = false // NEW: Reset edit state
+}
+const startEditingExpiration = () => {
+  editExpirationDate.value = viewingItem.value.expiration_date || ''
+  isEditingExpiration.value = true
+}
+
+const setEditPAO = (months: number) => {
+  if (!viewingItem.value?.opened_date) return
+  // SMART FEATURE: Calculate 6 months from the day they OPENED it, not today!
+  const d = new Date(viewingItem.value.opened_date)
+  d.setMonth(d.getMonth() + months)
+  editExpirationDate.value = d.toISOString().split('T')[0]
+}
+
+const handleUpdateExpiration = async () => {
+  if (!viewingItem.value) return
+  try {
+    // We reuse markItemOpened to patch the new expiration date while keeping the old opened_date
+    await markItemOpened(
+      viewingItem.value.id,
+      viewingItem.value.opened_date,
+      editExpirationDate.value
+    )
+
+    // Update UI and close edit mode
+    viewingItem.value.expiration_date = editExpirationDate.value
+    isEditingExpiration.value = false
+    fetchShelf() // Refresh background list
+  } catch (error) {
+    console.error("Failed to update expiration:", error)
+    alert("Could not update date.")
+  }
+}
 </script>
 
 <template>
@@ -227,6 +267,10 @@ const closeDetails = () => viewingItem.value = null
 
               <span v-if="item.opened_date && item.expiration_date" class="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-md font-semibold border border-red-100 dark:border-red-900/30">
                 Exp: {{ item.expiration_date }}
+              </span>
+
+              <span v-else-if="item.opened_date && !item.expiration_date" class="text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md font-semibold border border-emerald-100 dark:border-emerald-900/30">
+                ✓ Opened
               </span>
 
               <span v-else-if="!item.opened_date" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md font-semibold border border-slate-200 dark:border-slate-700">
@@ -471,9 +515,40 @@ const closeDetails = () => viewingItem.value = null
             </div>
 
             <div class="mt-6 space-y-2">
-              <div v-if="viewingItem.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex justify-between items-center transition-all">
-                <span class="text-sm font-bold text-red-600 dark:text-red-400">Expiration Date</span>
-                <span class="text-sm font-bold text-red-700 dark:text-red-300">{{ viewingItem.expiration_date || 'Not set' }}</span>
+              <div v-if="viewingItem.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl transition-all">
+
+                <div v-if="!isEditingExpiration" @click="startEditingExpiration" class="flex justify-between items-center cursor-pointer group">
+                  <span class="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                    Expiration Date
+                    <span class="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded">EDIT</span>
+                  </span>
+                  <span class="text-sm font-bold" :class="viewingItem.expiration_date ? 'text-red-700 dark:text-red-300' : 'text-red-400 italic'">
+                    {{ viewingItem.expiration_date || 'Not set' }}
+                  </span>
+                </div>
+
+                <div v-else class="space-y-4 animate-fade-in pt-1">
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-bold text-red-600 dark:text-red-400">Update Expiration</span>
+                    <button @click="isEditingExpiration = false" class="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors">Cancel</button>
+                  </div>
+
+                  <div class="flex gap-2">
+                    <button @click="setEditPAO(3)" class="flex-1 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-slate-600 dark:text-slate-300 hover:border-red-300 transition-colors shadow-sm">3M</button>
+                    <button @click="setEditPAO(6)" class="flex-1 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-slate-600 dark:text-slate-300 hover:border-red-300 transition-colors shadow-sm">6M</button>
+                    <button @click="setEditPAO(12)" class="flex-1 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-slate-600 dark:text-slate-300 hover:border-red-300 transition-colors shadow-sm">12M</button>
+                  </div>
+
+                  <input
+                    v-model="editExpirationDate"
+                    type="date"
+                    class="w-full bg-white dark:bg-clinical-surface border-2 border-red-100 dark:border-red-900/50 text-slate-900 dark:text-white px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-400 text-sm shadow-sm transition-colors"
+                  />
+
+                  <button @click="handleUpdateExpiration" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-md shadow-red-500/20 transition-all active:scale-[0.98]">
+                    Save Date
+                  </button>
+                </div>
               </div>
 
               <div v-else class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl flex flex-col gap-4">
@@ -487,12 +562,12 @@ const closeDetails = () => viewingItem.value = null
                   </span>
                 </div>
 
-                <button
-                  v-if="viewingItem.pao"
+               <button
                   @click="handleStartPAO"
                   class="w-full py-3.5 bg-[#2E5BFF] hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  <span>🔓</span> Open Today & Start Clock
+                  <span>🔓</span>
+                  {{ viewingItem.pao ? 'Open Today & Start Clock' : 'Mark as Opened Today' }}
                 </button>
               </div>
             </div>
