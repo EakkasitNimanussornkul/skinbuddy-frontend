@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { searchProducts, getMyShelf, addToShelf, removeFromShelf } from '../api/shelfApi'
-
-// --- State Variables ---
+import { searchProducts, getMyShelf, addToShelf, removeFromShelf, analyzeProduct, markItemOpened } from '../api/shelfapi'
 const myShelf = ref<any[]>([])
 const isAddModalOpen = ref(false)
 const viewingItem = ref<any>(null) // NEW: Tracks which product details are open
@@ -17,7 +15,11 @@ const searchTimeout = ref<any>(null)
 const selectedProduct = ref<any>(null)
 const selectedStatus = ref('Morning')
 const expirationDate = ref('')
-const selectedPAO = ref<number | null>(null) // NEW: Tracks selected PAO button
+const selectedPAO = ref<number | null>(null)
+const isOpened = ref(true)
+const isAnalyzing = ref(false)
+const analysisWarnings = ref<any[]>([])
+const showWarningModal = ref(false)
 
 // --- Fetch Initial Data ---
 const fetchShelf = async () => {
@@ -66,25 +68,83 @@ const setPAO = (months: number) => {
   const d = new Date()
   d.setMonth(d.getMonth() + months)
   // Format as YYYY-MM-DD for the HTML date input
-  expirationDate.value = d.toISOString().split('T')[0]
+  expirationDate.value = d.toISOString().split('T')[0] || ''
 }
 
-// --- Saving and Deleting ---
-const handleAddToShelf = async () => {
+const handleAddToShelf = async (forceSave = false) => {
   if (!selectedProduct.value) return
+
+  // 1. SAFETY CHECK: If we haven't forced a save, run the safety analysis first
+  if (!forceSave) {
+    isAnalyzing.value = true
+    try {
+      const analysis = await analyzeProduct(selectedProduct.value.id)
+
+      // If it's not safe, stop the save and show the warning modal!
+      if (!analysis.is_safe) {
+        analysisWarnings.value = analysis.warnings
+        showWarningModal.value = true
+        isAnalyzing.value = false
+        return
+      }
+    } catch (error) {
+      console.error("Analysis failed, proceeding with caution.", error)
+    }
+    isAnalyzing.value = false
+  }
+
+  // 2. SAVING: If it IS safe, or if the user clicked "Proceed Anyway", save it!
   try {
+    // Grab today's date formatted perfectly for the database (YYYY-MM-DD)
+    const today = new Date().toISOString().split('T')[0];
+
     await addToShelf({
       product_id: selectedProduct.value.id,
       status: selectedStatus.value,
-      expiration_date: expirationDate.value || null
+
+      opened_date: isOpened.value ? today : null,
+
+      expiration_date: isOpened.value ? (expirationDate.value || null) : null,
+
+      pao: selectedPAO.value
     })
+
     closeAddModal()
+    showWarningModal.value = false
     fetchShelf()
   } catch (error) {
     console.error("Failed to add to shelf:", error)
     alert("Could not add product.")
   }
 }
+// --- Start PAO Clock ---
+const handleStartPAO = async () => {
+  if (!viewingItem.value || !viewingItem.value.pao) return;
+
+  // Get today's date
+  const today = new Date();
+  const openedDateStr = today.toISOString().split('T')[0];
+
+  // Calculate the future expiration date by adding the PAO months
+  const expDate = new Date();
+  expDate.setMonth(expDate.getMonth() + viewingItem.value.pao);
+  const expDateStr = expDate.toISOString().split('T')[0];
+
+  try {
+    // Send to database
+    await markItemOpened(viewingItem.value.id, openedDateStr, expDateStr);
+
+    // Update the UI instantly without needing a full reload
+    viewingItem.value.opened_date = openedDateStr;
+    viewingItem.value.expiration_date = expDateStr;
+
+    // Refresh the background shelf so the main list updates too
+    fetchShelf();
+  } catch (error) {
+    console.error("Failed to start PAO", error);
+    alert("Could not update product status.");
+  }
+};
 
 const handleDelete = async (itemId: string) => {
   if (!confirm("Remove this item from your shelf?")) return
@@ -107,6 +167,7 @@ const closeAddModal = () => {
   selectedStatus.value = 'Morning'
   expirationDate.value = ''
   selectedPAO.value = null
+  isOpened.value = true
 }
 
 const openDetails = (item: any) => viewingItem.value = item
@@ -157,15 +218,23 @@ const closeDetails = () => viewingItem.value = null
             <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 line-clamp-1">
               {{ item.products?.name || 'Unknown Product' }}
             </h4>
-
-            <div class="flex gap-2 items-center">
+           <div class="flex gap-2 items-center mt-1 flex-wrap">
               <span class="text-[10px] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1"
                 :class="item.status === 'Morning' ? 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400' : (item.status === 'Evening' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')"
               >
                 {{ item.status === 'Morning' ? '☀️' : (item.status === 'Evening' ? '🌙' : '☀️/🌙') }} {{ item.status }}
               </span>
-              <span v-if="item.expiration_date" class="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-md font-semibold">
+
+              <span v-if="item.opened_date && item.expiration_date" class="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-md font-semibold border border-red-100 dark:border-red-900/30">
                 Exp: {{ item.expiration_date }}
+              </span>
+
+              <span v-else-if="!item.opened_date" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md font-semibold border border-slate-200 dark:border-slate-700">
+                🔒 Unopened
+              </span>
+
+              <span v-if="item.pao && !item.opened_date" class="text-[10px] bg-blue-50 dark:bg-blue-900/20 text-[#2E5BFF] dark:text-blue-400 px-2 py-0.5 rounded-md font-bold border border-blue-100 dark:border-blue-900/30 flex items-center gap-1 shadow-sm">
+                ⏳ {{ item.pao }}M PAO
               </span>
             </div>
           </div>
@@ -259,7 +328,33 @@ const closeDetails = () => viewingItem.value = null
                   </button>
                 </div>
               </div>
+              <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 bg-slate-50 dark:bg-slate-800/50 transition-all duration-300">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-bold text-slate-900 dark:text-white">Have you opened this product?</h4>
 
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold w-6 text-right transition-colors"
+                          :class="isOpened ? 'text-[#2E5BFF]' : 'text-slate-400 dark:text-slate-500'">
+                      {{ isOpened ? 'YES' : 'NO' }}
+                    </span>
+
+                    <button
+                      @click="isOpened = !isOpened"
+                      class="w-12 h-6 rounded-full relative transition-colors duration-300 shrink-0"
+                      :class="isOpened ? 'bg-[#2E5BFF]' : 'bg-slate-300 dark:bg-slate-600'"
+                    >
+                      <div
+                        class="w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 shadow-sm"
+                        :class="isOpened ? 'right-1 translate-x-0' : 'left-1 translate-x-0'"
+                      ></div>
+                    </button>
+                  </div>
+                </div>
+
+                <p v-if="!isOpened" class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 animate-fade-in">
+                  We will keep it in your shelf. You can change this later once you start using your skincare to begin tracking its PAO(Period after Opening).
+                </p>
+              </div>
               <div>
                 <div class="flex justify-between items-end mb-2">
                   <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expiration Tracking</label>
@@ -281,9 +376,51 @@ const closeDetails = () => viewingItem.value = null
               </div>
 
               <div class="pt-4 pb-10">
-                <button @click="handleAddToShelf" class="w-full bg-[#2E5BFF] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors text-lg">
+                <button @click="handleAddToShelf()" class="w-full bg-[#2E5BFF] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors text-lg">
                   Save to My Shelf
                 </button>
+                <Teleport to="body">
+      <div v-if="showWarningModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div class="bg-white dark:bg-clinical-surface w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-red-100 dark:border-red-900/30">
+
+          <div class="bg-red-50 dark:bg-red-900/20 p-6 flex flex-col items-center text-center border-b border-red-100 dark:border-red-900/30">
+            <div class="w-16 h-16 bg-white dark:bg-red-900/50 text-red-500 rounded-full flex items-center justify-center text-3xl shadow-sm mb-4 border border-red-100 dark:border-red-800">
+              ⚠️
+            </div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Interaction Alert</h2>
+            <p class="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">SkinBuddy detected a potential issue.</p>
+          </div>
+
+          <div class="p-6 max-h-60 overflow-y-auto space-y-3">
+            <div
+              v-for="(warning, index) in analysisWarnings"
+              :key="index"
+              class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md"
+                  :class="warning.alert_type === 'Chemical' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'"
+                >
+                  {{ warning.alert_type }}
+                </span>
+                <span v-if="warning.severity === 'High'" class="text-[10px] uppercase font-bold text-red-600 dark:text-red-400">High Risk</span>
+              </div>
+              <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{{ warning.message }}</p>
+            </div>
+          </div>
+
+          <div class="p-4 grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+            <button @click="showWarningModal = false" class="py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button @click="handleAddToShelf(true)" class="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-colors">
+              Proceed Anyway
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </Teleport>
               </div>
             </div>
 
@@ -303,7 +440,7 @@ const closeDetails = () => viewingItem.value = null
             <span v-else class="text-6xl">🧴</span>
           </div>
 
-          <div class="p-6">
+         <div class="p-6">
             <p class="text-xs text-[#2E5BFF] font-bold uppercase tracking-widest mb-1">{{ viewingItem.products?.brand }}</p>
             <h2 class="text-2xl font-bold text-slate-900 dark:text-white leading-tight mb-4">{{ viewingItem.products?.name }}</h2>
 
@@ -312,16 +449,52 @@ const closeDetails = () => viewingItem.value = null
               <span class="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg font-semibold">{{ viewingItem.status }} Routine</span>
             </div>
 
+            <div v-if="viewingItem.products?.product_ingredients?.length" class="mb-5">
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-3">Key Actives</h3>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="pi in viewingItem.products.product_ingredients"
+                  :key="pi.ingredients.id"
+                  class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 flex-1 min-w-[140px]"
+                >
+                  <span class="block text-sm font-bold text-[#2E5BFF] dark:text-blue-400">{{ pi.ingredients.name }}</span>
+                  <span v-if="pi.ingredients.benefits" class="block text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">{{ pi.ingredients.benefits }}</span>
+                </div>
+              </div>
+            </div>
+
             <div v-if="viewingItem.products?.ingredients" class="mb-6">
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Ingredients Overview</h3>
-              <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl max-h-32 overflow-y-auto text-xs text-slate-600 dark:text-slate-400 leading-relaxed border border-slate-100 dark:border-slate-800">
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Full Ingredient List</h3>
+              <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl max-h-24 overflow-y-auto text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed border border-slate-100 dark:border-slate-800">
                 {{ viewingItem.products.ingredients }}
               </div>
             </div>
 
-            <div v-if="viewingItem.expiration_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex justify-between items-center">
-              <span class="text-sm font-bold text-red-600 dark:text-red-400">Expiration Date</span>
-              <span class="text-sm font-bold text-red-700 dark:text-red-300">{{ viewingItem.expiration_date }}</span>
+            <div class="mt-6 space-y-2">
+              <div v-if="viewingItem.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex justify-between items-center transition-all">
+                <span class="text-sm font-bold text-red-600 dark:text-red-400">Expiration Date</span>
+                <span class="text-sm font-bold text-red-700 dark:text-red-300">{{ viewingItem.expiration_date || 'Not set' }}</span>
+              </div>
+
+              <div v-else class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">🔒</span>
+                    <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Status: Unopened</span>
+                  </div>
+                  <span v-if="viewingItem.pao" class="text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-3 py-1 rounded-lg">
+                    {{ viewingItem.pao }}M PAO
+                  </span>
+                </div>
+
+                <button
+                  v-if="viewingItem.pao"
+                  @click="handleStartPAO"
+                  class="w-full py-3.5 bg-[#2E5BFF] hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <span>🔓</span> Open Today & Start Clock
+                </button>
+              </div>
             </div>
           </div>
         </div>
