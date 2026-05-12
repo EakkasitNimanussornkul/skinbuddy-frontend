@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { searchProducts, getMyShelf, addToShelf, removeFromShelf, analyzeProduct, markItemOpened } from '../api/shelfapi'
+import SearchResultCard from '../components/SearchResultCard.vue'
+import ItemDetailsModal from '../components/ItemDetailsModal.vue'
 const myShelf = ref<any[]>([])
 const isAddModalOpen = ref(false)
-const viewingItem = ref<any>(null) // NEW: Tracks which product details are open
+const viewingItem = ref<any>(null)
 const isLoading = ref(true)
 
-// Modal Form State
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
 const isSearching = ref(false)
@@ -20,8 +21,6 @@ const isOpened = ref(true)
 const isAnalyzing = ref(false)
 const analysisWarnings = ref<any[]>([])
 const showWarningModal = ref(false)
-const isEditingExpiration = ref(false)
-const editExpirationDate = ref('')
 
 
 // --- Fetch Initial Data ---
@@ -120,36 +119,6 @@ const handleAddToShelf = async (forceSave = false) => {
     alert("Could not add product.")
   }
 }
-// --- Start PAO Clock ---
-// --- Start PAO Clock (Now Handles Missing PAOs!) ---
-const handleStartPAO = async () => {
-  if (!viewingItem.value) return;
-
-  // Get today's date
-  const today = new Date();
-  const openedDateStr = today.toISOString().split('T')[0];
-
-  // Only calculate future date IF they actually have a PAO set
-  let expDateStr = null;
-  if (viewingItem.value.pao) {
-    const expDate = new Date();
-    expDate.setMonth(expDate.getMonth() + viewingItem.value.pao);
-    expDateStr = expDate.toISOString().split('T')[0];
-  }
-
-  try {
-    // Send to database (expDateStr will safely pass as null if no PAO)
-    await markItemOpened(viewingItem.value.id, openedDateStr, expDateStr);
-
-    // Update UI
-    viewingItem.value.opened_date = openedDateStr;
-    viewingItem.value.expiration_date = expDateStr;
-    fetchShelf();
-  } catch (error) {
-    console.error("Failed to start PAO", error);
-    alert("Could not update product status.");
-  }
-};
 
 const handleDelete = async (itemId: string) => {
   if (!confirm("Remove this item from your shelf?")) return
@@ -178,40 +147,8 @@ const closeAddModal = () => {
 const openDetails = (item: any) => viewingItem.value = item
 const closeDetails = () => {
   viewingItem.value = null
-  isEditingExpiration.value = false // NEW: Reset edit state
-}
-const startEditingExpiration = () => {
-  editExpirationDate.value = viewingItem.value.expiration_date || ''
-  isEditingExpiration.value = true
 }
 
-const setEditPAO = (months: number) => {
-  if (!viewingItem.value?.opened_date) return
-  // SMART FEATURE: Calculate 6 months from the day they OPENED it, not today!
-  const d = new Date(viewingItem.value.opened_date)
-  d.setMonth(d.getMonth() + months)
-  editExpirationDate.value = d.toISOString().split('T')[0]
-}
-
-const handleUpdateExpiration = async () => {
-  if (!viewingItem.value) return
-  try {
-    // We reuse markItemOpened to patch the new expiration date while keeping the old opened_date
-    await markItemOpened(
-      viewingItem.value.id,
-      viewingItem.value.opened_date,
-      editExpirationDate.value
-    )
-
-    // Update UI and close edit mode
-    viewingItem.value.expiration_date = editExpirationDate.value
-    isEditingExpiration.value = false
-    fetchShelf() // Refresh background list
-  } catch (error) {
-    console.error("Failed to update expiration:", error)
-    alert("Could not update date.")
-  }
-}
 </script>
 
 <template>
@@ -314,22 +251,13 @@ const handleUpdateExpiration = async () => {
                 />
               </div>
 
-              <ul v-if="searchResults.length > 0 && !selectedProduct" class="absolute z-20 w-full mt-2 bg-white dark:bg-clinical-surface border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                <li
+              <ul v-if="searchResults.length > 0 && !selectedProduct" class="absolute z-20 w-full mt-2 bg-white dark:bg-clinical-surface border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-72 overflow-y-auto">
+                <SearchResultCard
                   v-for="product in searchResults"
                   :key="product.id"
-                  @click="selectProduct(product)"
-                  class="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-4"
-                >
-                  <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg p-1 flex-shrink-0">
-                    <img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal"/>
-                    <div v-else class="w-full h-full flex items-center justify-center text-xl">🧴</div>
-                  </div>
-                  <div>
-                    <div class="text-[10px] font-bold text-[#2E5BFF] uppercase mb-0.5">{{ product.brand }}</div>
-                    <div class="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">{{ product.name }}</div>
-                  </div>
-                </li>
+                  :product="product"
+                  @select="selectProduct(product)"
+                />
               </ul>
             </div>
 
@@ -474,106 +402,12 @@ const handleUpdateExpiration = async () => {
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="viewingItem" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-0 animate-fade-in">
-        <div class="bg-white dark:bg-clinical-surface w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-slide-up relative">
-
-          <button @click="closeDetails" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-300 z-10">✕</button>
-
-          <div class="bg-slate-50 dark:bg-slate-800/50 h-48 flex items-center justify-center p-6 border-b border-slate-100 dark:border-slate-700">
-            <img v-if="viewingItem.products?.image_url" :src="viewingItem.products.image_url" class="h-full object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl" />
-            <span v-else class="text-6xl">🧴</span>
-          </div>
-
-         <div class="p-6">
-            <p class="text-xs text-[#2E5BFF] font-bold uppercase tracking-widest mb-1">{{ viewingItem.products?.brand }}</p>
-            <h2 class="text-2xl font-bold text-slate-900 dark:text-white leading-tight mb-4">{{ viewingItem.products?.name }}</h2>
-
-            <div class="flex gap-2 mb-6">
-              <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-lg font-semibold">{{ viewingItem.products?.category }}</span>
-              <span class="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg font-semibold">{{ viewingItem.status }} Routine</span>
-            </div>
-
-            <div v-if="viewingItem.products?.product_ingredients?.length" class="mb-5">
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-3">Key Actives</h3>
-              <div class="flex flex-wrap gap-2">
-                <div
-                  v-for="pi in viewingItem.products.product_ingredients"
-                  :key="pi.ingredients.id"
-                  class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 flex-1 min-w-[140px]"
-                >
-                  <span class="block text-sm font-bold text-[#2E5BFF] dark:text-blue-400">{{ pi.ingredients.name }}</span>
-                  <span v-if="pi.ingredients.benefits" class="block text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">{{ pi.ingredients.benefits }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="viewingItem.products?.ingredients" class="mb-6">
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Full Ingredient List</h3>
-              <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl max-h-24 overflow-y-auto text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed border border-slate-100 dark:border-slate-800">
-                {{ viewingItem.products.ingredients }}
-              </div>
-            </div>
-
-            <div class="mt-6 space-y-2">
-              <div v-if="viewingItem.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl transition-all">
-
-                <div v-if="!isEditingExpiration" @click="startEditingExpiration" class="flex justify-between items-center cursor-pointer group">
-                  <span class="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-                    Expiration Date
-                    <span class="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded">EDIT</span>
-                  </span>
-                  <span class="text-sm font-bold" :class="viewingItem.expiration_date ? 'text-red-700 dark:text-red-300' : 'text-red-400 italic'">
-                    {{ viewingItem.expiration_date || 'Not set' }}
-                  </span>
-                </div>
-
-                <div v-else class="space-y-4 animate-fade-in pt-1">
-                  <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-bold text-red-600 dark:text-red-400">Update Expiration</span>
-                    <button @click="isEditingExpiration = false" class="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors">Cancel</button>
-                  </div>
-
-                  <div class="flex gap-2">
-                    <button @click="setEditPAO(3)" class="flex-1 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-slate-600 dark:text-slate-300 hover:border-red-300 transition-colors shadow-sm">3M</button>
-                    <button @click="setEditPAO(6)" class="flex-1 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-slate-600 dark:text-slate-300 hover:border-red-300 transition-colors shadow-sm">6M</button>
-                    <button @click="setEditPAO(12)" class="flex-1 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-slate-600 dark:text-slate-300 hover:border-red-300 transition-colors shadow-sm">12M</button>
-                  </div>
-
-                  <input
-                    v-model="editExpirationDate"
-                    type="date"
-                    class="w-full bg-white dark:bg-clinical-surface border-2 border-red-100 dark:border-red-900/50 text-slate-900 dark:text-white px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-400 text-sm shadow-sm transition-colors"
-                  />
-
-                  <button @click="handleUpdateExpiration" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-md shadow-red-500/20 transition-all active:scale-[0.98]">
-                    Save Date
-                  </button>
-                </div>
-              </div>
-
-              <div v-else class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl flex flex-col gap-4">
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center gap-2">
-                    <span class="text-lg">🔒</span>
-                    <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Status: Unopened</span>
-                  </div>
-                  <span v-if="viewingItem.pao" class="text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-3 py-1 rounded-lg">
-                    {{ viewingItem.pao }}M PAO
-                  </span>
-                </div>
-
-               <button
-                  @click="handleStartPAO"
-                  class="w-full py-3.5 bg-[#2E5BFF] hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <span>🔓</span>
-                  {{ viewingItem.pao ? 'Open Today & Start Clock' : 'Mark as Opened Today' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ItemDetailsModal
+        v-if="viewingItem"
+        :item="viewingItem"
+        @close="closeDetails"
+        @refresh="fetchShelf"
+      />
     </Teleport>
 
   </div>
