@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { searchProducts, addToShelf, analyzeProduct } from '../api/shelfapi'
 import SearchResultCard from './SearchResultCard.vue'
-
+import { useToast } from '../composables/useToast'
 const emit = defineEmits(['close', 'refresh'])
 
 // --- Local State ---
@@ -21,7 +21,7 @@ const isOpened = ref(true)
 const isAnalyzing = ref(false)
 const analysisWarnings = ref<any[]>([])
 const showWarningModal = ref(false)
-
+const { addToast } = useToast()
 // --- Methods ---
 const handleSearchInput = () => {
   if (searchTimeout.value) clearTimeout(searchTimeout.value)
@@ -81,7 +81,7 @@ const handleAddToShelf = async (forceSave = false) => {
     isAnalyzing.value = false
   }
 
-  try {
+try {
     const today = new Date().toISOString().split('T')[0]
     await addToShelf({
       product_id: selectedProduct.value.id,
@@ -91,12 +91,16 @@ const handleAddToShelf = async (forceSave = false) => {
       pao: selectedPAO.value
     })
 
-    // Success! Tell parent to refresh the list and close the modal
+    // THE NEW SUCCESS TOAST! 🎉
+    addToast('Successfully added to your shelf!', 'success')
+
     emit('refresh')
     emit('close')
   } catch (error) {
     console.error("Failed to add:", error)
-    alert("Could not add product.")
+
+    // THE NEW ERROR TOAST! 🚨 (Replaces alert)
+    addToast('Failed to save product. Please try again.', 'error')
   }
 }
 </script>

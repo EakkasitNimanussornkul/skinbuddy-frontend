@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { markItemOpened } from '../api/shelfapi'
+import { useToast } from '../composables/useToast'
 
+const { addToast } = useToast()
 const props = defineProps<{
   item: any
 }>()
@@ -33,12 +35,16 @@ const setEditPAO = (months: number) => {
 const handleUpdateExpiration = async () => {
   try {
     await markItemOpened(props.item.id, props.item.opened_date, editExpirationDate.value)
-    props.item.expiration_date = editExpirationDate.value // Update local UI
+    props.item.expiration_date = editExpirationDate.value
     isEditingExpiration.value = false
-    emit('refresh') // Tell parent to fetch new data
+    emit('refresh')
+
+    // NEW TOAST:
+    addToast('Expiration date updated!', 'success')
   } catch (error) {
     console.error("Failed to update expiration:", error)
-    alert("Could not update date.")
+    // NEW TOAST:
+    addToast('Could not update date', 'error')
   }
 }
 
@@ -58,9 +64,13 @@ const handleStartPAO = async () => {
     props.item.opened_date = openedDateStr
     props.item.expiration_date = expDateStr
     emit('refresh')
+
+    // NEW TOAST:
+    addToast('Product opened! Clock started ⏳', 'success')
   } catch (error) {
     console.error("Failed to start PAO", error)
-    alert("Could not update product status.")
+    // NEW TOAST:
+    addToast('Could not update product status', 'error')
   }
 }
 </script>
@@ -108,10 +118,12 @@ const handleStartPAO = async () => {
                 <span class="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded">EDIT</span>
               </span>
 
-              <span class="text-sm font-bold" :class="item.expiration_date ? 'text-red-700 dark:text-red-300' : 'text-red-400 italic'">
-                {{ item.expiration_date ? formatDate(item.expiration_date) : 'Not set' }}
+              <span v-if="item.expiration_date" class="text-sm font-bold text-red-700 dark:text-red-300">
+                {{ formatDate(item.expiration_date) }}
               </span>
-
+              <span v-else class="text-xs font-bold bg-red-500 text-white px-3 py-1 rounded-lg shadow-sm group-hover:bg-red-600 transition-colors flex items-center gap-1 animate-pulse">
+                + Set Date
+              </span>
             </div>
 
             <div v-else class="space-y-4 animate-fade-in pt-1">
