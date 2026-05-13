@@ -5,12 +5,14 @@ import ShelfCard from '../components/ShelfCard.vue'
 import ItemDetailsModal from '../components/ItemDetailsModal.vue'
 import AddProductModal from '../components/AddProductModal.vue'
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
+import { useToast } from '../composables/useToast'
 // --- State ---
 const myShelf = ref<any[]>([])
 const isLoading = ref(true)
 const isAddModalOpen = ref(false)
 const viewingItem = ref<any>(null)
 const itemToDelete = ref<any>(null)
+const { addToast } = useToast()
 // --- Fetch Data ---
 const fetchShelf = async () => {
   isLoading.value = true
@@ -32,6 +34,7 @@ const requestDelete = (item: any) => {
 }
 
 // 2. Actually executes the deletion if they click "Yes"
+// 2. Actually executes the deletion if they click "Yes"
 const executeDelete = async () => {
   if (!itemToDelete.value) return
 
@@ -39,15 +42,18 @@ const executeDelete = async () => {
     await removeFromShelf(itemToDelete.value.id)
     myShelf.value = myShelf.value.filter(item => item.id !== itemToDelete.value.id)
 
-    // Close the detail view if they deleted the item they were currently looking at
     if (viewingItem.value?.id === itemToDelete.value.id) {
       viewingItem.value = null
     }
 
-    // Reset the modal
     itemToDelete.value = null
+
+    addToast('Product removed from your shelf', 'info')
+
   } catch (error) {
     console.error("Failed to delete:", error)
+    // THE NEW ERROR TOAST!
+    addToast('Failed to remove product', 'error')
   }
 }
 
