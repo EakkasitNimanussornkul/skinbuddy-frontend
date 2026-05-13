@@ -179,26 +179,40 @@ try {
             </div>
           </div>
 
-          <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 bg-slate-50 dark:bg-slate-800/50">
+<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 bg-slate-50 dark:bg-slate-800/50 transition-all">
             <div class="flex items-center justify-between">
               <h4 class="text-sm font-bold text-slate-900 dark:text-white">Have you opened this product?</h4>
               <div class="flex items-center gap-3">
                 <span class="text-xs font-bold w-6 text-right" :class="isOpened ? 'text-[#2E5BFF]' : 'text-slate-400'">{{ isOpened ? 'YES' : 'NO' }}</span>
-                <button @click="isOpened = !isOpened" class="w-12 h-6 rounded-full relative transition-colors" :class="isOpened ? 'bg-[#2E5BFF]' : 'bg-slate-300'">
+                <button @click="isOpened = !isOpened" class="w-12 h-6 rounded-full relative transition-colors" :class="isOpened ? 'bg-[#2E5BFF]' : 'bg-slate-300 dark:bg-slate-600'">
                   <div class="w-4 h-4 bg-white rounded-full absolute top-1 transition-transform" :class="isOpened ? 'right-1' : 'left-1'"></div>
                 </button>
               </div>
             </div>
+
+            <div v-if="!isOpened" class="mt-3 border-t border-slate-200 dark:border-slate-700 pt-3 animate-fade-in">
+              <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                🔒 <strong class="text-slate-700 dark:text-slate-300">Keep it sealed!</strong> Select the PAO (Period After Opening) below. We will save it to your shelf as "Unopened" and you can start the countdown clock later when you actually open it.
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expiration Tracking</label>
+          <div class="mb-4 transition-all">
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Expiration Tracking</label>
+
             <div class="flex gap-2 mb-3">
-              <button @click="setPAO(3)" :class="selectedPAO === 3 ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2 rounded-lg text-xs font-bold">3M</button>
-              <button @click="setPAO(6)" :class="selectedPAO === 6 ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2 rounded-lg text-xs font-bold">6M</button>
-              <button @click="setPAO(12)" :class="selectedPAO === 12 ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2 rounded-lg text-xs font-bold">12M</button>
+              <button @click="setPAO(3)" :class="selectedPAO === 3 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-slate-400 transition-colors shadow-sm">3M</button>
+              <button @click="setPAO(6)" :class="selectedPAO === 6 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-slate-400 transition-colors shadow-sm">6M</button>
+              <button @click="setPAO(12)" :class="selectedPAO === 12 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-slate-400 transition-colors shadow-sm">12M</button>
             </div>
-            <input v-model="expirationDate" type="date" class="w-full bg-white border-2 border-slate-200 px-4 py-3 rounded-xl focus:border-[#2E5BFF]" />
+
+            <div v-if="isOpened" class="animate-fade-in">
+              <input
+                v-model="expirationDate"
+                type="date"
+                class="w-full bg-white dark:bg-clinical-surface border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#2E5BFF] transition-colors shadow-sm"
+              />
+            </div>
           </div>
 
           <div class="pt-4 pb-10">
