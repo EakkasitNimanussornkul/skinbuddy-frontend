@@ -3,7 +3,11 @@
 defineProps<{
   item: any
 }>()
-
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year.slice(2)}`;
+}
 // 2. Define the actions this card is allowed to shout back to the parent
 const emit = defineEmits(['click', 'delete'])
 </script>
@@ -34,7 +38,7 @@ const emit = defineEmits(['click', 'delete'])
         </span>
 
         <span v-if="item.opened_date && item.expiration_date" class="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-md font-semibold border border-red-100 dark:border-red-900/30">
-          Exp: {{ item.expiration_date }}
+          Exp: {{ formatDate(item.expiration_date) }}
         </span>
 
         <span v-else-if="item.opened_date && !item.expiration_date" class="text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md font-semibold border border-emerald-100 dark:border-emerald-900/30">

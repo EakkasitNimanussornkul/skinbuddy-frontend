@@ -5,7 +5,11 @@ import { markItemOpened } from '../api/shelfapi'
 const props = defineProps<{
   item: any
 }>()
-
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year.slice(2)}`;
+}
 // It can tell the parent view to close it, or to refresh the shelf!
 const emit = defineEmits(['close', 'refresh'])
 
@@ -98,14 +102,16 @@ const handleStartPAO = async () => {
         <div class="mt-6 space-y-2">
 
           <div v-if="item.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl transition-all">
-            <div v-if="!isEditingExpiration" @click="startEditingExpiration" class="flex justify-between items-center cursor-pointer group">
+           <div v-if="!isEditingExpiration" @click="startEditingExpiration" class="flex justify-between items-center cursor-pointer group">
               <span class="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
                 Expiration Date
                 <span class="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded">EDIT</span>
               </span>
+
               <span class="text-sm font-bold" :class="item.expiration_date ? 'text-red-700 dark:text-red-300' : 'text-red-400 italic'">
-                {{ item.expiration_date || 'Not set' }}
+                {{ item.expiration_date ? formatDate(item.expiration_date) : 'Not set' }}
               </span>
+
             </div>
 
             <div v-else class="space-y-4 animate-fade-in pt-1">

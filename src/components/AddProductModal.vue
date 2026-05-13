@@ -25,16 +25,24 @@ const showWarningModal = ref(false)
 // --- Methods ---
 const handleSearchInput = () => {
   if (searchTimeout.value) clearTimeout(searchTimeout.value)
-  if (searchQuery.value.length < 2) {
+
+  // 1. SANITIZE: Remove anything that isn't a letter, number, space, hyphen, or apostrophe
+  const safeQuery = searchQuery.value.replace(/[^\w\s-']/g, '').trim()
+
+  if (safeQuery.length < 2) {
     searchResults.value = []
+    isSearching.value = false // Ensure spinner turns off
     return
   }
+
   isSearching.value = true
   searchTimeout.value = setTimeout(async () => {
     try {
-      searchResults.value = await searchProducts(searchQuery.value)
+      // 3. Send the sanitized query to the backend!
+      searchResults.value = await searchProducts(safeQuery)
     } catch (error) {
       console.error("Search failed:", error)
+      searchResults.value = [] // Force empty state if backend still fails
     } finally {
       isSearching.value = false
     }
@@ -105,6 +113,7 @@ const handleAddToShelf = async (forceSave = false) => {
 
         <div class="mb-6 relative">
           <label class="block text-xs font-bold text-[#2E5BFF] uppercase tracking-wider mb-2">Search Master Catalog</label>
+
           <div class="relative">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔍</span>
             <input
@@ -112,18 +121,33 @@ const handleAddToShelf = async (forceSave = false) => {
               @input="handleSearchInput"
               type="text"
               placeholder="Type a brand or product name..."
-              class="w-full bg-white dark:bg-clinical-surface border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pl-12 pr-4 py-4 rounded-2xl focus:outline-none focus:border-[#2E5BFF] transition-colors shadow-sm text-lg"
+              class="w-full bg-white dark:bg-clinical-surface border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pl-12 pr-12 py-4 rounded-2xl focus:outline-none focus:border-[#2E5BFF] transition-colors shadow-sm text-lg"
             />
+            <div v-if="isSearching" class="absolute right-4 top-1/2 -translate-y-1/2 text-xl animate-spin text-slate-400">
+              ⏳
+            </div>
           </div>
 
-          <ul v-if="searchResults.length > 0 && !selectedProduct" class="absolute z-20 w-full mt-2 bg-white dark:bg-clinical-surface border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-            <SearchResultCard
-              v-for="product in searchResults"
-              :key="product.id"
-              :product="product"
-              @select="selectProduct(product)"
-            />
-          </ul>
+          <div v-if="searchQuery.length >= 2 && !selectedProduct" class="absolute z-20 w-full mt-2 bg-white dark:bg-clinical-surface border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-72 overflow-y-auto overscroll-contain divide-y divide-slate-100 dark:divide-slate-800">
+
+            <ul v-if="searchResults.length > 0">
+              <SearchResultCard
+                v-for="product in searchResults"
+                :key="product.id"
+                :product="product"
+                @select="selectProduct(product)"
+              />
+            </ul>
+
+            <div v-else-if="!isSearching" class="p-8 text-center flex flex-col items-center justify-center animate-fade-in">
+              <div class="text-4xl mb-3 opacity-50 text-slate-400 grayscale">🤷‍♀️</div>
+              <p class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">No products found</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] leading-relaxed">
+                We couldn't find anything matching <strong class="text-slate-700 dark:text-slate-300">"{{ searchQuery }}"</strong>.
+              </p>
+            </div>
+
+          </div>
         </div>
 
         <div v-if="selectedProduct" class="space-y-6 animate-fade-in">

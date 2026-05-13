@@ -4,13 +4,13 @@ import { getMyShelf, removeFromShelf } from '../api/shelfapi'
 import ShelfCard from '../components/ShelfCard.vue'
 import ItemDetailsModal from '../components/ItemDetailsModal.vue'
 import AddProductModal from '../components/AddProductModal.vue'
-
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
 // --- State ---
 const myShelf = ref<any[]>([])
 const isLoading = ref(true)
 const isAddModalOpen = ref(false)
 const viewingItem = ref<any>(null)
-
+const itemToDelete = ref<any>(null)
 // --- Fetch Data ---
 const fetchShelf = async () => {
   isLoading.value = true
@@ -26,12 +26,26 @@ const fetchShelf = async () => {
 onMounted(() => {
   fetchShelf()
 })
-const handleDelete = async (itemId: string) => {
-  if (!confirm("Remove this item from your shelf?")) return
+// 1. Opens the modal and remembers which item we clicked
+const requestDelete = (item: any) => {
+  itemToDelete.value = item
+}
+
+// 2. Actually executes the deletion if they click "Yes"
+const executeDelete = async () => {
+  if (!itemToDelete.value) return
+
   try {
-    await removeFromShelf(itemId)
-    myShelf.value = myShelf.value.filter(item => item.id !== itemId)
-    viewingItem.value = null
+    await removeFromShelf(itemToDelete.value.id)
+    myShelf.value = myShelf.value.filter(item => item.id !== itemToDelete.value.id)
+
+    // Close the detail view if they deleted the item they were currently looking at
+    if (viewingItem.value?.id === itemToDelete.value.id) {
+      viewingItem.value = null
+    }
+
+    // Reset the modal
+    itemToDelete.value = null
   } catch (error) {
     console.error("Failed to delete:", error)
   }
@@ -74,7 +88,7 @@ const closeDetails = () => viewingItem.value = null
           :key="item.id"
           :item="item"
           @click="openDetails(item)"
-          @delete="handleDelete(item.id)"
+          @delete="requestDelete(item)"
         />
       </div>
     </div>
@@ -92,7 +106,14 @@ const closeDetails = () => viewingItem.value = null
         @close="closeDetails"
         @refresh="fetchShelf"
       />
+      <ConfirmDeleteModal
+        v-if="itemToDelete"
+        :item-name="itemToDelete.products?.name"
+        @cancel="itemToDelete = null"
+        @confirm="executeDelete"
+      />
     </Teleport>
+
   </div>
 </template>
 
