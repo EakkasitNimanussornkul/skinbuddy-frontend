@@ -9,6 +9,9 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<any>(JSON.parse(localStorage.getItem('user_info') || 'null'))
   const router = useRouter()
 
+  // NEW: State for the global popup
+  const showLoginPopup = ref(false)
+
   const loginWithLine = () => {
     const clientId = import.meta.env.VITE_LINE_CLIENT_ID
     console.log('My Client ID is:', clientId)
@@ -27,27 +30,38 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('user_info', JSON.stringify(userData))
   }
 
-  // --- NEW: Safely update the skin type in local memory ---
   const updateSkinType = (newSkinType: string) => {
     if (user.value) {
-      // Update the reactive user object
       user.value = { ...user.value, skin_type: newSkinType }
-      // Save it back to LocalStorage so it survives a page refresh
       localStorage.setItem('user_info', JSON.stringify(user.value))
     }
   }
 
-  const logout = () => {
+  // NEW: Silently wipe auth data without changing the page
+  const clearSession = () => {
     token.value = null
     user.value = null
     localStorage.removeItem('access_token')
     localStorage.removeItem('user_info')
+  }
+
+  const logout = () => {
+    clearSession() // Use the new function to avoid repeating code
     router.push('/')
   }
 
-  // A simple boolean check for the router to use
   const isAuthenticated = () => !!token.value
 
-  // Added updateSkinType to the return block!
-  return { token, user, loginWithLine, setAuth, updateSkinType, logout, isAuthenticated }
+  // Export the new variables and functions
+  return {
+    token,
+    user,
+    showLoginPopup, // Added
+    loginWithLine,
+    setAuth,
+    updateSkinType,
+    clearSession, // Added
+    logout,
+    isAuthenticated,
+  }
 })
