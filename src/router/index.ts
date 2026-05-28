@@ -37,16 +37,20 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
+  // Always allow callback and error pages to load
   if (to.name === 'authCallback' || to.name === 'error') {
     next()
     return
   }
 
-  if (!authStore.isAuthenticated()) {
-    authStore.loginWithLine()
+  // If the page needs auth AND they are not logged in
+  if (to.meta.requiresAuth && !authStore.isAuthenticated()) {
+    authStore.showLoginPopup = true // Triggers the global popup
+    next(false) // Stops them from entering the protected page
     return
   }
 
+  // Otherwise, let them proceed normally
   next()
 })
 
