@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-// Notice we imported removeFromShelf here so the modal can delete itself!
 import { markItemOpened, removeFromShelf } from '../api/shelfapi'
 import { useToast } from '../composables/useToast'
 
@@ -8,18 +7,15 @@ const props = defineProps<{
   item: any
 }>()
 
-const emit = defineEmits(['close', 'refresh'])
+const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
 
-// --- Safe Data Extraction ---
 const brand = computed(() => props.item.products?.brand || 'Unknown Brand')
 const name = computed(() => props.item.products?.name || 'Unknown Product')
 const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
 const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
-// New: Description Extraction
 const description = computed(() => props.item.products?.description || 'No description available for this product.')
 
-// --- Date Formatting & Logic ---
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '';
   const [year, month, day] = dateString.split('-');
@@ -41,7 +37,6 @@ const setEditPAO = (months: number) => {
   editExpirationDate.value = d.toISOString().split('T')[0]
 }
 
-// --- API Calls ---
 const handleUpdateExpiration = async () => {
   try {
     await markItemOpened(props.item.id, props.item.opened_date, editExpirationDate.value)
@@ -71,14 +66,14 @@ const handleStartPAO = async () => {
     props.item.opened_date = openedDateStr
     props.item.expiration_date = expDateStr
     emit('refresh')
-    addToast('Product opened! Clock started ⏳', 'success')
+    // Removed the hourglass emoji here!
+    addToast('Product opened! Clock started.', 'success')
   } catch (error) {
     console.error("Failed to start PAO", error)
     addToast('Could not update product status', 'error')
   }
 }
 
-// --- Delete Logic (In-Modal Confirmation) ---
 const isConfirmingDelete = ref(false)
 
 const handleExecuteDelete = async () => {
@@ -103,9 +98,10 @@ const handleExecuteDelete = async () => {
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
+      <!-- Image Header (Replaced 🧴 emoji with an Apothecary Jar SVG) -->
       <div class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0">
         <img v-if="imageUrl" :src="imageUrl" class="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl" />
-        <span v-else class="text-6xl">🧴</span>
+        <svg v-else class="w-16 h-16 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
       </div>
 
       <div class="overflow-y-auto p-6 flex-grow hide-scrollbar">
@@ -119,9 +115,7 @@ const handleExecuteDelete = async () => {
         </div>
 
         <div class="mb-6">
-          <p class="text-[13px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
-            {{ description }}
-          </p>
+          <p class="text-[13px] text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
         </div>
 
         <div v-if="item.products?.product_ingredients?.length" class="mb-6">
@@ -130,11 +124,7 @@ const handleExecuteDelete = async () => {
             Key Actives
           </h3>
           <div class="flex flex-wrap gap-2">
-            <div
-              v-for="pi in item.products.product_ingredients"
-              :key="pi.ingredients.id"
-              class="bg-brand-bg-light dark:bg-[#1C1917] border border-stone-200 dark:border-stone-800 rounded-xl p-3 flex-1 min-w-[140px]"
-            >
+            <div v-for="pi in item.products.product_ingredients" :key="pi.ingredients.id" class="bg-brand-bg-light dark:bg-[#1C1917] border border-stone-200 dark:border-stone-800 rounded-xl p-3 flex-1 min-w-[140px]">
               <span class="block text-sm font-bold text-brand-primary dark:text-orange-300">{{ pi.ingredients.name }}</span>
               <span v-if="pi.ingredients.benefits" class="block text-[10px] text-brand-text-muted dark:text-stone-500 mt-1 leading-snug">{{ pi.ingredients.benefits }}</span>
             </div>
@@ -144,24 +134,15 @@ const handleExecuteDelete = async () => {
         <div class="space-y-2">
 
           <div v-if="item.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl transition-all">
-
             <div v-if="!isEditingExpiration" class="flex justify-between items-center group">
               <div class="flex flex-col">
                 <span class="text-sm font-bold text-red-600 dark:text-red-400">Expiration Date</span>
                 <span v-if="item.pao" class="text-[10px] text-red-500/70 dark:text-red-400/60 font-bold uppercase tracking-widest mt-0.5">({{ item.pao }}M PAO)</span>
               </div>
-
               <div class="flex items-center gap-3">
-                <span v-if="item.expiration_date" class="text-sm font-bold text-red-700 dark:text-red-300">
-                  {{ formatDate(item.expiration_date) }}
-                </span>
+                <span v-if="item.expiration_date" class="text-sm font-bold text-red-700 dark:text-red-300">{{ formatDate(item.expiration_date) }}</span>
                 <span v-else class="text-xs font-bold text-red-500">Not Set</span>
-
-                <button
-                  @click="startEditingExpiration"
-                  class="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-red-900/40 text-red-600 hover:bg-red-100 transition-colors border border-red-200 dark:border-red-800 shadow-sm"
-                  title="Edit Expiration Date"
-                >
+                <button @click="startEditingExpiration" class="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-red-900/40 text-red-600 hover:bg-red-100 transition-colors border border-red-200 dark:border-red-800 shadow-sm" title="Edit Expiration Date">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                 </button>
               </div>
@@ -182,10 +163,12 @@ const handleExecuteDelete = async () => {
             </div>
           </div>
 
+          <!-- Unopened State (Replaced 🔒 and 🔓 emojis with SVGs) -->
           <div v-else class="bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 p-4 rounded-2xl flex flex-col gap-4">
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-2">
-                <span class="text-lg">🔒</span>
+                <!-- Closed Lock SVG -->
+                <svg class="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 <span class="text-sm font-bold text-brand-text-muted dark:text-stone-300">Status: Unopened</span>
               </div>
               <span v-if="item.pao" class="text-xs font-bold bg-stone-200 text-stone-700 dark:bg-stone-700 dark:text-stone-300 px-3 py-1 rounded-lg">
@@ -193,7 +176,9 @@ const handleExecuteDelete = async () => {
               </span>
             </div>
             <button @click="handleStartPAO" class="w-full py-3.5 bg-brand-primary hover:bg-orange-800 text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-              <span>🔓</span> {{ item.pao ? 'Open Today & Start Clock' : 'Mark as Opened Today' }}
+              <!-- Open Lock SVG -->
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+              {{ item.pao ? 'Open Today & Start Clock' : 'Mark as Opened Today' }}
             </button>
           </div>
 
@@ -201,33 +186,16 @@ const handleExecuteDelete = async () => {
       </div>
 
       <div class="p-4 border-t border-stone-200 dark:border-stone-800 bg-brand-bg-light dark:bg-brand-bg-dark flex-shrink-0 transition-all duration-300">
-
-        <button
-          v-if="!isConfirmingDelete"
-          @click="isConfirmingDelete = true"
-          class="w-full py-3 mb-2 bg-transparent text-red-500 font-bold rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
-        >
+        <button v-if="!isConfirmingDelete" @click="isConfirmingDelete = true" class="w-full py-3 mb-2 bg-transparent text-red-500 font-bold rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
           Remove from Shelf
         </button>
-
         <div v-else class="animate-fade-in">
           <p class="text-center text-[11px] font-bold text-red-500 uppercase tracking-widest mb-3">Are you sure?</p>
           <div class="grid grid-cols-2 gap-3">
-            <button
-              @click="isConfirmingDelete = false"
-              class="py-3 rounded-xl font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 transition-colors text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              @click="handleExecuteDelete"
-              class="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-[0.98] text-sm"
-            >
-              Yes, Remove
-            </button>
+            <button @click="isConfirmingDelete = false" class="py-3 rounded-xl font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 transition-colors text-sm">Cancel</button>
+            <button @click="handleExecuteDelete" class="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-[0.98] text-sm">Yes, Remove</button>
           </div>
         </div>
-
       </div>
 
     </div>
@@ -239,23 +207,10 @@ const handleExecuteDelete = async () => {
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(100%); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 @media (min-width: 640px) {
-  .animate-slide-up {
-    animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-  }
+  .animate-slide-up { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 }
 </style>

@@ -117,8 +117,11 @@ const executeDelete = async () => {
       </template>
 
       <!-- True Empty State (Zero items on shelf) -->
-      <div v-else class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl p-10 text-center border border-brand-primary-light dark:border-orange-900/30 shadow-sm mt-4">
-        <div class="text-5xl mb-6">🧴</div>
+<!-- True Empty State (Zero items on shelf) -->
+      <div v-else class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl p-10 text-center border border-brand-primary-light dark:border-orange-900/30 shadow-sm mt-4 flex flex-col items-center">
+        <div class="w-20 h-20 bg-brand-bg-light dark:bg-stone-900 rounded-full flex items-center justify-center mb-6 shadow-inner border border-stone-200 dark:border-stone-800">
+          <svg class="w-10 h-10 text-stone-300 dark:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        </div>
         <h3 class="text-xl font-serif font-bold mb-2">Your shelf is empty</h3>
         <p class="text-sm text-brand-text-muted mb-8">Start adding products to build your perfect skincare routine.</p>
         <button @click="isAddModalOpen = true" class="px-8 py-3.5 bg-brand-primary text-white font-bold rounded-xl shadow-md hover:bg-orange-800 transition-all w-full">Add First Product</button>
