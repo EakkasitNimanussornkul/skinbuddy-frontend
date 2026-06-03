@@ -106,7 +106,13 @@ const executeDelete = async () => {
 
         <!-- Component Grid -->
         <div v-if="filteredProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-2">
-          <ShelfCard v-for="item in filteredProducts" :key="item.id" :item="item" @click="viewingItem = item" @delete="itemToDelete = item" />
+          <ShelfCard
+              v-for="item in filteredProducts"
+              :key="item.id"
+              :item="item"
+              @open-details="viewingItem = item"
+              @delete="itemToDelete = item"
+              />
         </div>
 
         <!-- Empty Filter State -->
@@ -139,7 +145,7 @@ const executeDelete = async () => {
     <Teleport to="body">
       <AddProductModal v-if="isAddModalOpen" @close="isAddModalOpen = false" @refresh="fetchShelf" />
       <ItemDetailsModal v-if="viewingItem" :item="viewingItem" @close="viewingItem = null" @refresh="fetchShelf" />
-      <ConfirmDeleteModal v-if="itemToDelete" :item-name="itemToDelete.products?.name" @cancel="itemToDelete = null" @confirm="executeDelete" />
+      <ConfirmDeleteModal v-if="itemToDelete" :item="itemToDelete" @cancel="itemToDelete = null" @confirm="executeDelete" />
     </Teleport>
   </div>
 </template>

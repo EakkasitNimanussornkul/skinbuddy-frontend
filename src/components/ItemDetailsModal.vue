@@ -10,6 +10,17 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
 
+// --- UI Animation State ---
+const isClosing = ref(false)
+
+const handleClose = () => {
+  isClosing.value = true
+  // Wait for the CSS animation to finish before destroying the component
+  setTimeout(() => {
+    emit('close')
+  }, 300)
+}
+
 const brand = computed(() => props.item.products?.brand || 'Unknown Brand')
 const name = computed(() => props.item.products?.name || 'Unknown Product')
 const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
@@ -66,7 +77,6 @@ const handleStartPAO = async () => {
     props.item.opened_date = openedDateStr
     props.item.expiration_date = expDateStr
     emit('refresh')
-    // Removed the hourglass emoji here!
     addToast('Product opened! Clock started.', 'success')
   } catch (error) {
     console.error("Failed to start PAO", error)
@@ -80,7 +90,7 @@ const handleExecuteDelete = async () => {
   try {
     await removeFromShelf(props.item.id)
     emit('refresh')
-    emit('close')
+    handleClose() // Use the animated close here too!
     addToast('Product removed from your shelf', 'info')
   } catch (error) {
     console.error("Failed to delete:", error)
@@ -90,15 +100,21 @@ const handleExecuteDelete = async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-stone-900/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" @click.self="emit('close')">
+  <div
+    class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-stone-900/60 backdrop-blur-sm p-0 sm:p-4"
+    :class="isClosing ? 'animate-fade-out' : 'animate-fade-in'"
+    @click.self="handleClose"
+  >
 
-    <div class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative">
+    <div
+      class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative"
+      :class="isClosing ? 'animate-slide-down' : 'animate-slide-up'"
+    >
 
-      <button @click="emit('close')" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-stone-800/80 backdrop-blur-md rounded-full text-stone-500 hover:text-brand-primary dark:text-stone-300 dark:hover:text-orange-300 z-10 shadow-sm transition-colors">
+      <button @click="handleClose" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-stone-800/80 backdrop-blur-md rounded-full text-stone-500 hover:text-brand-primary dark:text-stone-300 dark:hover:text-orange-300 z-10 shadow-sm transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
-      <!-- Image Header (Replaced 🧴 emoji with an Apothecary Jar SVG) -->
       <div class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0">
         <img v-if="imageUrl" :src="imageUrl" class="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl" />
         <svg v-else class="w-16 h-16 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
@@ -148,7 +164,7 @@ const handleExecuteDelete = async () => {
               </div>
             </div>
 
-            <div v-else class="space-y-4 animate-fade-in pt-1">
+            <div v-else class="space-y-4 pt-1">
               <div class="flex justify-between items-center mb-2">
                 <span class="text-sm font-bold text-red-600 dark:text-red-400">Update Expiration</span>
                 <button @click="isEditingExpiration = false" class="text-xs font-bold text-stone-400 hover:text-red-500 transition-colors">Cancel</button>
@@ -163,11 +179,9 @@ const handleExecuteDelete = async () => {
             </div>
           </div>
 
-          <!-- Unopened State (Replaced 🔒 and 🔓 emojis with SVGs) -->
           <div v-else class="bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 p-4 rounded-2xl flex flex-col gap-4">
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-2">
-                <!-- Closed Lock SVG -->
                 <svg class="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 <span class="text-sm font-bold text-brand-text-muted dark:text-stone-300">Status: Unopened</span>
               </div>
@@ -176,7 +190,6 @@ const handleExecuteDelete = async () => {
               </span>
             </div>
             <button @click="handleStartPAO" class="w-full py-3.5 bg-brand-primary hover:bg-orange-800 text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-              <!-- Open Lock SVG -->
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
               {{ item.pao ? 'Open Today & Start Clock' : 'Mark as Opened Today' }}
             </button>
@@ -189,7 +202,7 @@ const handleExecuteDelete = async () => {
         <button v-if="!isConfirmingDelete" @click="isConfirmingDelete = true" class="w-full py-3 mb-2 bg-transparent text-red-500 font-bold rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
           Remove from Shelf
         </button>
-        <div v-else class="animate-fade-in">
+        <div v-else>
           <p class="text-center text-[11px] font-bold text-red-500 uppercase tracking-widest mb-3">Are you sure?</p>
           <div class="grid grid-cols-2 gap-3">
             <button @click="isConfirmingDelete = false" class="py-3 rounded-xl font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 transition-colors text-sm">Cancel</button>
@@ -205,12 +218,27 @@ const handleExecuteDelete = async () => {
 <style scoped>
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* In-Animations */
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Out-Animations */
+.animate-fade-out { animation: fadeOut 0.25s ease-in forwards; }
+.animate-slide-down { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
 @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(100%); } }
+
+/* Desktop adjustments */
 @media (min-width: 640px) {
   .animate-slide-up { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-slide-down { animation: popOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
   @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  @keyframes popOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
 }
 </style>
