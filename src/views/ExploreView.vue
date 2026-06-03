@@ -1,25 +1,22 @@
 <script setup lang="ts">
-// Future home of the Product Comparison Engine
+// Logic for the master catalog and ingredient search will go here
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-clinical-bg pt-6 pb-28 font-sans transition-colors duration-300">
-    <div class="max-w-md mx-auto px-4 sm:px-6">
+  <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans transition-colors duration-300 pb-28 pt-6">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-[80vh] flex flex-col items-center justify-center">
 
-      <div class="pt-4 mb-8">
-        <h1 class="text-3xl font-serif font-bold text-slate-900 dark:text-white">Explore</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Discover and compare skincare formulations.</p>
-      </div>
-
-      <div class="bg-white dark:bg-clinical-surface rounded-3xl p-10 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-10">
-        <div class="text-5xl mb-6">🥊</div>
-        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">The Boxing Ring</h3>
-        <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-          Soon you will be able to compare two products side-by-side to check for ingredient overlap and chemical conflicts before you buy.
-        </p>
-        <div class="inline-block px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-xs font-bold uppercase tracking-wider">
-          Under Construction
+      <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl p-10 text-center border border-stone-200 dark:border-stone-800 shadow-sm max-w-sm w-full flex flex-col items-center">
+        <div class="w-20 h-20 bg-stone-50 dark:bg-stone-900 rounded-full flex items-center justify-center mb-6 shadow-inner border border-stone-200 dark:border-stone-800">
+          <svg class="w-10 h-10 text-stone-300 dark:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
         </div>
+        <h2 class="text-2xl font-serif font-bold mb-2 text-brand-text dark:text-white">Discover</h2>
+        <p class="text-sm text-brand-text-muted dark:text-stone-400 mb-6 leading-relaxed">
+          A curated catalog of ingredients, formulations, and safety insights is currently in development.
+        </p>
+        <div class="w-12 h-1 bg-stone-200 dark:bg-stone-800 rounded-full"></div>
       </div>
 
     </div>
