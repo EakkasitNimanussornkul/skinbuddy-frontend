@@ -1,127 +1,186 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+
+const props = defineProps<{
+  question: {
+    id: number
+    text: string
+    category: 'hydration' | 'sensitivity' | 'pigmentation' | 'aging'
+    options: Array<{ text: string; points: number }>
+  }
+  currentStep: number
+  totalSteps: number
+  showCancel: boolean
+}>()
+
+const emit = defineEmits(['answer', 'back', 'cancel'])
+
+const selectedOptionIndex = ref<number | 'not_sure' | null>(null)
+
+watch(() => props.question.id, () => {
+  selectedOptionIndex.value = null
+})
+
+const handleContinue = () => {
+  if (selectedOptionIndex.value === 'not_sure') {
+    emit('answer', 2.5)
+  } else if (selectedOptionIndex.value !== null) {
+    emit('answer', props.question.options[selectedOptionIndex.value].points)
+  }
+}
+
+const categoryDetails = computed(() => {
+  const details = {
+    hydration: {
+      title: 'Moisture & Sebum',
+      desc: 'This helps us understand your skin barrier, natural oil production, and hydration retention levels.'
+    },
+    sensitivity: {
+      title: 'Barrier Reactivity',
+      desc: 'This evaluates how likely your skin is to experience redness, stinging, or allergic reactions.'
+    },
+    pigmentation: {
+      title: 'Melanin Production',
+      desc: 'This assesses your skin\'s tendency to develop dark spots, freckles, or post-acne marks.'
+    },
+    aging: {
+      title: 'Elasticity & Aging',
+      desc: 'This looks at your skin\'s natural collagen support, firmness, and tendency to form fine lines.'
+    }
+  }
+  return details[props.question.category]
+})
+</script>
+
 <template>
-  <div class="flex flex-col p-6 max-w-md mx-auto font-sans text-gray-800">
+  <!-- Background is now stone -->
+  <div class="flex flex-col min-h-screen bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-50 font-sans relative">
 
-    <!-- Progress Header -->
-    <div class="flex justify-between text-xs font-bold text-blue-700 mb-2 tracking-wide">
-      <span>STEP {{ currentStep }} OF {{ totalSteps }}</span>
-      <span>{{ progressPercentage }}% COMPLETE</span>
-    </div>
+    <div class="max-w-xl mx-auto w-full px-4 sm:px-6 pt-6 pb-32 flex-grow flex flex-col overflow-y-auto overflow-x-hidden">
 
-    <!-- Progress Bar -->
-    <div class="h-1.5 bg-gray-200 rounded mb-8 overflow-hidden">
-      <div
-        class="h-full bg-blue-600 transition-all duration-300 ease-out"
-        :style="{ width: progressPercentage + '%' }"
-      ></div>
-    </div>
+      <!-- Top Navigation Bar -->
+      <div class="flex items-center justify-between mb-8">
+        <button @click="emit('back')" class="w-8 h-8 flex items-center justify-start text-stone-800 dark:text-stone-200 hover:opacity-70 transition-opacity">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </button>
 
-    <!-- Question Content -->
-    <h2 class="text-2xl font-medium leading-snug mb-3 font-serif text-slate-900">{{ question.text }}</h2>
-    <p v-if="question.subtext" class="text-sm text-gray-500 mb-6 leading-relaxed">
-      {{ question.subtext }}
-    </p>
-
-    <!-- Options List -->
-    <div class="flex flex-col gap-3 mb-8">
-      <div
-        v-for="(option, index) in question.options"
-        :key="index"
-        @click="selectOption(index)"
-        class="flex items-center p-4 border-2 rounded-xl shadow-sm cursor-pointer transition-all duration-200"
-        :class="selectedIndex === index ? 'border-blue-600 bg-blue-50/50' : 'border-transparent bg-white hover:border-blue-100'"
-      >
-        <!-- Placeholder for icon (You can swap this for SVGs later) -->
-        <div class="w-8 h-8 bg-slate-100 rounded-lg flex-shrink-0 mr-4 flex items-center justify-center text-slate-400">
-          <!-- Add SVG here later -->
+        <div class="flex-grow mx-6 relative">
+          <div class="h-1.5 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+            <!-- Progress Bar is now Terracotta/Oat -->
+            <div
+              class="h-full bg-orange-700 dark:bg-orange-300 transition-all duration-500 ease-out"
+              :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
+            ></div>
+          </div>
+          <div class="text-center text-xs font-medium text-stone-500 dark:text-stone-400 mt-2">
+            Step {{ currentStep }} of {{ totalSteps }}
+          </div>
         </div>
 
-        <div class="flex flex-col flex-grow">
-          <span class="font-semibold text-sm mb-1 text-slate-800">{{ option.text }}</span>
-          <span v-if="option.subtitle" class="text-xs text-slate-500">{{ option.subtitle }}</span>
-        </div>
-
-        <!-- Radio Indicator -->
-        <div
-          class="w-5 h-5 rounded-full border-2 ml-4 flex items-center justify-center transition-colors flex-shrink-0"
-          :class="selectedIndex === index ? 'bg-blue-600 border-blue-600' : 'border-slate-300'"
+        <button
+          v-if="showCancel"
+          @click="emit('cancel')"
+          class="text-sm font-semibold text-stone-500 dark:text-stone-400 hover:text-red-500 transition-colors w-8 text-right"
         >
-          <span v-if="selectedIndex === index" class="text-white text-[10px] font-bold">✓</span>
-        </div>
+          Cancel
+        </button>
+        <div v-else class="w-8"></div>
       </div>
+
+      <Transition appear name="slide-fade" mode="out-in">
+        <div :key="question.id" class="flex flex-col flex-grow w-full">
+
+          <!-- Category Badge -->
+          <div class="mb-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded-lg mb-3">
+              <span class="text-[10px] font-bold uppercase tracking-widest">{{ categoryDetails.title }}</span>
+            </div>
+            <p class="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
+              {{ categoryDetails.desc }}
+            </p>
+          </div>
+
+          <h1 class="text-2xl sm:text-3xl font-semibold mb-8 text-stone-900 dark:text-white leading-tight font-serif">
+            {{ question.text }}
+          </h1>
+
+          <!-- Options Container -->
+          <div class="flex flex-col mb-auto">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+              <button
+                v-for="(option, index) in question.options"
+                :key="index"
+                @click="selectedOptionIndex = index"
+                class="relative px-2 py-4 sm:p-6 rounded-2xl border-2 text-center transition-all duration-200 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] h-full"
+                :class="[
+                  selectedOptionIndex === index
+                    ? 'bg-orange-50 border-orange-700 text-orange-700 dark:bg-orange-900/30 dark:border-orange-300 dark:text-orange-300 shadow-sm'
+                    : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-600',
+                  index === 4 ? 'col-span-2' : ''
+                ]"
+              >
+                <span class="text-sm sm:text-base font-semibold leading-snug break-words w-full">{{ option.text }}</span>
+              </button>
+            </div>
+
+            <div v-if="question.options.length <= 4" class="mt-3 w-full">
+              <button
+                @click="selectedOptionIndex = 'not_sure'"
+                class="w-full py-4 rounded-2xl border-2 border-dashed transition-all duration-200 text-sm font-semibold"
+                :class="
+                  selectedOptionIndex === 'not_sure'
+                    ? 'bg-orange-50 border-orange-700 text-orange-700 dark:bg-orange-900/30 dark:border-orange-300 dark:text-orange-300'
+                    : 'bg-transparent border-stone-300 text-stone-500 hover:border-stone-400 dark:border-stone-700 dark:text-stone-400'
+                "
+              >
+                I'm not sure
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </Transition>
     </div>
 
-    <!-- Action Buttons -->
-<button
-      @click="submitAnswer"
-      :disabled="selectedIndex === null"
-      class="w-full bg-blue-700 text-white font-semibold p-4 rounded-xl mb-2 transition-colors hover:bg-blue-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-sm"
-    >
-      Continue
-    </button>
-
-    <button
-      v-if="question.options.length < 5"
-      @click="submitUnsure"
-      class="text-slate-500 font-semibold text-sm p-3 mb-8 hover:text-slate-800 transition-colors"
-    >
-      I'm not sure
-    </button>
-
-    <!-- Expert Insight Box -->
-    <div v-if="question.insight" class="flex bg-slate-100/80 p-4 rounded-xl items-start border border-slate-200">
-      <span class="mr-3 text-lg opacity-80">💡</span>
-      <div>
-        <span class="block font-semibold text-slate-700 text-sm mb-1">Expert Insight</span>
-        <p class="text-xs text-slate-500 leading-relaxed m-0">{{ question.insight }}</p>
+    <!-- Fixed Bottom Action Bar -->
+    <div class="fixed bottom-0 left-0 w-full bg-stone-50/90 dark:bg-stone-900/90 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 p-4 sm:p-6 flex justify-center z-10">
+      <div class="max-w-xl w-full flex gap-4">
+        <button
+          @click="emit('back')"
+          class="flex-1 py-4 px-6 rounded-full font-semibold text-orange-700 dark:text-orange-300 border-2 border-orange-700 dark:border-orange-300 hover:bg-orange-700/5 dark:hover:bg-orange-300/10 transition-colors"
+        >
+          Back
+        </button>
+        <button
+          @click="handleContinue"
+          :disabled="selectedOptionIndex === null"
+          class="flex-1 py-4 px-6 rounded-full font-semibold transition-all duration-200 shadow-sm"
+          :class="
+            selectedOptionIndex !== null
+              ? 'bg-orange-700 text-white hover:bg-orange-800 dark:bg-orange-300 dark:text-stone-900 dark:hover:bg-orange-400'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed dark:bg-stone-800 dark:text-stone-500'
+          "
+        >
+          Continue
+        </button>
       </div>
     </div>
 
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { QuizQuestion } from '../data/baumannQuiz'
-
-const props = defineProps<{
-  question: QuizQuestion;
-  currentStep: number;
-  totalSteps: number;
-}>()
-
-const emit = defineEmits<{
-  (e: 'answer', points: number): void
-}>()
-
-// Local state to track what the user clicks before submitting
-const selectedIndex = ref<number | null>(null)
-
-// Calculate how full the progress bar should be
-const progressPercentage = computed(() => {
-  return Math.round((props.currentStep / props.totalSteps) * 100)
-})
-
-const selectOption = (index: number) => {
-  selectedIndex.value = index
+<style scoped>
+/* The magic behind the Vue Transition */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-// Send the points to the parent view and reset the selection
-const submitAnswer = () => {
-  if (selectedIndex.value !== null) {
-    // Safely grab the option using the index
-    const selectedOption = props.question.options[selectedIndex.value]
-
-    // Check if the option actually exists before asking for its points
-    if (selectedOption) {
-      emit('answer', selectedOption.points)
-      selectedIndex.value = null
-    }
-  }
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
 }
-
-// Standard 2.5 points for unsure answers
-const submitUnsure = () => {
-  emit('answer', 2.5)
-  selectedIndex.value = null
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
-</script>
+</style>
