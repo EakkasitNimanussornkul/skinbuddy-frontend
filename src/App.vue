@@ -4,20 +4,11 @@ import { RouterView, useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import ToastProvider from './components/ToastProvider.vue'
 import { useThemeStore } from './stores/themeStore'
-// 1. Import the new popup component
 import LoginPopup from './components/LoginPopup.vue'
 
 const themeStore = useThemeStore()
 const route = useRoute()
 
-<script setup lang="ts">
-import { onMounted } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
-import BottomNav from './components/BottomNav.vue'
-import { useThemeStore } from './stores/themeStore'
-import ToastProvider from './components/ToastProvider.vue'
-const themeStore = useThemeStore()
-const route = useRoute()
 
 onMounted(() => {
   themeStore.initTheme()
