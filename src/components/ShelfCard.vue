@@ -1,62 +1,71 @@
 <script setup lang="ts">
-// 1. Accept the item data from the parent view
-defineProps<{
+import { computed } from 'vue'
+
+const props = defineProps<{
   item: any
 }>()
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return '';
-  const [year, month, day] = dateString.split('-');
-  return `${day}/${month}/${year.slice(2)}`;
+
+// 1. Renamed 'click' to 'open-details' to prevent Vue fallthrough bugs
+const emit = defineEmits(['open-details', 'delete'])
+
+const brand = computed(() => props.item.products?.brand || 'Unknown Brand')
+const name = computed(() => props.item.products?.name || 'Unknown Product')
+const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
+const status = computed(() => props.item.status || 'Unopened')
+const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
+
+const getStatusBadgeClass = (status: string) => {
+  if (!status) return 'bg-stone-800 text-stone-300 border border-stone-700/50'
+  const s = status.toLowerCase()
+  if (s.includes('morning') || s.includes('evening') || s.includes('routine')) {
+    return 'bg-stone-800 text-stone-200 border border-stone-700/50'
+  }
+  if (s.includes('expir')) {
+    return 'bg-amber-900/40 text-amber-400 border border-amber-900/50'
+  }
+  return 'bg-stone-800 text-stone-300 border border-stone-700/50'
 }
-// 2. Define the actions this card is allowed to shout back to the parent
-const emit = defineEmits(['click', 'delete'])
 </script>
 
 <template>
   <div
-    @click="emit('click')"
-    class="bg-white dark:bg-clinical-surface rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4 relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]"
+    @click="emit('open-details')"
+    class="relative group bg-brand-surface-light dark:bg-[#292524] rounded-3xl p-3 border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col hover:shadow-md transition-shadow cursor-pointer"
   >
-    <div class="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 border border-slate-100 dark:border-slate-700 p-1">
-      <img v-if="item.products?.image_url" :src="item.products.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
-      <span v-else class="text-2xl">🧴</span>
+
+    <button
+      @click.stop.prevent="emit('delete', item)"
+      class="absolute top-4 right-4 bg-white/80 dark:bg-stone-800/80 backdrop-blur-sm p-1.5 rounded-full text-stone-400 hover:text-red-500 border border-stone-200 dark:border-stone-600 hover:border-red-300 dark:hover:border-red-900/50 transition-all z-20 shadow-sm"
+    >
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+    </button>
+
+    <div class="w-full aspect-square sm:h-36 bg-stone-50 dark:bg-[#1C1917] rounded-2xl mb-3 flex items-center justify-center relative overflow-hidden border border-stone-100 dark:border-stone-800/50">
+      <img v-if="imageUrl" :src="imageUrl" :alt="name" class="w-full h-full object-cover mix-blend-multiply dark:mix-blend-normal p-1" />
+      <svg v-else class="w-10 h-10 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+      </svg>
+      <div
+        class="absolute top-2 left-2 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-md"
+        :class="getStatusBadgeClass(status)"
+      >
+        {{ status }}
+      </div>
     </div>
 
-    <div class="flex-grow pr-8">
-      <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">
-        {{ item.products?.brand || 'Unknown Brand' }}
+    <div class="flex flex-col flex-grow">
+      <p class="text-[9px] font-bold text-brand-primary dark:text-stone-400 uppercase tracking-wider mb-0.5 line-clamp-1">
+        {{ brand }}
       </p>
-      <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 line-clamp-1">
-        {{ item.products?.name || 'Unknown Product' }}
-      </h4>
-
-      <div class="flex gap-2 items-center mt-1 flex-wrap">
-        <span class="text-[10px] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1"
-          :class="item.status === 'Morning' ? 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400' : (item.status === 'Evening' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')"
-        >
-          {{ item.status === 'Morning' ? '☀️' : (item.status === 'Evening' ? '🌙' : '☀️/🌙') }} {{ item.status }}
-        </span>
-
-        <span v-if="item.opened_date && item.expiration_date" class="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-md font-semibold border border-red-100 dark:border-red-900/30">
-          Exp: {{ formatDate(item.expiration_date) }}
-        </span>
-
-        <span v-else-if="item.opened_date && !item.expiration_date" class="text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md font-semibold border border-emerald-100 dark:border-emerald-900/30">
-          ✓ Opened
-        </span>
-
-        <span v-else-if="!item.opened_date" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md font-semibold border border-slate-200 dark:border-slate-700">
-          🔒 Unopened
-        </span>
-
-        <span v-if="item.pao && !item.opened_date" class="text-[10px] bg-blue-50 dark:bg-blue-900/20 text-[#2E5BFF] dark:text-blue-400 px-2 py-0.5 rounded-md font-bold border border-blue-100 dark:border-blue-900/30 flex items-center gap-1 shadow-sm">
-          ⏳ {{ item.pao }}M PAO
+      <h3 class="text-xs sm:text-sm font-semibold text-brand-text dark:text-stone-100 leading-snug line-clamp-2 mb-2 group-hover:text-brand-primary transition-colors">
+        {{ name }}
+      </h3>
+      <div class="mt-auto">
+        <span class="text-[10px] text-brand-text-muted dark:text-stone-500 font-medium">
+          {{ category }}
         </span>
       </div>
     </div>
 
-    <button @click.stop="emit('delete')" class="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors">
-      ✕
-    </button>
   </div>
 </template>

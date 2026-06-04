@@ -2,12 +2,13 @@
 import { onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
-import LoginPopup from './components/LoginPopup.vue'
 import ToastProvider from './components/ToastProvider.vue'
 import { useThemeStore } from './stores/themeStore'
+import LoginPopup from './components/LoginPopup.vue'
 
 const themeStore = useThemeStore()
 const route = useRoute()
+
 
 
 onMounted(() => {

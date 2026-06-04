@@ -1,32 +1,33 @@
+// src/composables/useToast.ts
 import { ref } from 'vue'
 
-// Define the shape of our notification
-export type ToastType = 'success' | 'error' | 'info'
+export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
-interface Toast {
+export interface Toast {
   id: string
   message: string
   type: ToastType
 }
 
-// We define this OUTSIDE the function so it acts as global state!
+// Global state so toasts persist across components
 const toasts = ref<Toast[]>([])
 
 export function useToast() {
   const addToast = (message: string, type: ToastType = 'info', duration = 3000) => {
-    // Generate a random ID
-    const id = Math.random().toString(36).substring(2, 9)
-
+    const id = crypto.randomUUID()
     toasts.value.push({ id, message, type })
 
-    // Auto-remove after X milliseconds
+    // Auto-remove after the duration
     setTimeout(() => {
       removeToast(id)
     }, duration)
   }
 
   const removeToast = (id: string) => {
-    toasts.value = toasts.value.filter(t => t.id !== id)
+    const index = toasts.value.findIndex(t => t.id === id)
+    if (index > -1) {
+      toasts.value.splice(index, 1)
+    }
   }
 
   return {

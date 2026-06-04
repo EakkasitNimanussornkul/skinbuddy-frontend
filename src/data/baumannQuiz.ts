@@ -18,7 +18,7 @@ export const baumannQuiz: QuizQuestion[] = [
   {
     id: 1,
     category: 'hydration',
-    text: "After washing your face, don't apply any moisturizer, sunscreen, toner, powder, or other products. Two to three hours later, look in a mirror under bright lights. Your forehead and cheeks feel or appear:",
+    text: "After washing your face, don't apply any skincare products. 2-3 hours later, look in a mirror under bright lights. Your forehead and cheeks feel or appear:",
     options: [
       { text: "Very rough, flaky, or ashy", points: 1 },
       { text: "Tight", points: 2 },
@@ -40,7 +40,7 @@ export const baumannQuiz: QuizQuestion[] = [
   {
     id: 3,
     category: 'hydration',
-    text: "Two to three hours after applying foundation makeup, but no powder, your makeup appears:",
+    text: "2-3 hours after applying foundation makeup, but no powder, your makeup appears:",
     options: [
       { text: "Flaky or caked in wrinkles", points: 1 },
       { text: "Smooth", points: 2 },
@@ -93,7 +93,7 @@ export const baumannQuiz: QuizQuestion[] = [
     options: [
       { text: "No", points: 1 },
       { text: "Friends/acquaintances tell me I have it", points: 2 },
-      { text: "Yes", points: 5 }, // Note the heavy weight for professional diagnosis!
+      { text: "Yes", points: 4 }, // Note the heavy weight for professional diagnosis!
       { text: "Yes, a severe case", points: 5 },
       { text: "Unsure", points: 2.5 }
     ]
@@ -101,7 +101,7 @@ export const baumannQuiz: QuizQuestion[] = [
   {
     id: 8,
     category: 'sensitivity',
-    text: "If you wear jewelry that is not 14-karat gold, your skin gets a rash:",
+    text: "If you wear jewelry(Such as nickel, brass, silver, etc.), your skin gets a rash:",
     options: [
       { text: "Never", points: 1 },
       { text: "Rarely", points: 2 },
@@ -144,7 +144,7 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "One", points: 2 },
       { text: "A few", points: 3 },
       { text: "A lot", points: 4 },
-      { text: "This question does not apply to me", points: 2.5 }
+      { text: "This question does not apply to me", points: 1 }
     ]
   },
   {

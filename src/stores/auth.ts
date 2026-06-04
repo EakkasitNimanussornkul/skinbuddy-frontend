@@ -1,4 +1,3 @@
-// src/stores/auth.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -9,7 +8,6 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<any>(JSON.parse(localStorage.getItem('user_info') || 'null'))
   const router = useRouter()
 
-  // NEW: State for the global popup
   const showLoginPopup = ref(false)
 
   const loginWithLine = () => {
@@ -25,9 +23,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   const setAuth = (newToken: string, userData: any) => {
     token.value = newToken
-    user.value = userData
+
+    const normalizedUser = {
+      ...userData,
+      name: userData.display_name || userData.name || 'Guest User',
+      picture: userData.avatar || userData.picture_url || userData.picture || null
+    }
+
+    user.value = normalizedUser
+
     localStorage.setItem('access_token', newToken)
-    localStorage.setItem('user_info', JSON.stringify(userData))
+    localStorage.setItem('user_info', JSON.stringify(normalizedUser))
   }
 
   const updateSkinType = (newSkinType: string) => {
@@ -37,7 +43,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // NEW: Silently wipe auth data without changing the page
   const clearSession = () => {
     token.value = null
     user.value = null
@@ -46,22 +51,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = () => {
-    clearSession() // Use the new function to avoid repeating code
+    clearSession()
     router.push('/')
   }
 
   const isAuthenticated = () => !!token.value
 
-  // Export the new variables and functions
   return {
     token,
     user,
-    showLoginPopup, // Added
+    showLoginPopup,
     loginWithLine,
     setAuth,
     updateSkinType,
-    clearSession, // Added
+    clearSession,
     logout,
     isAuthenticated,
   }
 })
+
