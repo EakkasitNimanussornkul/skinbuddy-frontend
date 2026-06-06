@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { searchProducts, addToShelf, analyzeProduct } from '../api/shelfapi'
+import { searchProducts } from '../api/products'
+import { addToShelf, analyzeProduct } from '../api/shelfapi'
 import SearchResultCard from './SearchResultCard.vue'
 import { useToast } from '../composables/useToast'
-
+import SafetyWarningModal from './SafetyWarningModal.vue'
 const emit = defineEmits(['close', 'refresh'])
 const { addToast } = useToast()
 
@@ -18,7 +19,6 @@ const selectedBrand = ref('All')
 
 // --- Configuration State ---
 const selectedProduct = ref<any>(null)
-const selectedStatus = ref('Morning')
 const expirationDate = ref('')
 const selectedPAO = ref<number | null>(null)
 const isOpened = ref(true)
@@ -32,7 +32,6 @@ const showWarningModal = ref(false)
 onMounted(async () => {
   isLoading.value = true
   try {
-    // We send an empty string to get ALL products from the backend
     const data = await searchProducts('')
     masterCatalog.value = data || []
   } catch (error) {
@@ -42,8 +41,7 @@ onMounted(async () => {
   }
 })
 
-// --- Fully Dynamic Filters (Always Full!) ---
-// Because these look at masterCatalog, they NEVER shrink when you search!
+// --- Fully Dynamic Filters ---
 const uniqueCategories = computed(() => {
   const coreCategories = ['Cleanser', 'Toner', 'Serum', 'Moisturizer', 'Sunscreen', 'Treatment', 'Mask', 'Face Oil', 'Eye Cream']
   const dbCategories = masterCatalog.value.map(p => p.category).filter(Boolean)
@@ -52,7 +50,6 @@ const uniqueCategories = computed(() => {
 
 const uniqueBrands = computed(() => {
   const brands = masterCatalog.value.map(p => p.brand).filter(Boolean)
-  // Sort brands alphabetically for a better UI experience
   const sortedBrands = [...new Set(brands)].sort((a, b) => a.localeCompare(b))
   return ['All', ...sortedBrands]
 })
@@ -60,13 +57,11 @@ const uniqueBrands = computed(() => {
 // --- Instant Local Filtering ---
 const filteredProducts = computed(() => {
   return masterCatalog.value.filter(product => {
-    // 1. Text Search (Name or Brand)
     const safeQuery = searchQuery.value.toLowerCase().trim()
     const matchesSearch = !safeQuery ||
       (product.name && product.name.toLowerCase().includes(safeQuery)) ||
       (product.brand && product.brand.toLowerCase().includes(safeQuery))
 
-    // 2. Dropdown Filters
     const matchesCategory = selectedCategory.value === 'All' || product.category === selectedCategory.value
     const matchesBrand = selectedBrand.value === 'All' || product.brand === selectedBrand.value
 
@@ -81,7 +76,6 @@ const selectProduct = (product: any) => {
 
 const clearSelection = () => {
   selectedProduct.value = null
-  selectedStatus.value = 'Morning'
   isOpened.value = true
   selectedPAO.value = null
   expirationDate.value = ''
@@ -97,6 +91,7 @@ const setPAO = (months: number) => {
 const handleAddToShelf = async (forceSave = false) => {
   if (!selectedProduct.value) return
 
+  // 1. Run Safety Analysis if not forcing
   if (!forceSave) {
     isAnalyzing.value = true
     try {
@@ -105,7 +100,7 @@ const handleAddToShelf = async (forceSave = false) => {
         analysisWarnings.value = analysis.warnings
         showWarningModal.value = true
         isAnalyzing.value = false
-        return
+        return // Stop the save process and wait for user input
       }
     } catch (error) {
       console.error("Analysis failed", error)
@@ -113,11 +108,14 @@ const handleAddToShelf = async (forceSave = false) => {
     isAnalyzing.value = false
   }
 
+  // 2. Save to Shelf
   try {
     const today = new Date().toISOString().split('T')[0]
+
     await addToShelf({
       product_id: selectedProduct.value.id,
-      status: selectedStatus.value,
+      status: '', // We leave legacy status empty
+      usage_state: isOpened.value ? 'active' : 'unopened', //  The dynamic state
       opened_date: isOpened.value ? today : null,
       expiration_date: isOpened.value ? (expirationDate.value || null) : null,
       pao: selectedPAO.value
@@ -136,6 +134,7 @@ const handleAddToShelf = async (forceSave = false) => {
 <template>
   <div class="fixed inset-0 z-50 flex flex-col bg-brand-bg-light dark:bg-brand-bg-dark overflow-hidden animate-slide-up">
 
+    <!-- Header -->
     <div class="bg-brand-surface-light dark:bg-brand-surface-dark border-b border-stone-200 dark:border-stone-800 px-4 py-4 flex justify-between items-center shadow-sm z-10">
       <h2 class="text-lg font-serif font-bold text-brand-text dark:text-white">Add New Product</h2>
       <button @click="emit('close')" class="w-8 h-8 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-full text-stone-500 dark:text-stone-300 font-bold hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
@@ -146,10 +145,12 @@ const handleAddToShelf = async (forceSave = false) => {
     <div class="flex-1 overflow-y-auto p-4 sm:p-6 hide-scrollbar">
       <div class="max-w-md mx-auto h-full flex flex-col">
 
+        <!-- Step 1: Search Catalog (Restored!) -->
         <template v-if="!selectedProduct">
           <div class="mb-6 relative">
             <label class="block text-xs font-bold text-brand-primary dark:text-orange-400 uppercase tracking-wider mb-2">Search Catalog</label>
 
+            <!-- Search Bar -->
             <div class="relative mb-4">
               <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               <input
@@ -163,6 +164,7 @@ const handleAddToShelf = async (forceSave = false) => {
               </button>
             </div>
 
+            <!-- Category & Brand Dropdowns -->
             <div class="grid grid-cols-2 gap-3 mb-6">
               <div class="relative">
                 <select v-model="selectedCategory" class="w-full appearance-none bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-sm rounded-xl px-4 py-2.5 pr-10 outline-none shadow-sm cursor-pointer focus:ring-2 focus:ring-brand-primary transition-all">
@@ -182,6 +184,7 @@ const handleAddToShelf = async (forceSave = false) => {
               </div>
             </div>
 
+            <!-- Loading & Empty States -->
             <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 text-stone-400 animate-pulse">
               <div class="w-8 h-8 border-4 border-stone-200 border-t-brand-primary rounded-full animate-spin mb-4"></div>
               <p class="text-xs font-bold uppercase tracking-widest">Loading Catalog...</p>
@@ -207,6 +210,7 @@ const handleAddToShelf = async (forceSave = false) => {
           </div>
         </template>
 
+        <!-- Step 2: Configure Product -->
         <div v-else class="space-y-6 animate-fade-in pb-10">
           <div class="flex items-center gap-3 mb-2">
              <button @click="clearSelection" class="p-2 -ml-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
@@ -227,20 +231,7 @@ const handleAddToShelf = async (forceSave = false) => {
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-2">Routine Placement</label>
-            <div class="grid grid-cols-3 gap-3">
-              <button @click="selectedStatus = 'Morning'" :class="selectedStatus === 'Morning' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="py-3 px-2 rounded-xl border font-semibold text-sm transition-colors flex flex-col items-center gap-1">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> AM
-              </button>
-              <button @click="selectedStatus = 'Evening'" :class="selectedStatus === 'Evening' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="py-3 px-2 rounded-xl border font-semibold text-sm transition-colors flex flex-col items-center gap-1">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg> PM
-              </button>
-              <button @click="selectedStatus = 'Both'" :class="selectedStatus === 'Both' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="py-3 px-2 rounded-xl border font-semibold text-sm transition-colors flex flex-col items-center gap-1">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Both
-              </button>
-            </div>
-          </div>
+          <!-- Note: The Routine Placement (AM/PM) block has been permanently removed here as per Option C! -->
 
           <div class="p-4 rounded-xl border border-stone-200 dark:border-stone-700 mb-4 bg-brand-bg-light dark:bg-stone-800/50 transition-all">
             <div class="flex items-center justify-between">
@@ -281,28 +272,18 @@ const handleAddToShelf = async (forceSave = false) => {
     </div>
   </div>
 
-  <div v-if="showWarningModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-stone-900/80 backdrop-blur-sm p-4 animate-fade-in">
-    <div class="bg-white dark:bg-stone-900 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-red-100 dark:border-red-900/30">
-      <div class="bg-red-50 dark:bg-red-900/10 p-6 flex flex-col items-center text-center border-b border-red-100 dark:border-red-900/30">
-        <div class="w-16 h-16 bg-white dark:bg-stone-800 text-red-500 rounded-full flex items-center justify-center shadow-sm mb-4 border border-red-100 dark:border-red-900/50">
-          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-        </div>
-        <h2 class="text-xl font-bold text-brand-text dark:text-white">Interaction Alert</h2>
-        <p class="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">SkinBuddy detected a potential issue.</p>
-      </div>
-      <div class="p-6 max-h-60 overflow-y-auto space-y-3">
-        <div v-for="(warning, index) in analysisWarnings" :key="index" class="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
-          <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">{{ warning.alert_type }}</span>
-          <p class="text-sm text-stone-700 dark:text-stone-300 mt-2">{{ warning.message }}</p>
-        </div>
-      </div>
-      <div class="p-4 grid grid-cols-2 gap-3 bg-stone-50 dark:bg-stone-800/30 border-t border-stone-100 dark:border-stone-800">
-        <button @click="showWarningModal = false" class="py-3 rounded-xl font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors">Cancel</button>
-        <button @click="handleAddToShelf(true)" class="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors">Proceed Anyway</button>
-      </div>
-    </div>
-  </div>
+  <!-- Step 3: Safety Warning Modal (Restored!) -->
+<Teleport to="body">
+    <SafetyWarningModal
+      v-if="showWarningModal"
+      :warnings="analysisWarnings"
+      @cancel="showWarningModal = false"
+      @proceed="handleAddToShelf(true)"
+    />
+  </Teleport>
 </template>
+
+
 <style scoped>
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
