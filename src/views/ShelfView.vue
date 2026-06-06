@@ -7,7 +7,8 @@ import ShelfCard from '../components/ShelfCard.vue'
 import ItemDetailsModal from '../components/ItemDetailsModal.vue'
 import AddProductModal from '../components/AddProductModal.vue'
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
-
+import EmptyState from '../components/EmptyState.vue'
+import FilterPills from '../components/FilterPills.vue'
 // --- State ---
 const myShelf = ref<any[]>([])
 const isLoading = ref(true)
@@ -15,13 +16,26 @@ const isAddModalOpen = ref(false)
 const viewingItem = ref<any>(null)
 const itemToDelete = ref<any>(null)
 const { addToast } = useToast()
-
 // --- Filter State ---
 const searchQuery = ref('')
 const activeCategory = ref('All')
 const activeStatus = ref('All')
-const categories = ['All', 'Cleanser', 'Toner', 'Serum', 'Moisturizer', 'Sunscreen', 'Treatment']
-const statuses = ['All', 'In Routine', 'Unopened', 'Expiring', 'Expired']
+// The Statuses array matching our new dynamic time-states
+const statuses = ['All', 'Unopened', 'In Routine', 'Expiring Soon', 'Expired', 'Archived']
+// Dynamically generate categories based on what is actually on the shelf
+const dynamicCategories = computed(() => {
+  const uniqueCats = new Set<string>()
+
+  myShelf.value.forEach(item => {
+    const cat = item.category || item.products?.category
+    if (cat) {
+      const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase()
+      uniqueCats.add(formattedCat)
+    }
+  })
+
+  return ['All', ...Array.from(uniqueCats).sort()]
+})
 
 // --- Fetch & Filter Logic ---
 const fetchShelf = async () => {
@@ -30,6 +44,7 @@ const fetchShelf = async () => {
     myShelf.value = await getMyShelf()
   } catch (error) {
     console.error("Failed to load shelf:", error)
+    addToast('Failed to load your shelf', 'error')
   } finally {
     isLoading.value = false
   }
@@ -41,13 +56,42 @@ const filteredProducts = computed(() => {
   return myShelf.value.filter(item => {
     const name = (item.products?.name || '').toLowerCase()
     const brand = (item.products?.brand || '').toLowerCase()
-    const category = (item.category || item.products?.category || '').toLowerCase()
-    const status = item.status || 'Unopened'
+    const itemCategory = (item.category || item.products?.category || '').toLowerCase()
+
+    // --- Calculate the real-time status for the filter ---
+    let computedStatus = 'Unopened'
+    const state = item.usage_state || 'unopened'
+    const expDate = item.expiration_date
+
+    // 1. Archived items are ignored by the expiration clock
+    if (state === 'archived') {
+      computedStatus = 'Archived'
+    }
+    // 2. Check the clock if an expiration date exists (even if unopened!)
+    else if (expDate) {
+      const today = new Date()
+      const expiration = new Date(expDate)
+      const daysLeft = Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 3600 * 24))
+
+      if (daysLeft < 0) {
+        computedStatus = 'Expired'
+      } else if (daysLeft <= 30) {
+        computedStatus = 'Expiring Soon'
+      } else {
+        // If the date is fine, fall back to its inventory state
+        computedStatus = state === 'active' ? 'In Routine' : 'Unopened'
+      }
+    }
+    // 3. If no expiration date exists, rely purely on inventory state
+    else {
+      computedStatus = state === 'active' ? 'In Routine' : 'Unopened'
+    }
+
     const query = searchQuery.value.toLowerCase()
 
-    const matchesSearch = !query || name.includes(query) || brand.includes(query) || category.includes(query)
-    const matchesCategory = activeCategory.value === 'All' || category === activeCategory.value.toLowerCase()
-    const matchesStatus = activeStatus.value === 'All' || status === activeStatus.value
+    const matchesSearch = !query || name.includes(query) || brand.includes(query) || itemCategory.includes(query)
+    const matchesCategory = activeCategory.value === 'All' || itemCategory === activeCategory.value.toLowerCase()
+    const matchesStatus = activeStatus.value === 'All' || computedStatus === activeStatus.value
 
     return matchesSearch && matchesCategory && matchesStatus
   })
@@ -63,6 +107,7 @@ const executeDelete = async () => {
     itemToDelete.value = null
     addToast('Product removed from your shelf', 'info')
   } catch (error) {
+    console.error(error)
     addToast('Failed to remove product', 'error')
   }
 }
@@ -89,49 +134,55 @@ const executeDelete = async () => {
       <!-- Main Content (Only renders if shelf has items) -->
       <template v-else-if="myShelf.length > 0">
 
-        <!-- Search & Filters -->
+        <!-- Search Bar -->
         <div class="relative">
           <svg class="absolute inset-y-0 left-4 my-auto w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           <input v-model="searchQuery" type="text" class="w-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 text-sm rounded-2xl focus:ring-2 focus:ring-brand-primary block pl-11 p-4 shadow-sm outline-none" placeholder="Search products...">
           <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-4 my-auto text-stone-400 hover:text-brand-primary"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
         </div>
 
-        <div class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
-          <button v-for="cat in categories" :key="cat" @click="activeCategory = cat" class="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-colors border" :class="activeCategory === cat ? 'bg-brand-text text-brand-surface-light border-brand-text dark:bg-stone-200 dark:text-brand-bg-dark' : 'bg-brand-surface-light text-brand-text-muted border-stone-200 dark:bg-brand-surface-dark dark:border-stone-800'">{{ cat }}</button>
-        </div>
-
-        <div class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
-          <button v-for="stat in statuses" :key="stat" @click="activeStatus = stat" class="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-colors border" :class="activeStatus === stat ? 'bg-brand-primary-light text-brand-primary border-brand-primary-light dark:bg-orange-900/40 dark:text-orange-300' : 'text-brand-text-muted border-stone-200 dark:border-stone-800'">{{ stat }}</button>
-        </div>
+        <!-- 🌟 THE NEW CLEAN FILTERS 🌟 -->
+        <FilterPills v-model="activeCategory" :options="dynamicCategories" variant="neutral" />
+        <FilterPills v-model="activeStatus" :options="statuses" variant="brand" />
 
         <!-- Component Grid -->
         <div v-if="filteredProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-2">
           <ShelfCard
-              v-for="item in filteredProducts"
-              :key="item.id"
-              :item="item"
-              @open-details="viewingItem = item"
-              @delete="itemToDelete = item"
-              />
+            v-for="item in filteredProducts"
+            :key="item.id"
+            :item="item"
+            @open-details="viewingItem = item"
+            @delete="itemToDelete = item"
+          />
         </div>
 
-        <!-- Empty Filter State -->
+        <!-- Empty Filter State (When a search/filter yields 0 results) -->
         <div v-else class="text-center py-12 bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 mt-2">
-          <p class="text-stone-400 mb-4">No products match your filters.</p>
-          <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-sm">Clear Filters</button>
-        </div>
+          <p class="text-stone-400 mb-4">
+          {{ activeStatus === 'Archived' ? 'No archived products yet.' : 'No products match your filters.' }}
+          </p>
+
+              <p v-if="activeStatus === 'Archived'" class="text-[10px] text-stone-500 max-w-[200px] mx-auto mb-4">
+            Tip: You can archive products from the Item Details screen when you're finished with them.
+          </p>
+            <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-sm">
+              Clear Filters
+            </button>
+          </div>
       </template>
 
-      <!-- True Empty State (Zero items on shelf) -->
-<!-- True Empty State (Zero items on shelf) -->
-      <div v-else class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl p-10 text-center border border-brand-primary-light dark:border-orange-900/30 shadow-sm mt-4 flex flex-col items-center">
-        <div class="w-20 h-20 bg-brand-bg-light dark:bg-stone-900 rounded-full flex items-center justify-center mb-6 shadow-inner border border-stone-200 dark:border-stone-800">
+      <!-- True Empty State (Zero items on shelf entirely) -->
+      <EmptyState
+        v-else
+        title="Your shelf is empty"
+        message="Start adding products to build your perfect skincare routine."
+        action-label="Add First Product"
+        @action="isAddModalOpen = true"
+      >
+        <template #icon>
           <svg class="w-10 h-10 text-stone-300 dark:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-        </div>
-        <h3 class="text-xl font-serif font-bold mb-2">Your shelf is empty</h3>
-        <p class="text-sm text-brand-text-muted mb-8">Start adding products to build your perfect skincare routine.</p>
-        <button @click="isAddModalOpen = true" class="px-8 py-3.5 bg-brand-primary text-white font-bold rounded-xl shadow-md hover:bg-orange-800 transition-all w-full">Add First Product</button>
-      </div>
+        </template>
+      </EmptyState>
 
     </div>
 
