@@ -35,7 +35,12 @@ export const markItemOpened = async (
   })
   return response.data
 }
-
+export const updateShelfStatus = async (itemId: string, usageState: string) => {
+  const url = `/shelf/${itemId}/status`;
+  console.log("Calling URL:", url); // 👈 See exactly what is being sent
+  const response = await apiClient.patch(url, { usage_state: usageState });
+  return response.data;
+};
 export const removeFromShelf = async (itemId: string) => {
   const response = await apiClient.delete(`/shelf/${itemId}`)
   return response.data
