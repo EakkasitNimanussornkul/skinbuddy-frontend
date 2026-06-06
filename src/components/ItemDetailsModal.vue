@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { markItemOpened, removeFromShelf } from '../api/shelfapi'
+import { useRouter } from 'vue-router'
+import { markItemOpened, removeFromShelf, updateShelfStatus } from '../api/shelfapi'
 import { useToast } from '../composables/useToast'
 
 const props = defineProps<{
@@ -9,13 +10,13 @@ const props = defineProps<{
 
 const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
+const router = useRouter()
 
 // --- UI Animation State ---
 const isClosing = ref(false)
 
 const handleClose = () => {
   isClosing.value = true
-  // Wait for the CSS animation to finish before destroying the component
   setTimeout(() => {
     emit('close')
   }, 300)
@@ -50,7 +51,8 @@ const setEditPAO = (months: number) => {
 
 const handleUpdateExpiration = async () => {
   try {
-    await markItemOpened(props.item.id, props.item.opened_date, editExpirationDate.value)
+    // Passed 'active' to satisfy the new API requirement
+    await markItemOpened(props.item.id, props.item.opened_date, editExpirationDate.value, 'active')
     props.item.expiration_date = editExpirationDate.value
     isEditingExpiration.value = false
     emit('refresh')
@@ -73,9 +75,10 @@ const handleStartPAO = async () => {
   }
 
   try {
-    await markItemOpened(props.item.id, openedDateStr, expDateStr)
+    await markItemOpened(props.item.id, openedDateStr, expDateStr, 'active')
     props.item.opened_date = openedDateStr
     props.item.expiration_date = expDateStr
+    props.item.usage_state = 'active' // Update local UI immediately
     emit('refresh')
     addToast('Product opened! Clock started.', 'success')
   } catch (error) {
@@ -83,20 +86,38 @@ const handleStartPAO = async () => {
     addToast('Could not update product status', 'error')
   }
 }
-
+const handleArchive = async () => {
+  try {
+    await updateShelfStatus(props.item.id, 'archived')
+    emit('refresh')
+    handleClose()
+    addToast('Product archived. Find it in your Archived filter!', 'info')
+  } catch (error) {
+    addToast('Failed to archive', 'error')
+  }
+}
 const isConfirmingDelete = ref(false)
 
 const handleExecuteDelete = async () => {
   try {
     await removeFromShelf(props.item.id)
     emit('refresh')
-    handleClose() // Use the animated close here too!
+    handleClose()
     addToast('Product removed from your shelf', 'info')
   } catch (error) {
     console.error("Failed to delete:", error)
     addToast('Failed to remove product', 'error')
   }
 }
+
+// 🌟 NEW: The bridge to our upcoming Routine feature
+const goToRoutinePlanner = () => {
+  handleClose() // Close the modal smoothly
+  setTimeout(() => {
+    router.push('/routine') // Navigate to the routine page
+  }, 300)
+}
+
 </script>
 
 <template>
@@ -105,7 +126,6 @@ const handleExecuteDelete = async () => {
     :class="isClosing ? 'animate-fade-out' : 'animate-fade-in'"
     @click.self="handleClose"
   >
-
     <div
       class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative"
       :class="isClosing ? 'animate-slide-down' : 'animate-slide-up'"
@@ -127,14 +147,26 @@ const handleExecuteDelete = async () => {
 
         <div class="flex flex-wrap gap-2 mb-4">
           <span class="text-xs bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-lg font-semibold border border-stone-200 dark:border-stone-700">{{ category }}</span>
-          <span v-if="item.status" class="text-xs bg-brand-primary-light dark:bg-orange-900/30 text-brand-primary dark:text-orange-300 px-3 py-1 rounded-lg font-semibold">{{ item.status }} Routine</span>
         </div>
 
         <div class="mb-6">
           <p class="text-[13px] text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
         </div>
 
-        <div v-if="item.products?.product_ingredients?.length" class="mb-6">
+        <div class="mb-6 bg-brand-primary/5 dark:bg-orange-900/10 border border-brand-primary/20 dark:border-orange-900/30 p-4 rounded-2xl flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-brand-primary-light dark:bg-orange-900/40 text-brand-primary dark:text-orange-400 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Daily Regimen</h4>
+              <p class="text-[10px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-wider mt-0.5">Not Assigned</p>
+            </div>
+          </div>
+          <button @click="goToRoutinePlanner" class="text-xs font-bold bg-white dark:bg-stone-800 text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 px-4 py-2.5 rounded-xl shadow-sm hover:bg-brand-primary hover:text-white dark:hover:bg-orange-900/60 transition-all">
+            Assign to Routine
+          </button>
+        </div> <div v-if="item.products?.product_ingredients?.length" class="mb-6">
           <h3 class="text-sm font-bold text-brand-text dark:text-stone-200 mb-3 flex items-center gap-2">
             <svg class="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
             Key Actives
@@ -199,17 +231,24 @@ const handleExecuteDelete = async () => {
       </div>
 
       <div class="p-4 border-t border-stone-200 dark:border-stone-800 bg-brand-bg-light dark:bg-brand-bg-dark flex-shrink-0 transition-all duration-300">
-        <button v-if="!isConfirmingDelete" @click="isConfirmingDelete = true" class="w-full py-3 mb-2 bg-transparent text-red-500 font-bold rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
-          Remove from Shelf
-        </button>
-        <div v-else>
-          <p class="text-center text-[11px] font-bold text-red-500 uppercase tracking-widest mb-3">Are you sure?</p>
-          <div class="grid grid-cols-2 gap-3">
-            <button @click="isConfirmingDelete = false" class="py-3 rounded-xl font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 transition-colors text-sm">Cancel</button>
-            <button @click="handleExecuteDelete" class="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-[0.98] text-sm">Yes, Remove</button>
-          </div>
+
+          <div v-if="!isConfirmingDelete" class="space-y-2">
+            <button @click="handleArchive" class="w-full py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700 transition-all text-sm">
+              Archive Product
+          </button>
+            <button @click="isConfirmingDelete = true" class="w-full py-2 bg-transparent text-red-500 font-bold text-xs uppercase tracking-widest hover:text-red-600 transition-all">
+              Permanently Delete
+          </button>
         </div>
-      </div>
+
+  <div v-else>
+    <p class="text-center text-[11px] font-bold text-red-500 uppercase tracking-widest mb-3">Permanently delete this product?</p>
+    <div class="grid grid-cols-2 gap-3">
+      <button @click="isConfirmingDelete = false" class="py-3 rounded-xl font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 transition-colors text-sm">Cancel</button>
+      <button @click="handleExecuteDelete" class="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-[0.98] text-sm">Yes, Delete</button>
+    </div>
+  </div>
+</div>
 
     </div>
   </div>
@@ -218,26 +257,17 @@ const handleExecuteDelete = async () => {
 <style scoped>
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
-
-/* In-Animations */
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-/* Out-Animations */
 .animate-fade-out { animation: fadeOut 0.25s ease-in forwards; }
 .animate-slide-down { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-
 @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(100%); } }
-
-/* Desktop adjustments */
 @media (min-width: 640px) {
   .animate-slide-up { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-slide-down { animation: popOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
   @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
   @keyframes popOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
 }
