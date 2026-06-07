@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
 import { updateUserSkinType } from '../api/authApi'
-import { supabase } from '../api/supabase'
 import ExpressSkinSelectorModal from '../components/ExpressSkinSelectorModal.vue'
 import { useAuthStore } from '../stores/auth'
 const router = useRouter()
@@ -12,23 +11,24 @@ const { addToast } = useToast()
 const authStore = useAuthStore()
 const showSelector = ref(false)
 const isSaving = ref(false)
+
 const handleExpressConfirm = async (selectedType: string) => {
   isSaving.value = true
   try {
-    // 1. Safety check: ensure user is valid locally
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("No user logged in")
 
-    // 2. Send to backend (ONLY pass selectedType)
+    if (!authStore.isAuthenticated() || !authStore.user) {
+      throw new Error("No user logged in locally.")
+    }
+
     await updateUserSkinType(selectedType)
     authStore.updateSkinType(selectedType)
-    // Success UI & Routing
+
     addToast(`Welcome to SkinBuddy! Profile set to ${selectedType}.`, 'success')
     showSelector.value = false
     router.push('/shelf')
 
   } catch (error) {
-    console.error(error)
+    console.error("Express Confirm Error:", error)
     addToast('Failed to save your skin profile. Please try again.', 'error')
   } finally {
     isSaving.value = false
