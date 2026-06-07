@@ -22,7 +22,7 @@ onMounted(() => {
 
     <RouterView />
 
-    <BottomNav v-if="route.path !== '/quiz'" />
+    <BottomNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
     <ToastProvider />
   </div>
 </template>
