@@ -11,6 +11,8 @@ const props = defineProps<{
   currentStep: number
   totalSteps: number
   showCancel: boolean
+  // NEW: Accept the previously saved answer
+  savedOptionIndex: number | 'not_sure' | null
 }>()
 
 const emit = defineEmits(['answer', 'back', 'cancel'])
@@ -18,16 +20,21 @@ const emit = defineEmits(['answer', 'back', 'cancel'])
 const selectedOptionIndex = ref<number | 'not_sure' | null>(null)
 
 watch(() => props.question.id, () => {
-  selectedOptionIndex.value = null
-})
+  selectedOptionIndex.value = props.savedOptionIndex !== undefined ? props.savedOptionIndex : null
+}, { immediate: true })
 
 const handleContinue = () => {
   if (selectedOptionIndex.value === 'not_sure') {
-    emit('answer', 2.5)
+    emit('answer', { points: 2.5, optionIndex: 'not_sure' })
   } else if (selectedOptionIndex.value !== null) {
-    emit('answer', props.question.options[selectedOptionIndex.value].points)
+    emit('answer', {
+      points: props.question.options[selectedOptionIndex.value].points,
+      optionIndex: selectedOptionIndex.value
+    })
   }
 }
+
+// ... keep your categoryDetails exactly as they are ...
 
 const categoryDetails = computed(() => {
   const details = {
