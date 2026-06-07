@@ -11,15 +11,32 @@ export const useQuizStore = defineStore('quiz', () => {
     aging: 0
   })
 
+  // NEW: Track the history of answers so we can go back and change them safely
+  const answersHistory = ref<Record<number, { points: number, optionIndex: number | 'not_sure' }>>({})
+
   // --- ACTIONS ---
-  const answerQuestion = (category: keyof typeof scores.value, points: number) => {
+  // Updated to require the questionIndex and the specific option they chose
+  const answerQuestion = (questionIndex: number, category: keyof typeof scores.value, points: number, optionIndex: number | 'not_sure') => {
+
+    // If they already answered this question before, subtract the old points first so we don't double-count!
+    if (answersHistory.value[questionIndex]) {
+      scores.value[category] -= answersHistory.value[questionIndex].points
+    }
+
+    // Add the new points
     scores.value[category] += points
+
+    // Save to history
+    answersHistory.value[questionIndex] = { points, optionIndex }
+
+    // Move to next question
     currentQuestionIndex.value++
   }
 
   const resetQuiz = () => {
     currentQuestionIndex.value = 0
     scores.value = { hydration: 0, sensitivity: 0, pigmentation: 0, aging: 0 }
+    answersHistory.value = {} // Reset history too
   }
 
   const finalSkinType = computed(() => {
@@ -34,6 +51,7 @@ export const useQuizStore = defineStore('quiz', () => {
   return {
     currentQuestionIndex,
     scores,
+    answersHistory,
     answerQuestion,
     resetQuiz,
     finalSkinType
