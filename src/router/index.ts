@@ -9,7 +9,7 @@ import RoutineView from '../views/RoutineView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ShelfView from '../views/ShelfView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
-
+import SkinTypeLanding from '../views/SkinTypeLanding.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -22,6 +22,13 @@ const router = createRouter({
       path: '/quiz',
       name: 'quiz',
       component: SkinQuizView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/setup-profile',
+      name: 'SkinTypeLanding',
+      component: SkinTypeLanding,
+      meta: { requiresAuth: true }
     },
     {
       path: '/auth/callback',
@@ -66,7 +73,6 @@ const router = createRouter({
 })
 // If you want the any link to be protected, write the line below:
 // meta: { requiresAuth: true }
-
 // Route Guard: Check if the user is allowed to view the page
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
