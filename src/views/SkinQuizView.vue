@@ -44,9 +44,15 @@ const isQuizFinished = computed(() => {
   return quizStore.currentQuestionIndex >= totalQuestions
 })
 
-const handleAnswer = (points: number) => {
+// Inside SkinQuizView.vue <script setup>
+const handleAnswer = (payload: { points: number, optionIndex: number | 'not_sure' }) => {
   if (currentQuestionData.value) {
-    quizStore.answerQuestion(currentQuestionData.value.category, points)
+    quizStore.answerQuestion(
+      quizStore.currentQuestionIndex,
+      currentQuestionData.value.category,
+      payload.points,
+      payload.optionIndex
+    )
   }
 }
 
@@ -106,6 +112,7 @@ const saveAndContinue = async () => {
           :current-step="quizStore.currentQuestionIndex + 1"
           :total-steps="totalQuestions"
           :show-cancel="!isFirstTimeUser"
+          :saved-option-index="quizStore.answersHistory[quizStore.currentQuestionIndex]?.optionIndex ?? null"
           @answer="handleAnswer"
           @back="quizStore.currentQuestionIndex > 0 ? quizStore.currentQuestionIndex-- : requestCancel()"
           @cancel="requestCancel"
