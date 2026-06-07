@@ -3,17 +3,43 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/themeStore'
+import { useToast } from '../composables/useToast'
+import { updateUserSkinType } from '../api/authApi'
 import SettingsRow from '../components/SettingsRow.vue'
+import ExpressSkinSelectorModal from '../components/ExpressSkinSelectorModal.vue'
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const { addToast } = useToast()
 
 const notificationsEnabled = ref(true)
+const showSelector = ref(false)
+const isSaving = ref(false)
 
 const handleLogout = () => {
   authStore.logout()
   router.push('/explore')
+}
+
+const handleExpressConfirm = async (selectedType: string) => {
+  isSaving.value = true
+  try {
+    if (!authStore.isAuthenticated() || !authStore.user) {
+      throw new Error("No user logged in locally.")
+    }
+
+    await updateUserSkinType(selectedType)
+    authStore.updateSkinType(selectedType)
+
+    addToast(`Skin profile successfully updated to ${selectedType}.`, 'success')
+    showSelector.value = false
+  } catch (error) {
+    console.error("Settings Update Error:", error)
+    addToast('Failed to update skin profile. Please try again.', 'error')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 // Icon Paths for cleaner template
@@ -63,13 +89,20 @@ const icons = {
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="icons.clipboard"></path></svg>
           </div>
           <div>
-            <h4 class="text-sm font-bold text-brand-text dark:text-stone-100">Skin Profile</h4>
-            <p class="text-[13px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-snug">Not sure about your current skin type?</p>
+            <h4 class="text-sm font-bold text-brand-text dark:text-stone-100">Update Skin Profile</h4>
+            <p class="text-[13px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-snug">Choose how you'd like to update your Baumann skin type.</p>
           </div>
         </div>
-        <button @click="router.push('/quiz')" class="w-full py-3 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-orange-800 active:scale-[0.98] transition-all shadow-sm">
-          Retake Skin Quiz
-        </button>
+
+        <div class="flex flex-col gap-2 mt-1">
+          <button @click="showSelector = true" class="w-full py-3 bg-white dark:bg-[#1C1917] text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 rounded-xl font-bold text-sm hover:bg-brand-primary/5 dark:hover:bg-orange-900/40 active:scale-[0.98] transition-all shadow-sm">
+            Select Skin Type
+          </button>
+
+          <button @click="router.push('/quiz')" class="w-full py-3 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-orange-800 active:scale-[0.98] transition-all shadow-sm">
+            Retake Skin Quiz
+          </button>
+        </div>
       </div>
 
       <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">App Preferences</h3>
@@ -97,5 +130,12 @@ const icons = {
       </button>
 
     </div>
+
+    <ExpressSkinSelectorModal
+      :is-open="showSelector"
+      :is-saving="isSaving"
+      @close="showSelector = false"
+      @confirm="handleExpressConfirm"
+    />
   </div>
 </template>
