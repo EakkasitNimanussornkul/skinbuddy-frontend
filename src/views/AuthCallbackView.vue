@@ -17,8 +17,10 @@ onMounted(async () => {
       const data = response.data
       if (data.access_token) {
         authStore.setAuth(data.access_token, data.user)
-        router.push('/')
-      }
+        router.push('/setup-profile')
+      } else {
+    router.push('/home')
+  }
     } catch (error) {
       console.error('Authentication failed:', error)
       errorMessage.value = 'Failed to log in. Please try again.'
