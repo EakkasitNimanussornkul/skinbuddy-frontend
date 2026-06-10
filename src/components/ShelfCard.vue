@@ -16,14 +16,22 @@ const imageUrl = computed(() => props.item.image_url || props.item.products?.ima
 // --- Dynamic Database States ---
 const usageState = computed(() => props.item.usage_state || 'unopened')
 
+// Reads the archive metadata log attributes saved to the item object
+const archiveOutcomeText = computed(() => {
+  if (usageState.value !== 'archived') return null
+  const outcome = props.item.archive_outcome || props.item.outcome || 'empty'
+
+  if (outcome === 'empty') return 'Finished'
+  if (outcome === 'discarded') return 'Abandoned'
+  if (outcome === 'expired') return 'Expired'
+  return null
+})
+
 const expirationStatus = computed(() => {
-  // 🌟 FIX: We removed the strict 'active' check so unopened items still trigger warnings!
-  // However, if the user explicitly archived the item, we hide the warning so it stays quiet.
   if (!props.item.expiration_date || usageState.value === 'archived') return null
 
   const today = new Date()
   const exp = new Date(props.item.expiration_date)
-
   const daysLeft = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 3600 * 24))
 
   if (daysLeft < 0) return 'expired'
@@ -37,7 +45,7 @@ const expirationStatus = computed(() => {
   <div
     @click="emit('open-details')"
     class="relative group bg-brand-surface-light dark:bg-[#292524] rounded-3xl p-3 border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col hover:shadow-md transition-all duration-300 cursor-pointer"
-    :class="usageState === 'archived' ? 'opacity-60 grayscale-[40%] hover:opacity-100 hover:grayscale-0' : ''"
+    :class="usageState === 'archived' ? 'opacity-60 grayscale-[20%] hover:opacity-100 hover:grayscale-0' : ''"
   >
 
     <div v-if="expirationStatus" class="absolute -top-3 inset-x-0 flex justify-center z-30 pointer-events-none">
@@ -56,17 +64,16 @@ const expirationStatus = computed(() => {
     </div>
 
     <div class="w-full aspect-square sm:h-36 bg-stone-50 dark:bg-[#1C1917] rounded-2xl mb-3 flex items-center justify-center relative overflow-hidden border border-stone-100 dark:border-stone-800/50" :class="expirationStatus ? 'mt-1' : ''">
-      <img v-if="imageUrl" :src="imageUrl" :alt="name" class="w-full h-full object-cover mix-blend-multiply dark:mix-blend-normal p-1" />
+      <img v-if="imageUrl" :src="imageUrl" :alt="name" class="w-full h-full object-cover mix-blend-multiply dark:mix-blend-normal p-1 animate-fade-in" />
       <svg v-else class="w-10 h-10 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
       </svg>
 
-    <div class="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
-      <ItemBadge v-if="usageState === 'archived'" type="archived" text="Archived" />
-      <ItemBadge v-else-if="usageState === 'unopened'" type="unopened" text="Unopened" />
-
-      <ItemBadge v-else-if="usageState === 'active'" type="routine" text="In Routine" />
-    </div>
+      <div class="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
+        <ItemBadge v-if="usageState === 'archived'" type="archived" text="Archived" />
+        <ItemBadge v-else-if="usageState === 'unopened'" type="unopened" text="Unopened" />
+        <ItemBadge v-else-if="usageState === 'active'" type="routine" text="In Routine" />
+      </div>
 
       <button
         @click.stop.prevent="emit('delete', item)"
@@ -85,9 +92,17 @@ const expirationStatus = computed(() => {
       <h3 class="text-xs sm:text-sm font-semibold text-brand-text dark:text-stone-100 leading-snug line-clamp-2 mb-2 group-hover:text-brand-primary transition-colors">
         {{ name }}
       </h3>
-      <div class="mt-auto">
+
+      <div class="mt-auto flex items-center justify-between">
         <span class="text-[10px] text-brand-text-muted dark:text-stone-500 font-medium">
           {{ category }}
+        </span>
+
+        <span
+          v-if="archiveOutcomeText"
+          class="text-[9px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 px-1.5 py-0.5 rounded-md border border-stone-200/40 dark:border-stone-700/60"
+        >
+          {{ archiveOutcomeText }}
         </span>
       </div>
     </div>
