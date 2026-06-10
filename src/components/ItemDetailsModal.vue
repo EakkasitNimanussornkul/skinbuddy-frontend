@@ -11,19 +11,33 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
 const router = useRouter()
-
-// --- UI Sub-Views & Animation State ---
 const isClosing = ref(false)
 const currentView = ref<'details' | 'archive_form'>('details')
+
+// State to trigger the interactive pulse animation on click/tap
+const isPulseTriggered = ref(false)
 
 // --- Archive Log Form Fields ---
 const archiveOutcome = ref<'empty' | 'discarded' | 'expired'>('empty')
 const archiveNotes = ref('')
 
+// Function to handle the opening animation/closing, reset pulse state
 const handleClose = () => {
   isClosing.value = true
+  isPulseTriggered.value = false // Reset pulse just in case
   setTimeout(() => {
     emit('close')
+  }, 300)
+}
+
+// Trigger the quick pulse animation on interaction
+const triggerPulseAnimation = () => {
+  if (isPulseTriggered.value) return // Prevent spamming while animation plays
+  isPulseTriggered.value = true
+
+  // The animation duration is 300ms, so we reset the trigger after that
+  setTimeout(() => {
+    isPulseTriggered.value = false
   }, 300)
 }
 
@@ -177,7 +191,12 @@ const goToRoutinePlanner = () => {
   >
     <div
       class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative"
-      :class="isClosing ? 'animate-slide-down' : 'animate-slide-up'"
+      :class="[
+        isClosing ? 'animate-slide-down' : 'animate-slide-up',
+        // Dynamic class to trigger the interactive pulse animation
+        isPulseTriggered ? 'animate-interact-pulse' : ''
+      ]"
+      @click="triggerPulseAnimation"
     >
 
       <button @click="handleClose" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-stone-800/80 backdrop-blur-md rounded-full text-stone-500 hover:text-brand-primary dark:text-stone-300 dark:hover:text-orange-300 z-10 shadow-sm transition-colors">
@@ -385,3 +404,38 @@ const goToRoutinePlanner = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-out { animation: fadeOut 0.25s ease-in forwards; }
+.animate-slide-down { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(100%); } }
+
+@keyframes interactPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.animate-interact-pulse {
+  animation: interactPulse 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (min-width: 640px) {
+  .animate-slide-up { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-slide-down { animation: popOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  @keyframes popOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+  @keyframes interactPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02) rotate(0.5deg); }
+    100% { transform: scale(1); }
+  }
+}
+</style>
