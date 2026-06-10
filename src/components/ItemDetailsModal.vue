@@ -5,7 +5,7 @@ import { removeFromShelf, updateShelfStatus } from '../api/shelfapi'
 import { useToast } from '../composables/useToast'
 
 import KeyActivesGrid from './KeyActivesGrid.vue'
-
+import ProductLifecycleController from './ProductLifecycleController.vue'
 import ArchiveLogForm from './ArchiveLogForm.vue'
 
 const props = defineProps<{
