@@ -27,10 +27,16 @@ const handleClose = () => {
   setTimeout(() => { emit('close') }, 300)
 }
 
+// Ensure the pulse only triggers when we want it to (e.g., specific interactions)
 const triggerPulseAnimation = () => {
   if (isPulseTriggered.value) return
   isPulseTriggered.value = true
   setTimeout(() => { isPulseTriggered.value = false }, 300)
+}
+
+// ─── ADDED: Missing Archiving Flow Function ───
+const startArchivingFlow = () => {
+  currentView.value = 'archive_form'
 }
 
 // ─── Computational Product Properties ───
@@ -72,7 +78,11 @@ const handleUnarchive = async () => {
     addToast('Failed to restore product', 'error')
   }
 }
-
+const handleArchiveSuccess = () => {
+  emit('refresh')
+  handleClose()
+  addToast('Product archived. Find it in your Archived filter!', 'info') // 👈 Here is the missing toast!
+}
 const isConfirmingDelete = ref(false)
 const handleExecuteDelete = async () => {
   try {
@@ -100,14 +110,13 @@ const goToRoutinePlanner = () => {
     <div
       class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative"
       :class="[isClosing ? 'animate-slide-down' : 'animate-slide-up', isPulseTriggered ? 'animate-interact-pulse' : '']"
-      @click="triggerPulseAnimation"
     >
       <button @click="handleClose" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-stone-800/80 backdrop-blur-md rounded-full text-stone-500 hover:text-brand-primary dark:text-stone-300 dark:hover:text-orange-300 z-10 shadow-sm transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
       <template v-if="currentView === 'details'">
-        <div class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0">
+        <div @click="triggerPulseAnimation" class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0 cursor-pointer">
           <img v-if="imageUrl" :src="imageUrl" class="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl" />
           <svg v-else class="w-16 h-16 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
         </div>
@@ -178,13 +187,12 @@ const goToRoutinePlanner = () => {
           </div>
         </div>
       </template>
-
       <template v-else-if="currentView === 'archive_form'">
         <ArchiveLogForm
           :item="item"
           :usage-lifespan="usageLifespan"
           @back="currentView = 'details'"
-          @success="emit('refresh'); handleClose();"
+          @success="handleArchiveSuccess"
         />
       </template>
 
