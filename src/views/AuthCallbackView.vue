@@ -15,12 +15,15 @@ onMounted(async () => {
     try {
       const response = await apiClient.post('/auth/line', { code })
       const data = response.data
-      if (data.access_token) {
-        authStore.setAuth(data.access_token, data.user)
-        router.push('/setup-profile')
-      } else {
-    router.push('/home')
+  if (data.access_token) {
+    authStore.setAuth(data.access_token, data.user)
+  if (!data.user.skin_type) {
+    router.push('/setup-profile')
+  } else {
+    // Returning user -> always land on Home view first
+    router.push('/')
   }
+}
     } catch (error) {
       console.error('Authentication failed:', error)
       errorMessage.value = 'Failed to log in. Please try again.'
