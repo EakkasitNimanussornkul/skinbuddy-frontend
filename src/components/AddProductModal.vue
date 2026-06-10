@@ -134,7 +134,6 @@ const handleAddToShelf = async (forceSave = false) => {
 <template>
   <div class="fixed inset-0 z-50 flex flex-col bg-brand-bg-light dark:bg-brand-bg-dark overflow-hidden animate-slide-up">
 
-    <!-- Header -->
     <div class="bg-brand-surface-light dark:bg-brand-surface-dark border-b border-stone-200 dark:border-stone-800 px-4 py-4 flex justify-between items-center shadow-sm z-10">
       <h2 class="text-lg font-serif font-bold text-brand-text dark:text-white">Add New Product</h2>
       <button @click="emit('close')" class="w-8 h-8 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-full text-stone-500 dark:text-stone-300 font-bold hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
@@ -143,14 +142,12 @@ const handleAddToShelf = async (forceSave = false) => {
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 sm:p-6 hide-scrollbar">
-      <div class="max-w-md mx-auto h-full flex flex-col">
+      <div class="max-w-md sm:max-w-2xl lg:max-w-4xl w-full mx-auto h-full flex flex-col">
 
-        <!-- Step 1: Search Catalog (Restored!) -->
         <template v-if="!selectedProduct">
-          <div class="mb-6 relative">
+          <div class="mb-6 relative max-w-2xl mx-auto w-full">
             <label class="block text-xs font-bold text-brand-primary dark:text-orange-400 uppercase tracking-wider mb-2">Search Catalog</label>
 
-            <!-- Search Bar -->
             <div class="relative mb-4">
               <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               <input
@@ -164,8 +161,7 @@ const handleAddToShelf = async (forceSave = false) => {
               </button>
             </div>
 
-            <!-- Category & Brand Dropdowns -->
-            <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="grid grid-cols-2 gap-3 mb-8">
               <div class="relative">
                 <select v-model="selectedCategory" class="w-full appearance-none bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-sm rounded-xl px-4 py-2.5 pr-10 outline-none shadow-sm cursor-pointer focus:ring-2 focus:ring-brand-primary transition-all">
                   <option v-for="cat in uniqueCategories" :key="cat" :value="cat">{{ cat === 'All' ? 'Category' : cat }}</option>
@@ -183,35 +179,31 @@ const handleAddToShelf = async (forceSave = false) => {
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Loading & Empty States -->
-            <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 text-stone-400 animate-pulse">
-              <div class="w-8 h-8 border-4 border-stone-200 border-t-brand-primary rounded-full animate-spin mb-4"></div>
-              <p class="text-xs font-bold uppercase tracking-widest">Loading Catalog...</p>
-            </div>
+          <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 text-stone-400 animate-pulse">
+            <div class="w-8 h-8 border-4 border-stone-200 border-t-brand-primary rounded-full animate-spin mb-4"></div>
+            <p class="text-xs font-bold uppercase tracking-widest">Loading Catalog...</p>
+          </div>
 
-            <ul v-else-if="filteredProducts.length > 0" class="space-y-3">
-              <SearchResultCard
-                v-for="product in filteredProducts"
-                :key="product.id"
-                :product="product"
-                @select="selectProduct(product)"
-              />
-            </ul>
+          <ul v-else-if="filteredProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
+            <SearchResultCard
+              v-for="product in filteredProducts"
+              :key="product.id"
+              :product="product"
+              @select="selectProduct(product)"
+            />
+          </ul>
 
-            <div v-else class="p-8 text-center flex flex-col items-center justify-center animate-fade-in mt-10">
-              <svg class="w-12 h-12 mb-4 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-              <p class="text-sm font-bold text-brand-text dark:text-stone-200 mb-1">No products found</p>
-              <p class="text-xs text-stone-500 dark:text-stone-400 max-w-[200px] leading-relaxed">
-                Adjust your filters or try a different search term.
-              </p>
-              <button v-if="searchQuery || selectedCategory !== 'All' || selectedBrand !== 'All'" @click="searchQuery = ''; selectedCategory = 'All'; selectedBrand = 'All'" class="mt-4 text-brand-primary font-bold text-sm">Clear Filters</button>
-            </div>
+          <div v-else class="p-8 text-center flex flex-col items-center justify-center animate-fade-in mt-10">
+            <svg class="w-12 h-12 mb-4 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            <p class="text-sm font-bold text-brand-text dark:text-stone-200 mb-1">No products found</p>
+            <p class="text-xs text-stone-500 dark:text-stone-400 max-w-[200px] leading-relaxed">Adjust your filters or try a different search term.</p>
+            <button v-if="searchQuery || selectedCategory !== 'All' || selectedBrand !== 'All'" @click="searchQuery = ''; selectedCategory = 'All'; selectedBrand = 'All'" class="mt-4 text-brand-primary font-bold text-sm">Clear Filters</button>
           </div>
         </template>
 
-        <!-- Step 2: Configure Product -->
-        <div v-else class="space-y-6 animate-fade-in pb-10">
+        <div v-else class="space-y-6 animate-fade-in pb-10 max-w-md mx-auto w-full">
           <div class="flex items-center gap-3 mb-2">
              <button @click="clearSelection" class="p-2 -ml-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -230,8 +222,6 @@ const handleAddToShelf = async (forceSave = false) => {
               <span class="text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-2 py-0.5 rounded-md">{{ selectedProduct.category }}</span>
             </div>
           </div>
-
-          <!-- Note: The Routine Placement (AM/PM) block has been permanently removed here as per Option C! -->
 
           <div class="p-4 rounded-xl border border-stone-200 dark:border-stone-700 mb-4 bg-brand-bg-light dark:bg-stone-800/50 transition-all">
             <div class="flex items-center justify-between">
@@ -272,8 +262,7 @@ const handleAddToShelf = async (forceSave = false) => {
     </div>
   </div>
 
-  <!-- Step 3: Safety Warning Modal (Restored!) -->
-<Teleport to="body">
+  <Teleport to="body">
     <SafetyWarningModal
       v-if="showWarningModal"
       :warnings="analysisWarnings"
