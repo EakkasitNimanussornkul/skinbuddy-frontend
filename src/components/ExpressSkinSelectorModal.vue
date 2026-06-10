@@ -48,10 +48,10 @@ const handleConfirm = () => {
 <template>
   <Teleport to="body">
     <div
-  v-if="isOpen"
-  class="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-stone-900/80 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
-  @click.self="emit('close')"
->
+      v-if="isOpen"
+        class="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-stone-900/80 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
+      @click.self="emit('close')"
+      >
       <div class="bg-white dark:bg-[#1C1917] w-full sm:max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl flex flex-col max-h-[90vh] animate-slide-up relative">
 
         <!-- Close Button -->
