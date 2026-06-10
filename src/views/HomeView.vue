@@ -66,7 +66,7 @@ const icons: Record<string, string> = {
   chat: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
   search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
   storage: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M10 12a1 1 0 102 0 1 1 0 00-2 0',
-  routine: 'M9 5H7a2 2 0 00-2-2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+  routine: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
   skin: 'M12 2.69l5.66 5.66a8 8 0 11-11.31 0z',
   bell: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
@@ -83,9 +83,9 @@ const tip = tips[new Date().getDay() % tips.length]
 
 <template>
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-28 transition-colors duration-300">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col">
+    <div class="max-w-md lg:max-w-5xl mx-auto px-4 sm:px-6 flex flex-col">
 
-      <div class="flex items-center justify-between pt-6 pb-6 border-b border-stone-200/40 dark:border-stone-800/60 mb-6">
+      <div class="flex items-center justify-between pt-6 pb-5">
         <button @click="router.push('/settings')" class="flex items-center gap-3 group">
           <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-brand-primary/30 dark:border-orange-600/40 bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
             <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
@@ -124,12 +124,30 @@ const tip = tips[new Date().getDay() % tips.length]
                 <h2 class="text-white font-serif text-2xl font-bold leading-tight">{{ firstName }},</h2>
                 <p class="text-orange-100/80 text-sm mt-1 leading-snug">Ready for your skin routine?</p>
               </div>
+
               <div class="w-16 h-16 flex-shrink-0">
-                <svg viewBox="0 0 100 100" class="w-full h-full text-white">
-                  <circle cx="50" cy="50" r="45" fill="currentColor" opacity="0.18" />
-                  <circle cx="35" cy="40" r="6" fill="currentColor" opacity="0.9" />
-                  <circle cx="65" cy="40" r="6" fill="currentColor" opacity="0.9" />
-                  <path d="M 32 60 Q 50 76 68 60" stroke="currentColor" stroke-width="7" stroke-linecap="round" fill="transparent" opacity="0.9" />
+                <svg viewBox="0 0 120 120" class="w-full h-full text-white animate-jelly-float">
+                  <circle cx="60" cy="60" r="55" fill="currentColor" opacity="0.18" />
+
+                  <ellipse cx="60" cy="45" rx="40" ry="32" fill="currentColor" opacity="0.95" />
+
+                  <path d="M 35 68 L 30 106" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
+                  <path d="M 45 74 L 42 110" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
+                  <path d="M 55 76 L 55 112" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
+                  <path d="M 65 76 L 65 112" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
+                  <path d="M 75 74 L 78 110" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
+                  <path d="M 85 68 L 90 106" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
+
+                  <circle cx="45" cy="55" r="2" fill="currentColor" opacity="0.4" />
+                  <circle cx="55" cy="58" r="2" fill="currentColor" opacity="0.4" />
+                  <circle cx="65" cy="58" r="2" fill="currentColor" opacity="0.4" />
+                  <circle cx="75" cy="55" r="2" fill="currentColor" opacity="0.4" />
+                  <circle cx="42" cy="74" r="2.5" fill="currentColor" opacity="0.4" />
+                  <circle cx="78" cy="74" r="2.5" fill="currentColor" opacity="0.4" />
+
+                  <circle cx="48" cy="42" r="4" fill="#4c1d05" class="animate-jelly-blink" />
+                  <circle cx="72" cy="42" r="4" fill="#4c1d05" class="animate-jelly-blink" />
+                  <path d="M 54 51 Q 60 57 66 51" stroke="#4c1d05" stroke-width="3.5" stroke-linecap="round" fill="transparent" />
                 </svg>
               </div>
             </div>
@@ -213,7 +231,7 @@ const tip = tips[new Date().getDay() % tips.length]
 
         </div>
 
-        <div class="lg:col-span-4 flex flex-col gap-6 w-full">
+        <div class="lg:col-span-4 flex flex-col gap-6 w-full lg:pt-0">
 
           <div class="hidden lg:block">
             <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
@@ -266,3 +284,25 @@ const tip = tips[new Date().getDay() % tips.length]
     />
   </div>
 </template>
+
+<style scoped>
+/* ── Isolated Mascot Floating & Eye-Blinking Core Keyframes ── */
+.animate-jelly-float {
+  animation: jellyFloat 3s infinite ease-in-out;
+}
+
+@keyframes jellyFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.02); }
+}
+
+.animate-jelly-blink {
+  animation: jellyBlink 3.5s infinite;
+  transform-origin: center;
+}
+
+@keyframes jellyBlink {
+  0%, 95%, 98%, 100% { transform: scaleY(1); opacity: 1; }
+  96%, 97% { transform: scaleY(0.1); opacity: 0.4; }
+}
+</style>
