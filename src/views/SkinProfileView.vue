@@ -44,9 +44,14 @@ const axes = computed(() => {
             <div class="absolute -bottom-16 -left-8 w-40 h-40 rounded-full bg-white/5" />
 
             <div class="relative z-10 w-full">
-              <span class="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-bold uppercase tracking-widest mb-3 border border-white/20">
-                Type {{ userSkinType }}
-              </span>
+              <div class="flex items-center gap-2 mb-3">
+                <span class="px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-bold uppercase tracking-widest border border-white/20">
+                  Type {{ userSkinType }}
+                </span>
+                <span class="px-3 py-1 rounded-full bg-black/20 text-white text-[10px] font-bold uppercase tracking-widest border border-black/10">
+                  {{ profileData.maintenanceLevel }} Maintenance
+                </span>
+              </div>
               <h2 class="text-white font-serif text-2xl lg:text-4xl font-bold leading-tight mb-3">
                 {{ profileData.subtitle }}
               </h2>
@@ -66,11 +71,46 @@ const axes = computed(() => {
                 <p class="text-xs lg:text-sm text-brand-text-muted dark:text-stone-400 mt-1 leading-relaxed">{{ profileData.focusDesc }}</p>
               </div>
             </div>
-
             <div class="bg-stone-50 dark:bg-stone-900/50 rounded-2xl p-5 border border-stone-100 dark:border-stone-800/80">
               <p class="text-sm lg:text-base text-brand-text dark:text-stone-300 italic font-serif leading-relaxed text-center opacity-80">
                 "{{ profileData.quote }}"
               </p>
+            </div>
+          </div>
+
+          <div class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6 lg:p-8 shadow-sm">
+            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-6">Suggested Routine Blueprint</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="bg-stone-50 dark:bg-[#1C1917] p-5 rounded-2xl border border-stone-100 dark:border-stone-800">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+                  </div>
+                  <h4 class="font-bold text-brand-text dark:text-stone-200">Morning</h4>
+                </div>
+                <ol class="space-y-3 relative before:absolute before:inset-y-2 before:left-[7px] before:w-[2px] before:bg-stone-200 dark:before:bg-stone-800">
+                  <li v-for="(step, index) in profileData.routineBlueprint.am" :key="index" class="flex items-start gap-3 relative z-10">
+                    <span class="w-4 h-4 mt-0.5 flex-shrink-0 rounded-full bg-white dark:bg-stone-900 border-2 border-orange-400 flex items-center justify-center"></span>
+                    <span class="text-[13px] text-brand-text dark:text-stone-300 font-medium leading-snug">{{ step }}</span>
+                  </li>
+                </ol>
+              </div>
+
+              <div class="bg-stone-50 dark:bg-[#1C1917] p-5 rounded-2xl border border-stone-100 dark:border-stone-800">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                  </div>
+                  <h4 class="font-bold text-brand-text dark:text-stone-200">Evening</h4>
+                </div>
+                <ol class="space-y-3 relative before:absolute before:inset-y-2 before:left-[7px] before:w-[2px] before:bg-stone-200 dark:before:bg-stone-800">
+                  <li v-for="(step, index) in profileData.routineBlueprint.pm" :key="index" class="flex items-start gap-3 relative z-10">
+                    <span class="w-4 h-4 mt-0.5 flex-shrink-0 rounded-full bg-white dark:bg-stone-900 border-2 border-indigo-400 flex items-center justify-center"></span>
+                    <span class="text-[13px] text-brand-text dark:text-stone-300 font-medium leading-snug">{{ step }}</span>
+                  </li>
+                </ol>
+              </div>
             </div>
           </div>
 
@@ -81,13 +121,41 @@ const axes = computed(() => {
           <div class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6">
              <h3 class="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-4 px-1">Typology Breakdown</h3>
              <div class="grid grid-cols-2 gap-3">
-                <div v-for="axis in axes" :key="axis.letter" class="bg-stone-50 dark:bg-stone-900/60 border border-stone-100 dark:border-stone-800/60 rounded-2xl p-3 flex flex-col items-center text-center">
+                <div v-for="axis in axes" :key="axis.letter" class="bg-stone-50 dark:bg-[#1C1917] border border-stone-100 dark:border-stone-800/60 rounded-2xl p-3 flex flex-col items-center text-center">
                   <div :class="`w-10 h-10 rounded-full ${axis.bg} ${axis.color} flex items-center justify-center text-lg font-black font-serif mb-2 border`">
                     {{ axis.letter }}
                   </div>
                   <p class="text-xs font-bold text-brand-text dark:text-stone-100">{{ axis.name }}</p>
                   <p class="text-[9px] text-stone-400 uppercase tracking-wider">vs. {{ axis.opposite }}</p>
                 </div>
+             </div>
+          </div>
+
+          <div class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6">
+             <h3 class="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-4 px-1">Common Skin Concerns</h3>
+             <div class="flex flex-wrap gap-2">
+               <span v-for="concern in profileData.commonConcerns" :key="concern"
+                 class="px-3 py-1.5 bg-stone-100 dark:bg-[#1C1917] rounded-xl text-[11px] font-semibold text-brand-text dark:text-stone-300 border border-stone-200 dark:border-stone-800">
+                 {{ concern }}
+               </span>
+             </div>
+          </div>
+
+          <div class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6">
+             <h3 class="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-4 px-1">Target Product Textures</h3>
+             <div class="space-y-3">
+               <div class="flex items-center justify-between bg-stone-50 dark:bg-[#1C1917] p-3 rounded-2xl border border-stone-100 dark:border-stone-800/80">
+                 <span class="text-[11px] font-bold text-stone-500 uppercase">Cleanser</span>
+                 <span class="text-xs font-bold text-brand-primary dark:text-orange-400">{{ profileData.idealTextures.cleanser }}</span>
+               </div>
+               <div class="flex items-center justify-between bg-stone-50 dark:bg-[#1C1917] p-3 rounded-2xl border border-stone-100 dark:border-stone-800/80">
+                 <span class="text-[11px] font-bold text-stone-500 uppercase">Moisturizer</span>
+                 <span class="text-xs font-bold text-brand-primary dark:text-orange-400">{{ profileData.idealTextures.moisturizer }}</span>
+               </div>
+               <div class="flex items-center justify-between bg-stone-50 dark:bg-[#1C1917] p-3 rounded-2xl border border-stone-100 dark:border-stone-800/80">
+                 <span class="text-[11px] font-bold text-stone-500 uppercase">Sunscreen</span>
+                 <span class="text-xs font-bold text-brand-primary dark:text-orange-400">{{ profileData.idealTextures.sunscreen }}</span>
+               </div>
              </div>
           </div>
 
