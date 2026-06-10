@@ -154,22 +154,23 @@ const tip = tips[new Date().getDay() % tips.length]
           </div>
 
           <div class="lg:hidden bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
-            <div class="flex items-center gap-4 px-1">
-              <div class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0">
+            <button @click="router.push('/profile')" class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
+              <div class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                 <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.skin" />
                 </svg>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">Skin Type</p>
-                <p class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5">
+                <p class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
                   {{ authStore.user?.skin_type || 'Take the quiz to discover yours' }}
                 </p>
               </div>
-            </div>
+              <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
             <div class="flex gap-2">
               <button @click="showSelector = true" class="flex-1 text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30">
-                Choose Manually
+                  Update Skin Type
               </button>
               <button @click="router.push('/quiz')" class="flex-1 text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
                 {{ authStore.user?.skin_type ? 'Retake Quiz' : 'Take Quiz' }}
@@ -232,26 +233,26 @@ const tip = tips[new Date().getDay() % tips.length]
         </div>
 
         <div class="lg:col-span-4 flex flex-col gap-6 w-full lg:pt-0">
-
-          <div class="hidden lg:block">
+        <div class="hidden lg:block">
             <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
-              <div class="flex items-center gap-4 px-1">
-                <div class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0">
+              <button @click="router.push('/profile')" class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
+                <div class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                   <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.skin" />
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">Skin Type</p>
-                  <p class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5">
+                  <p class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
                     {{ authStore.user?.skin_type || 'Take the quiz to discover yours' }}
                   </p>
                 </div>
-              </div>
+                <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              </button>
 
               <div class="flex flex-col gap-2">
                 <button @click="showSelector = true" class="w-full text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30 shadow-sm">
-                  Choose Manually
+                  Update Current Skin Type
                 </button>
                 <button @click="router.push('/quiz')" class="w-full text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
                   {{ authStore.user?.skin_type ? 'Retake Quiz' : 'Take Quiz' }}

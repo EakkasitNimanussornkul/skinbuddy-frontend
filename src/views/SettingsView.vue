@@ -87,19 +87,21 @@ const icons = {
           </div>
 
           <div class="bg-brand-primary/10 dark:bg-orange-900/20 rounded-3xl p-5 border border-brand-primary/20 flex flex-col gap-4 hover:scale-[1.015] hover:shadow-md transition-all duration-200">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-brand-primary/20 dark:bg-orange-900/40 flex items-center justify-center text-brand-primary dark:text-orange-400 flex-shrink-0">
+
+            <button @click="router.push('/profile')" class="flex items-center gap-3 w-full text-left group hover:opacity-80 transition-all">
+              <div class="w-10 h-10 rounded-full bg-brand-primary/20 dark:bg-orange-900/40 flex items-center justify-center text-brand-primary dark:text-orange-400 flex-shrink-0 group-hover:scale-105 transition-transform">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="icons.clipboard"></path></svg>
               </div>
-              <div>
-                <h4 class="text-sm font-bold text-brand-text dark:text-stone-100">Update Skin Profile</h4>
-                <p class="text-[13px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-snug">Choose how you'd like to update your Baumann skin type.</p>
+              <div class="flex-1">
+                <h4 class="text-sm font-bold text-brand-text dark:text-stone-100 group-hover:text-brand-primary transition-colors">Your Skin Profile</h4>
+                <p class="text-[13px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-snug">View your Baumann diagnostic report.</p>
               </div>
-            </div>
+              <svg class="w-5 h-5 text-brand-primary/60 group-hover:text-brand-primary flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
 
             <div class="flex flex-col gap-2 mt-1">
               <button @click="showSelector = true" class="w-full py-3 bg-white dark:bg-[#1C1917] text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 rounded-xl font-bold text-sm hover:bg-brand-primary/5 dark:hover:bg-orange-900/40 active:scale-[0.98] transition-all shadow-sm">
-                Select Type Manually
+                Update Skin type
               </button>
               <button @click="router.push('/quiz')" class="w-full py-3 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-orange-800 active:scale-[0.98] transition-all shadow-sm">
                 Retake Skin Quiz
