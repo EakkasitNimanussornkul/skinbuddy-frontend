@@ -10,6 +10,7 @@ import SettingsView from '../views/SettingsView.vue'
 import ShelfView from '../views/ShelfView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
 import SkinTypeLanding from '../views/SkinTypeLanding.vue'
+import SkinProfileView from '../views/SkinProfileView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -53,6 +54,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/profile',
+      name: 'skin-profile',
+      component: SkinProfileView,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/explore',
       name: 'explore',
       component: ExploreView,
@@ -69,6 +76,7 @@ const router = createRouter({
       component: ChatbotView,
       meta: { requiresAuth: true },
     },
+
   ],
 })
 // If you want the any link to be protected, write the line below:
