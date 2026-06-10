@@ -91,9 +91,11 @@ const filteredProducts = computed(() => {
 
     const matchesSearch = !query || name.includes(query) || brand.includes(query) || itemCategory.includes(query)
     const matchesCategory = activeCategory.value === 'All' || itemCategory === activeCategory.value.toLowerCase()
-    const matchesStatus = activeStatus.value === 'All' || computedStatus === activeStatus.value
+    const matchesStatus = activeStatus.value === 'All'
+    ? computedStatus !== 'Archived'
+    : computedStatus === activeStatus.value
 
-    return matchesSearch && matchesCategory && matchesStatus
+  return matchesSearch && matchesCategory && matchesStatus
   })
 })
 
