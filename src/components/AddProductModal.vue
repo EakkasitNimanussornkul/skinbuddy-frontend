@@ -3,7 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { searchProducts } from '../api/products'
 import { addToShelf, analyzeProduct } from '../api/shelfapi'
 import SearchResultCard from './SearchResultCard.vue'
-import CustomDatePicker from './CustomDatePicker.vue' // 🌟 IMPORT CUSTOM COMPONENT
+import CustomDatePicker from './CustomDatePicker.vue'
+import KeyActivesGrid from './KeyActivesGrid.vue' // 🌟 IMPORT KEY ACTIVES COMPONENT
 import { useToast } from '../composables/useToast'
 import SafetyWarningModal from './SafetyWarningModal.vue'
 
@@ -11,7 +12,7 @@ const emit = defineEmits(['close', 'refresh'])
 const { addToast } = useToast()
 
 // --- State ---
-const masterCatalog = ref<any[]>([]) // Holds ALL products permanently
+const masterCatalog = ref<any[]>([])
 const isLoading = ref(true)
 
 // --- Filter State ---
@@ -150,6 +151,7 @@ const handleAddToShelf = async (forceSave = false) => {
       <div class="max-w-md sm:max-w-2xl lg:max-w-4xl w-full mx-auto h-full flex flex-col">
 
         <template v-if="!selectedProduct">
+          <!-- SEARCH & FILTER CATALOG (UNCHANGED) -->
           <div class="mb-6 relative max-w-2xl mx-auto w-full">
             <label class="block text-xs font-bold text-brand-primary dark:text-orange-400 uppercase tracking-wider mb-2">Search Catalog</label>
 
@@ -209,6 +211,7 @@ const handleAddToShelf = async (forceSave = false) => {
         </template>
 
         <div v-else class="space-y-6 animate-fade-in pb-10 max-w-md mx-auto w-full">
+          <!-- Back Button & Header -->
           <div class="flex items-center gap-3 mb-2">
              <button @click="clearSelection" class="p-2 -ml-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -216,6 +219,7 @@ const handleAddToShelf = async (forceSave = false) => {
             <h3 class="text-sm font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Configure Product</h3>
           </div>
 
+          <!-- Product Main Info Card -->
           <div class="bg-white dark:bg-stone-900 rounded-2xl border border-brand-primary-light dark:border-stone-800 p-4 shadow-sm flex items-start gap-4">
             <div class="w-16 h-16 bg-stone-50 dark:bg-stone-800 rounded-xl p-1 border border-stone-200 dark:border-stone-700 flex items-center justify-center flex-shrink-0">
               <img v-if="selectedProduct.image_url" :src="selectedProduct.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal p-1" />
@@ -228,6 +232,19 @@ const handleAddToShelf = async (forceSave = false) => {
             </div>
           </div>
 
+          <!-- 🌟 NEW: Product Description 🌟 -->
+          <div class="mb-4 px-1">
+            <p class="text-sm sm:text-[15px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
+              {{ selectedProduct.description || 'No description available for this product.' }}
+            </p>
+          </div>
+
+          <!-- 🌟 NEW: Key Actives Grid 🌟 -->
+          <KeyActivesGrid :ingredients="selectedProduct.product_ingredients" />
+
+          <hr class="border-stone-200 dark:border-stone-800 my-4" />
+
+          <!-- Configuration Section: Opened Status -->
           <div class="p-4 rounded-xl border border-stone-200 dark:border-stone-700 mb-4 bg-brand-bg-light dark:bg-stone-800/50 transition-all">
             <div class="flex items-center justify-between">
               <h4 class="text-sm font-bold text-brand-text dark:text-white">Have you opened this product?</h4>
@@ -244,6 +261,7 @@ const handleAddToShelf = async (forceSave = false) => {
             </div>
           </div>
 
+          <!-- Configuration Section: Expiration Tracking -->
           <div class="mb-4 transition-all">
             <label class="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-2">Expiration Tracking</label>
             <div class="flex gap-2 mb-3">
