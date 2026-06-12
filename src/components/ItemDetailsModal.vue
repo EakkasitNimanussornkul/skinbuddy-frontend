@@ -16,25 +16,24 @@ const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
 const router = useRouter()
 
+// 🌟 IMMEDIATE FIX: Ensure the item state is correct in memory before rendering 🌟
+// This guarantees that if the backend accidentally sent "unopened" for an active item,
+// the proxy object is instantly fixed so the child controller receives the right data.
+if (props.item.usage_state !== 'archived') {
+  if (props.item.opened_date || (props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY')) {
+    props.item.usage_state = 'active'
+  }
+}
+
 // --- UI Sub-Views & Animation State ───
 const isClosing = ref(false)
 const currentView = ref<'details' | 'archive_form'>('details')
-const isPulseTriggered = ref(false)
 
 const handleClose = () => {
   isClosing.value = true
-  isPulseTriggered.value = false
   setTimeout(() => { emit('close') }, 300)
 }
 
-// Ensure the pulse only triggers when we want it to (e.g., specific interactions)
-const triggerPulseAnimation = () => {
-  if (isPulseTriggered.value) return
-  isPulseTriggered.value = true
-  setTimeout(() => { isPulseTriggered.value = false }, 300)
-}
-
-// ─── ADDED: Missing Archiving Flow Function ───
 const startArchivingFlow = () => {
   currentView.value = 'archive_form'
 }
@@ -45,6 +44,11 @@ const name = computed(() => props.item.products?.name || 'Unknown Product')
 const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
 const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
 const description = computed(() => props.item.products?.description || 'No description available for this product.')
+
+// Check if the item is assigned to a routine
+const isAssignedToRoutine = computed(() => {
+  return props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY'
+})
 
 const activeOutcome = computed(() => props.item.archive_outcome || 'empty')
 const activeNotes = computed(() => props.item.archive_notes || '')
@@ -81,7 +85,7 @@ const handleUnarchive = async () => {
 const handleArchiveSuccess = () => {
   emit('refresh')
   handleClose()
-  addToast('Product archived. Find it in your Archived filter!', 'info') // 👈 Here is the missing toast!
+  addToast('Product archived. Find it in your Archived filter!', 'info')
 }
 const isConfirmingDelete = ref(false)
 const handleExecuteDelete = async () => {
@@ -107,16 +111,16 @@ const goToRoutinePlanner = () => {
     :class="isClosing ? 'animate-fade-out' : 'animate-fade-in'"
     @click.self="handleClose"
   >
-    <div
-      class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative"
-      :class="[isClosing ? 'animate-slide-down' : 'animate-slide-up', isPulseTriggered ? 'animate-interact-pulse' : '']"
-    >
+  <div
+    class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200/50 dark:border-stone-800 relative"
+    :class="isClosing ? 'animate-slide-down' : 'animate-slide-up'"
+  >
       <button @click="handleClose" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-stone-800/80 backdrop-blur-md rounded-full text-stone-500 hover:text-brand-primary dark:text-stone-300 dark:hover:text-orange-300 z-10 shadow-sm transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
       <template v-if="currentView === 'details'">
-        <div @click="triggerPulseAnimation" class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0 cursor-pointer">
+        <div class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0">
           <img v-if="imageUrl" :src="imageUrl" class="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl" />
           <svg v-else class="w-16 h-16 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
         </div>
@@ -130,7 +134,7 @@ const goToRoutinePlanner = () => {
           </div>
 
           <div class="mb-5">
-            <p class="text-[13px] text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
+            <p class="text-sm sm:text-[15px] text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
           </div>
 
           <div v-if="item.usage_state === 'archived'" class="mb-6 bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800/80 p-4 rounded-2xl flex flex-col gap-3">
@@ -161,10 +165,14 @@ const goToRoutinePlanner = () => {
               </div>
               <div>
                 <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Daily Regimen</h4>
-                <p class="text-[10px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-wider mt-0.5">Not Assigned</p>
+                <p class="text-[10px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-wider mt-0.5">
+                  {{ isAssignedToRoutine ? item.status : 'Not Assigned' }}
+                </p>
               </div>
             </div>
-            <button @click="goToRoutinePlanner" class="text-xs font-bold bg-white dark:bg-stone-800 text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 px-4 py-2.5 rounded-xl shadow-sm hover:bg-brand-primary hover:text-white dark:hover:bg-orange-900/60 transition-all">Assign to Routine</button>
+            <button @click="goToRoutinePlanner" class="text-xs font-bold bg-white dark:bg-stone-800 text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 px-4 py-2.5 rounded-xl shadow-sm hover:bg-brand-primary hover:text-white dark:hover:bg-orange-900/60 transition-all">
+              {{ isAssignedToRoutine ? 'Edit Routine' : 'Assign to Routine' }}
+            </button>
           </div>
 
           <KeyActivesGrid :ingredients="item.products?.product_ingredients" />
@@ -211,23 +219,4 @@ const goToRoutinePlanner = () => {
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(100%); } }
-
-@keyframes interactPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-}
-.animate-interact-pulse { animation: interactPulse 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-@media (min-width: 640px) {
-  .animate-slide-up { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  .animate-slide-down { animation: popOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-  @keyframes popOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
-  @keyframes interactPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02) rotate(0.5deg); }
-    100% { transform: scale(1); }
-  }
-}
 </style>

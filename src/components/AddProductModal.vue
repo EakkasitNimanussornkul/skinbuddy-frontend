@@ -3,8 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { searchProducts } from '../api/products'
 import { addToShelf, analyzeProduct } from '../api/shelfapi'
 import SearchResultCard from './SearchResultCard.vue'
+import CustomDatePicker from './CustomDatePicker.vue' // 🌟 IMPORT CUSTOM COMPONENT
 import { useToast } from '../composables/useToast'
 import SafetyWarningModal from './SafetyWarningModal.vue'
+
 const emit = defineEmits(['close', 'refresh'])
 const { addToast } = useToast()
 
@@ -22,6 +24,9 @@ const selectedProduct = ref<any>(null)
 const expirationDate = ref('')
 const selectedPAO = ref<number | null>(null)
 const isOpened = ref(true)
+
+// Get today's date in YYYY-MM-DD to pass down for past-date blocking
+const todayString = computed(() => new Date().toISOString().split('T')[0])
 
 // --- Warning Modal State ---
 const isAnalyzing = ref(false)
@@ -100,7 +105,7 @@ const handleAddToShelf = async (forceSave = false) => {
         analysisWarnings.value = analysis.warnings
         showWarningModal.value = true
         isAnalyzing.value = false
-        return // Stop the save process and wait for user input
+        return
       }
     } catch (error) {
       console.error("Analysis failed", error)
@@ -114,8 +119,8 @@ const handleAddToShelf = async (forceSave = false) => {
 
     await addToShelf({
       product_id: selectedProduct.value.id,
-      status: '', // We leave legacy status empty
-      usage_state: isOpened.value ? 'active' : 'unopened', //  The dynamic state
+      status: '',
+      usage_state: isOpened.value ? 'active' : 'unopened',
       opened_date: isOpened.value ? today : null,
       expiration_date: isOpened.value ? (expirationDate.value || null) : null,
       pao: selectedPAO.value
@@ -235,7 +240,7 @@ const handleAddToShelf = async (forceSave = false) => {
             </div>
             <div v-if="!isOpened" class="mt-3 border-t border-stone-200 dark:border-stone-700 pt-3 flex items-start gap-2 animate-fade-in">
               <svg class="w-4 h-4 text-stone-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-              <p class="text-xs text-stone-500 dark:text-stone-400 leading-relaxed"><strong class="text-stone-700 dark:text-stone-300">Keep it sealed!</strong> Select the PAO below. We will save it as "Unopened" and you can start the countdown later.</p>
+              <p class="text-xs text-stone-500 dark:text-stone-400 max-w-[200px] leading-relaxed"><strong class="text-stone-700 dark:text-stone-300">Keep it sealed!</strong> Select the PAO below. We will save it as "Unopened" and you can start the countdown later.</p>
             </div>
           </div>
 
@@ -246,8 +251,12 @@ const handleAddToShelf = async (forceSave = false) => {
               <button @click="setPAO(6)" :class="selectedPAO === 6 ? 'bg-stone-800 text-white border-stone-800' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-stone-400 transition-colors shadow-sm">6M</button>
               <button @click="setPAO(12)" :class="selectedPAO === 12 ? 'bg-stone-800 text-white border-stone-800' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-stone-400 transition-colors shadow-sm">12M</button>
             </div>
-            <div v-if="isOpened" class="animate-fade-in">
-              <input v-model="expirationDate" type="date" class="w-full bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-700 text-brand-text dark:text-white px-4 py-3 rounded-xl focus:outline-none focus:border-brand-primary transition-colors shadow-sm" />
+
+            <div v-if="isOpened" class="animate-fade-in relative z-20">
+              <CustomDatePicker
+                v-model="expirationDate"
+                :min-date="todayString"
+              />
             </div>
           </div>
 
@@ -271,7 +280,6 @@ const handleAddToShelf = async (forceSave = false) => {
     />
   </Teleport>
 </template>
-
 
 <style scoped>
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

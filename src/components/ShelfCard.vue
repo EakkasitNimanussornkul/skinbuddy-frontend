@@ -13,8 +13,25 @@ const name = computed(() => props.item.products?.name || 'Unknown Product')
 const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
 const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
 
-// --- Dynamic Database States ---
-const usageState = computed(() => props.item.usage_state || 'unopened')
+// --- Dynamic Smart States ---
+const usageState = computed(() => {
+  if (props.item.usage_state === 'archived') return 'archived'
+
+  // Smart Catch: If it has an opened date OR is in a routine, force it to 'active'
+  if (props.item.opened_date || (props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY')) {
+    return 'active'
+  }
+  return props.item.usage_state || 'unopened'
+})
+
+// Dynamically determine the badge text for active items
+const activeBadgeText = computed(() => {
+  const status = props.item.status
+  if (status && status.trim() !== '' && status !== 'EMPTY') {
+    return 'In Routine'
+  }
+  return 'Active'
+})
 
 // Reads the archive metadata log attributes saved to the item object
 const archiveOutcomeText = computed(() => {
@@ -72,7 +89,7 @@ const expirationStatus = computed(() => {
       <div class="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
         <ItemBadge v-if="usageState === 'archived'" type="archived" text="Archived" />
         <ItemBadge v-else-if="usageState === 'unopened'" type="unopened" text="Unopened" />
-        <ItemBadge v-else-if="usageState === 'active'" type="routine" text="In Routine" />
+        <ItemBadge v-else-if="usageState === 'active'" type="routine" :text="activeBadgeText" />
       </div>
 
       <button

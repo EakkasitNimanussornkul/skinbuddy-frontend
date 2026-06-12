@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { markItemOpened } from '../api/shelfapi'
+import { ref, computed } from 'vue' // Added computed
+import { markItemOpened, updateShelfStatus } from '../api/shelfapi'
 import { useToast } from '../composables/useToast'
+import CustomDatePicker from './CustomDatePicker.vue' // 🌟 IMPORT NEW COMPONENT
 
 const props = defineProps<{
   item: any
@@ -12,6 +13,9 @@ const { addToast } = useToast()
 
 const isEditingExpiration = ref(false)
 const editExpirationDate = ref('')
+
+// Get today's date to pass to the calendar to block past dates
+const todayString = computed(() => new Date().toISOString().split('T')[0])
 
 const startEditingExpiration = () => {
   editExpirationDate.value = props.item.expiration_date || ''
@@ -56,7 +60,9 @@ const handleStartPAO = async () => {
   }
 
   try {
-    await markItemOpened(props.item.id, openedDateStr, expDateStr, 'active')
+    await markItemOpened(props.item.id, openedDateStr, expDateStr || null, 'active')
+    await updateShelfStatus(props.item.id, 'active')
+
     props.item.opened_date = openedDateStr
     props.item.expiration_date = expDateStr
     props.item.usage_state = 'active'
@@ -87,7 +93,7 @@ const handleStartPAO = async () => {
         </div>
       </div>
 
-      <div v-else class="space-y-4 pt-1">
+      <div v-else class="space-y-4 pt-1 animate-fade-in">
         <div class="flex justify-between items-center mb-2">
           <span class="text-sm font-bold text-red-600 dark:text-red-400">Update Expiration</span>
           <button @click="isEditingExpiration = false" class="text-xs font-bold text-stone-400 hover:text-red-500 transition-colors">Cancel</button>
@@ -97,7 +103,12 @@ const handleStartPAO = async () => {
           <button @click="setEditPAO(6)" class="flex-1 py-2 bg-white dark:bg-stone-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-stone-600 dark:text-stone-300 hover:border-red-300 transition-colors">6M</button>
           <button @click="setEditPAO(12)" class="flex-1 py-2 bg-white dark:bg-stone-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-stone-600 dark:text-stone-300 hover:border-red-300 transition-colors">12M</button>
         </div>
-        <input v-model="editExpirationDate" type="date" class="w-full bg-white dark:bg-stone-900 border-2 border-red-100 dark:border-red-900/50 text-brand-text dark:text-white px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-400 text-sm shadow-sm transition-colors" />
+
+        <CustomDatePicker
+          v-model="editExpirationDate"
+          :min-date="todayString"
+        />
+
         <button @click="handleUpdateExpiration" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-md shadow-red-500/20 transition-all active:scale-[0.98]">Save Date</button>
       </div>
     </div>
@@ -118,3 +129,8 @@ const handleStartPAO = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
