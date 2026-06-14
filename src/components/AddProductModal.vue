@@ -4,7 +4,7 @@ import { searchProducts } from '../api/products'
 import { addToShelf, analyzeProduct } from '../api/shelfapi'
 import SearchResultCard from './SearchResultCard.vue'
 import CustomDatePicker from './CustomDatePicker.vue'
-import KeyActivesGrid from './KeyActivesGrid.vue' // 🌟 IMPORT KEY ACTIVES COMPONENT
+import KeyActivesGrid from './KeyActivesGrid.vue'
 import { useToast } from '../composables/useToast'
 import SafetyWarningModal from './SafetyWarningModal.vue'
 
@@ -94,6 +94,8 @@ const setPAO = (months: number) => {
   expirationDate.value = d.toISOString().split('T')[0]
 }
 
+// Inside addProductModal.vue -> handleAddToShelf action script
+
 const handleAddToShelf = async (forceSave = false) => {
   if (!selectedProduct.value) return
 
@@ -118,10 +120,10 @@ const handleAddToShelf = async (forceSave = false) => {
   try {
     const today = new Date().toISOString().split('T')[0]
 
+    // 🌟 REFACTORED: Enforced strict casing constraints and payload key mappings
     await addToShelf({
       product_id: selectedProduct.value.id,
-      status: '',
-      usage_state: isOpened.value ? 'active' : 'unopened',
+      usage_state: isOpened.value ? 'active' : 'unopened', // ✅ Matches database constraint case
       opened_date: isOpened.value ? today : null,
       expiration_date: isOpened.value ? (expirationDate.value || null) : null,
       pao: selectedPAO.value
@@ -232,14 +234,12 @@ const handleAddToShelf = async (forceSave = false) => {
             </div>
           </div>
 
-          <!-- 🌟 NEW: Product Description 🌟 -->
           <div class="mb-4 px-1">
             <p class="text-sm sm:text-[15px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
               {{ selectedProduct.description || 'No description available for this product.' }}
             </p>
           </div>
 
-          <!-- 🌟 NEW: Key Actives Grid 🌟 -->
           <KeyActivesGrid :ingredients="selectedProduct.product_ingredients" />
 
           <hr class="border-stone-200 dark:border-stone-800 my-4" />

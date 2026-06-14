@@ -7,7 +7,6 @@ export const getMyShelf = async () => {
 
 export const addToShelf = async (shelfData: {
   product_id: string,
-  status: string,
   usage_state: string,
   opened_date?: string | null,
   expiration_date?: string | null,
