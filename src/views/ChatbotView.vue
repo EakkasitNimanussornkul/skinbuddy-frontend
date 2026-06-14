@@ -54,16 +54,9 @@ const sendMessage = async () => {
         <header
             class="flex justify-between items-center px-5 py-4 bg-brand-surface-light dark:bg-brand-surface-dark border-b border-stone-200 dark:border-stone-800 z-10 transition-colors duration-300">
             <div class="flex items-center gap-3">
-                <!-- Bot avatar -->
                 <div
-                    class="w-9 h-9 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0">
-                    <svg viewBox="0 0 100 100" class="w-5 h-5 text-brand-primary dark:text-orange-400">
-                        <circle cx="50" cy="50" r="45" fill="currentColor" opacity="0.2" />
-                        <circle cx="35" cy="40" r="7" fill="currentColor" />
-                        <circle cx="65" cy="40" r="7" fill="currentColor" />
-                        <path d="M 32 58 Q 50 72 68 58" stroke="currentColor" stroke-width="8" stroke-linecap="round"
-                            fill="transparent" />
-                    </svg>
+                    class="w-9 h-9 rounded-full overflow-hidden border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0">
+                    <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-cover" />
                 </div>
                 <div>
                     <h1 class="font-serif font-bold text-base text-brand-text dark:text-stone-100 leading-tight">
@@ -87,16 +80,9 @@ const sendMessage = async () => {
         <main ref="chatContainer" class="flex-1 overflow-y-auto px-4 py-5 space-y-4">
             <div v-for="(msg, index) in chatStore.messages" :key="index"
                 :class="['flex items-end gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start']">
-                <!-- Bot avatar -->
                 <div v-if="msg.role === 'bot'"
-                    class="w-7 h-7 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 mb-0.5">
-                    <svg viewBox="0 0 100 100" class="w-4 h-4 text-brand-primary dark:text-orange-400">
-                        <circle cx="50" cy="50" r="45" fill="currentColor" opacity="0.2" />
-                        <circle cx="35" cy="40" r="7" fill="currentColor" />
-                        <circle cx="65" cy="40" r="7" fill="currentColor" />
-                        <path d="M 32 58 Q 50 72 68 58" stroke="currentColor" stroke-width="8" stroke-linecap="round"
-                            fill="transparent" />
-                    </svg>
+                    class="w-7 h-7 rounded-full overflow-hidden border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 mb-0.5">
+                    <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-cover" />
                 </div>
 
                 <!-- Bubble -->
@@ -129,14 +115,8 @@ const sendMessage = async () => {
             <!-- Typing indicator -->
             <div v-if="isLoading" class="flex items-end gap-2 justify-start">
                 <div
-                    class="w-7 h-7 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0">
-                    <svg viewBox="0 0 100 100" class="w-4 h-4 text-brand-primary dark:text-orange-400">
-                        <circle cx="50" cy="50" r="45" fill="currentColor" opacity="0.2" />
-                        <circle cx="35" cy="40" r="7" fill="currentColor" />
-                        <circle cx="65" cy="40" r="7" fill="currentColor" />
-                        <path d="M 32 58 Q 50 72 68 58" stroke="currentColor" stroke-width="8" stroke-linecap="round"
-                            fill="transparent" />
-                    </svg>
+                    class="w-7 h-7 rounded-full overflow-hidden border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0">
+                    <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-cover" />
                 </div>
                 <div
                     class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 rounded-2xl rounded-bl-sm px-4 py-3.5 shadow-sm flex gap-1.5 items-center">
