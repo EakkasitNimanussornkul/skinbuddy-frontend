@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useToast } from '../composables/useToast'
 import { updateUserSkinType } from '../api/authApi'
 import ExpressSkinSelectorModal from '../components/ExpressSkinSelectorModal.vue'
+import { useToast } from '../composables/useToast'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -44,22 +44,30 @@ const handleExpressConfirm = async (selectedType: string) => {
 }
 
 const quickActions = [
-  { label: 'AI Chat',
+  {
+    label: 'AI Chat',
     sublabel: 'Ask SkinBuddy anything',
     icon: 'chat',
-    route: '/chat' },
-  { label: 'Explore',
+    route: '/chat'
+  },
+  {
+    label: 'Explore',
     sublabel: 'Find & Compare Products',
     icon: 'search',
-    route: '/explore' },
-  { label: 'My Skincare',
+    route: '/explore'
+  },
+  {
+    label: 'My Skincare',
     sublabel: 'Your product stash',
     icon: 'storage',
-    route: '/shelf' },
-  { label: 'Routine',
+    route: '/shelf'
+  },
+  {
+    label: 'Routine',
     sublabel: 'Daily skin schedule',
     icon: 'routine',
-    route: '/routine' },
+    route: '/routine'
+  },
 ]
 
 const icons: Record<string, string> = {
@@ -82,29 +90,41 @@ const tip = tips[new Date().getDay() % tips.length]
 </script>
 
 <template>
-  <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-28 transition-colors duration-300">
+  <div
+    class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-28 transition-colors duration-300">
     <div class="max-w-md lg:max-w-5xl mx-auto px-4 sm:px-6 flex flex-col">
 
       <div class="flex items-center justify-between pt-6 pb-5">
         <button @click="router.push('/settings')" class="flex items-center gap-3 group">
-          <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-brand-primary/30 dark:border-orange-600/40 bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
-            <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
-            <svg v-else class="w-6 h-6 text-stone-400 dark:text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <div
+            class="w-11 h-11 rounded-full overflow-hidden border-2 border-brand-primary/30 dark:border-orange-600/40 bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+            <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile"
+              class="w-full h-full object-cover" />
+            <svg v-else class="w-6 h-6 text-stone-400 dark:text-stone-500" fill="none" stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
           <div class="text-left">
             <p class="text-[11px] text-brand-text-muted dark:text-stone-500 leading-none mb-0.5">Welcome back</p>
-            <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ authStore.user?.name || 'Guest' }}</p>
+            <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ authStore.user?.name ||
+              'Guest' }}</p>
           </div>
         </button>
 
         <div class="flex items-center gap-2">
-          <button class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 flex items-center justify-center text-brand-text-muted dark:text-stone-400 hover:text-brand-primary dark:hover:text-orange-400 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.bell" /></svg>
+          <button
+            class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 flex items-center justify-center text-brand-text-muted dark:text-stone-400 hover:text-brand-primary dark:hover:text-orange-400 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.bell" />
+            </svg>
           </button>
-          <button @click="router.push('/settings')" class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 flex items-center justify-center text-brand-text-muted dark:text-stone-400 hover:text-brand-primary dark:hover:text-orange-400 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.settings" /></svg>
+          <button @click="router.push('/settings')"
+            class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 flex items-center justify-center text-brand-text-muted dark:text-stone-400 hover:text-brand-primary dark:hover:text-orange-400 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.settings" />
+            </svg>
           </button>
         </div>
       </div>
@@ -126,106 +146,114 @@ const tip = tips[new Date().getDay() % tips.length]
               </div>
 
               <div class="w-16 h-16 flex-shrink-0">
-                <svg viewBox="0 0 120 120" class="w-full h-full text-white animate-jelly-float">
-                  <circle cx="60" cy="60" r="55" fill="currentColor" opacity="0.18" />
-
-                  <ellipse cx="60" cy="45" rx="40" ry="32" fill="currentColor" opacity="0.95" />
-
-                  <path d="M 35 68 L 30 106" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
-                  <path d="M 45 74 L 42 110" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
-                  <path d="M 55 76 L 55 112" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
-                  <path d="M 65 76 L 65 112" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
-                  <path d="M 75 74 L 78 110" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
-                  <path d="M 85 68 L 90 106" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" fill="transparent" opacity="0.9" />
-
-                  <circle cx="45" cy="55" r="2" fill="currentColor" opacity="0.4" />
-                  <circle cx="55" cy="58" r="2" fill="currentColor" opacity="0.4" />
-                  <circle cx="65" cy="58" r="2" fill="currentColor" opacity="0.4" />
-                  <circle cx="75" cy="55" r="2" fill="currentColor" opacity="0.4" />
-                  <circle cx="42" cy="74" r="2.5" fill="currentColor" opacity="0.4" />
-                  <circle cx="78" cy="74" r="2.5" fill="currentColor" opacity="0.4" />
-
-                  <circle cx="48" cy="42" r="4" fill="#4c1d05" class="animate-jelly-blink" />
-                  <circle cx="72" cy="42" r="4" fill="#4c1d05" class="animate-jelly-blink" />
-                  <path d="M 54 51 Q 60 57 66 51" stroke="#4c1d05" stroke-width="3.5" stroke-linecap="round" fill="transparent" />
-                </svg>
+                <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-contain animate-jelly-float" />
               </div>
             </div>
           </div>
 
-          <div class="lg:hidden bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
-            <button @click="router.push('/profile')" class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
-              <div class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div
+            class="lg:hidden bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
+            <button @click="router.push('/profile')"
+              class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
+              <div
+                class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.skin" />
                 </svg>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">Skin Type</p>
-                <p class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
+                <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">
+                  Skin Type</p>
+                <p
+                  class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
                   {{ authStore.user?.skin_type || 'Take the quiz to discover yours' }}
                 </p>
               </div>
-              <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </button>
             <div class="flex gap-2">
-              <button @click="showSelector = true" class="flex-1 text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30">
-                  Update Skin Type
+              <button @click="showSelector = true"
+                class="flex-1 text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30">
+                Update Skin Type
               </button>
-              <button @click="router.push('/quiz')" class="flex-1 text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
+              <button @click="router.push('/quiz')"
+                class="flex-1 text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
                 {{ authStore.user?.skin_type ? 'Retake Quiz' : 'Take Quiz' }}
               </button>
             </div>
           </div>
 
           <div>
-            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">Others Features</h3>
+            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">
+              Others Features</h3>
             <div class="grid grid-cols-2 gap-4">
-              <button v-for="action in quickActions" :key="action.route" @click="router.push(action.route)" class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-3xl p-5 text-left hover:border-brand-primary/40 dark:hover:border-orange-600/40 hover:scale-[1.015] hover:shadow-md active:scale-[0.98] transition-all group flex flex-col justify-between min-h-[140px] md:min-h-[150px]">
+              <button v-for="action in quickActions" :key="action.route" @click="router.push(action.route)"
+                class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-3xl p-5 text-left hover:border-brand-primary/40 dark:hover:border-orange-600/40 hover:scale-[1.015] hover:shadow-md active:scale-[0.98] transition-all group flex flex-col justify-between min-h-[140px] md:min-h-[150px]">
                 <div>
-                  <div class="w-11 h-11 rounded-2xl bg-brand-primary/10 dark:bg-orange-900/25 border border-brand-primary/15 dark:border-orange-700/25 flex items-center justify-center mb-3 group-hover:bg-brand-primary/20 dark:group-hover:bg-orange-900/40 transition-colors">
-                    <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div
+                    class="w-11 h-11 rounded-2xl bg-brand-primary/10 dark:bg-orange-900/25 border border-brand-primary/15 dark:border-orange-700/25 flex items-center justify-center mb-3 group-hover:bg-brand-primary/20 dark:group-hover:bg-orange-900/40 transition-colors">
+                    <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons[action.icon]" />
                     </svg>
                   </div>
                   <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ action.label }}</p>
                 </div>
-                <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-2 leading-snug">{{ action.sublabel }}</p>
+                <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-2 leading-snug">{{ action.sublabel }}
+                </p>
               </button>
             </div>
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-3 px-1">
-              <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">Today's Routine</h3>
-              <button @click="router.push('/routine')" class="text-xs font-bold text-brand-primary dark:text-orange-400 hover:underline underline-offset-2 transition-all">See all</button>
+              <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">Today's
+                Routine</h3>
+              <button @click="router.push('/routine')"
+                class="text-xs font-bold text-brand-primary dark:text-orange-400 hover:underline underline-offset-2 transition-all">See
+                all</button>
             </div>
 
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+            <div
+              class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-3xl shadow-sm overflow-hidden flex flex-col">
               <div class="flex items-center gap-4 px-5 py-4 border-b border-stone-100 dark:border-stone-800">
-                <div class="w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-orange-400 dark:text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                <div
+                  class="w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-orange-400 dark:text-orange-300" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
                   </svg>
                 </div>
                 <div class="flex-1">
                   <p class="text-xs font-bold text-brand-text dark:text-stone-100">Morning Routine</p>
-                  <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-0.5">Cleanser · Toner · Moisturiser · SPF</p>
+                  <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-0.5">Cleanser · Toner · Moisturiser
+                    · SPF</p>
                 </div>
-                <span class="text-[10px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-800/40">Done</span>
+                <span
+                  class="text-[10px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-800/40">Done</span>
               </div>
 
               <div class="flex items-center gap-4 px-5 py-4">
-                <div class="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-brand-text-muted dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                <div
+                  class="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-brand-text-muted dark:text-stone-400" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                   </svg>
                 </div>
                 <div class="flex-1">
                   <p class="text-xs font-bold text-brand-text dark:text-stone-100">Evening Routine</p>
-                  <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-0.5">Double Cleanse · Serum · Night Cream</p>
+                  <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-0.5">Double Cleanse · Serum · Night
+                    Cream</p>
                 </div>
-                <span class="text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-brand-text-muted dark:text-stone-400 px-2.5 py-1 rounded-full border border-stone-200 dark:border-stone-700">Pending</span>
+                <span
+                  class="text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-brand-text-muted dark:text-stone-400 px-2.5 py-1 rounded-full border border-stone-200 dark:border-stone-700">Pending</span>
               </div>
             </div>
           </div>
@@ -233,28 +261,39 @@ const tip = tips[new Date().getDay() % tips.length]
         </div>
 
         <div class="lg:col-span-4 flex flex-col gap-6 w-full lg:pt-0">
-        <div class="hidden lg:block">
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
-              <button @click="router.push('/profile')" class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
-                <div class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="hidden lg:block">
+            <div
+              class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
+              <button @click="router.push('/profile')"
+                class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
+                <div
+                  class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.skin" />
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">Skin Type</p>
-                  <p class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
+                  <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">
+                    Skin Type</p>
+                  <p
+                    class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
                     {{ authStore.user?.skin_type || 'Take the quiz to discover yours' }}
                   </p>
                 </div>
-                <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none"
+                  stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
 
               <div class="flex flex-col gap-2">
-                <button @click="showSelector = true" class="w-full text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30 shadow-sm">
+                <button @click="showSelector = true"
+                  class="w-full text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30 shadow-sm">
                   Update Current Skin Type
                 </button>
-                <button @click="router.push('/quiz')" class="w-full text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
+                <button @click="router.push('/quiz')"
+                  class="w-full text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
                   {{ authStore.user?.skin_type ? 'Retake Quiz' : 'Take Quiz' }}
                 </button>
               </div>
@@ -262,11 +301,16 @@ const tip = tips[new Date().getDay() % tips.length]
           </div>
 
           <div>
-            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">Tip of the Day</h3>
-            <div class="bg-brand-primary/8 dark:bg-orange-900/15 border border-brand-primary/20 dark:border-orange-700/25 rounded-3xl px-5 py-4 flex gap-4 items-start shadow-sm">
-              <div class="w-9 h-9 rounded-xl bg-brand-primary/15 dark:bg-orange-900/35 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.636-6.364l.707.707M12 21v-1M6.343 17.657l-.707-.707M17.657 17.657l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">Tip
+              of the Day</h3>
+            <div
+              class="bg-brand-primary/8 dark:bg-orange-900/15 border border-brand-primary/20 dark:border-orange-700/25 rounded-3xl px-5 py-4 flex gap-4 items-start shadow-sm">
+              <div
+                class="w-9 h-9 rounded-xl bg-brand-primary/15 dark:bg-orange-900/35 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.636-6.364l.707.707M12 21v-1M6.343 17.657l-.707-.707M17.657 17.657l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
                 </svg>
               </div>
               <p class="text-sm text-brand-text dark:text-stone-200 leading-relaxed">{{ tip.text }}</p>
@@ -277,12 +321,8 @@ const tip = tips[new Date().getDay() % tips.length]
       </div>
     </div>
 
-    <ExpressSkinSelectorModal
-      :is-open="showSelector"
-      :is-saving="isSaving"
-      @close="showSelector = false"
-      @confirm="handleExpressConfirm"
-    />
+    <ExpressSkinSelectorModal :is-open="showSelector" :is-saving="isSaving" @close="showSelector = false"
+      @confirm="handleExpressConfirm" />
   </div>
 </template>
 
@@ -293,17 +333,14 @@ const tip = tips[new Date().getDay() % tips.length]
 }
 
 @keyframes jellyFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-4px) scale(1.02); }
-}
 
-.animate-jelly-blink {
-  animation: jellyBlink 3.5s infinite;
-  transform-origin: center;
-}
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
 
-@keyframes jellyBlink {
-  0%, 95%, 98%, 100% { transform: scaleY(1); opacity: 1; }
-  96%, 97% { transform: scaleY(0.1); opacity: 0.4; }
+  50% {
+    transform: translateY(-4px) scale(1.02);
+  }
 }
 </style>
