@@ -16,9 +16,7 @@ const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
 const router = useRouter()
 
-// 🌟 IMMEDIATE FIX: Ensure the item state is correct in memory before rendering 🌟
-// This guarantees that if the backend accidentally sent "unopened" for an active item,
-// the proxy object is instantly fixed so the child controller receives the right data.
+// Smart Catch: Instantly fix the state if the backend sends bad data
 if (props.item.usage_state !== 'archived') {
   if (props.item.opened_date || (props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY')) {
     props.item.usage_state = 'active'
@@ -45,7 +43,6 @@ const category = computed(() => props.item.category || props.item.products?.cate
 const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
 const description = computed(() => props.item.products?.description || 'No description available for this product.')
 
-// Check if the item is assigned to a routine
 const isAssignedToRoutine = computed(() => {
   return props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY'
 })
@@ -62,10 +59,18 @@ const archiveOutcomeDetails = computed(() => {
   return details[activeOutcome.value as 'empty' | 'discarded' | 'expired'] || details.empty
 })
 
+// 🌟 BULLETPROOF LIFESPAN CALCULATION 🌟
 const usageLifespan = computed(() => {
   if (!props.item?.opened_date) return null
   const opened = new Date(props.item.opened_date)
-  const endPoint = props.item.updated_at ? new Date(props.item.updated_at) : new Date()
+
+  let endPoint = new Date() // Default to today (ticking)
+
+  // If archived, FREEZE the clock using the archived_at database timestamp
+  if (props.item.usage_state === 'archived' && props.item.archived_at) {
+    endPoint = new Date(props.item.archived_at)
+  }
+
   const diffTime = endPoint.getTime() - opened.getTime()
   return diffTime > 0 ? Math.ceil(diffTime / (1000 * 3600 * 24)) : 0
 })
@@ -73,8 +78,14 @@ const usageLifespan = computed(() => {
 const handleUnarchive = async () => {
   try {
     const restoredState = props.item.opened_date ? 'active' : 'unopened'
-    await updateShelfStatus(props.item.id, restoredState)
+    await updateShelfStatus(props.item.id, restoredState, { outcome: null, notes: null, archived_at: null })
     props.item.usage_state = restoredState
+
+    // Clear out local proxy so UI reflects the wipe immediately
+    props.item.archive_outcome = null
+    props.item.archive_notes = null
+    props.item.archived_at = null
+
     emit('refresh')
     handleClose()
     addToast('Product successfully restored to your shelf!', 'success')
@@ -82,11 +93,13 @@ const handleUnarchive = async () => {
     addToast('Failed to restore product', 'error')
   }
 }
+
 const handleArchiveSuccess = () => {
   emit('refresh')
   handleClose()
   addToast('Product archived. Find it in your Archived filter!', 'info')
 }
+
 const isConfirmingDelete = ref(false)
 const handleExecuteDelete = async () => {
   try {
@@ -158,26 +171,47 @@ const goToRoutinePlanner = () => {
             </div>
           </div>
 
-          <div v-else class="mb-6 bg-brand-primary/5 dark:bg-orange-900/10 border border-brand-primary/20 dark:border-orange-900/30 p-4 rounded-2xl flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-brand-primary-light dark:bg-orange-900/40 text-brand-primary dark:text-orange-400 flex items-center justify-center">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <div v-else class="mb-6 flex flex-col gap-3">
+
+            <div class="p-4 bg-brand-primary/5 dark:bg-orange-900/10 border border-brand-primary/20 dark:border-orange-900/30 rounded-2xl flex flex-row items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-brand-primary-light/50 dark:bg-orange-900/40 text-brand-primary dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                  <h4 class="text-[10px] font-bold uppercase tracking-wider text-brand-primary/70 dark:text-orange-400/70 mb-0.5">Daily Regimen</h4>
+                  <p class="text-sm font-bold text-brand-text dark:text-stone-200 leading-none">
+                    {{ isAssignedToRoutine ? item.status : 'Not Assigned' }}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Daily Regimen</h4>
-                <p class="text-[10px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-wider mt-0.5">
-                  {{ isAssignedToRoutine ? item.status : 'Not Assigned' }}
-                </p>
+              <button @click="goToRoutinePlanner" class="px-4 py-2 text-xs font-bold bg-white dark:bg-stone-800 text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 rounded-xl shadow-sm hover:bg-brand-primary hover:text-white dark:hover:bg-orange-900/60 transition-all flex-shrink-0">
+                {{ isAssignedToRoutine ? 'Edit' : 'Assign' }}
+              </button>
+            </div>
+
+            <div class="p-4 bg-stone-50 dark:bg-stone-900/40 border border-stone-200/60 dark:border-stone-800/80 rounded-2xl flex flex-row items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-stone-200/60 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                  <h4 class="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-0.5">Shelf Lifespan</h4>
+                  <p class="text-sm font-bold text-brand-text dark:text-stone-200 leading-none flex items-baseline gap-1">
+                    <span v-if="usageLifespan !== null">
+                      <span class="text-[17px] font-mono text-brand-primary dark:text-orange-400">{{ usageLifespan }}</span> Days
+                    </span>
+                    <span v-else>Unopened</span>
+                  </p>
+                </div>
               </div>
             </div>
-            <button @click="goToRoutinePlanner" class="text-xs font-bold bg-white dark:bg-stone-800 text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 px-4 py-2.5 rounded-xl shadow-sm hover:bg-brand-primary hover:text-white dark:hover:bg-orange-900/60 transition-all">
-              {{ isAssignedToRoutine ? 'Edit Routine' : 'Assign to Routine' }}
-            </button>
+
           </div>
 
           <KeyActivesGrid :ingredients="item.products?.product_ingredients" />
 
-          <ProductLifecycleController :item="item" @updated="emit('refresh')" />
+          <ProductLifecycleController v-if="item.usage_state !== 'archived'" :item="item" @updated="emit('refresh')" />
         </div>
 
         <div class="p-4 border-t border-stone-200 dark:border-stone-800 bg-brand-bg-light dark:bg-brand-bg-dark flex-shrink-0">

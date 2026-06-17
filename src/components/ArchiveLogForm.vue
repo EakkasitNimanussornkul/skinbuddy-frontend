@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { updateShelfStatus } from '../api/shelfapi'
+import { useToast } from '../composables/useToast'
 
 const props = defineProps<{
   item: any
@@ -8,19 +9,29 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['back', 'success'])
+const { addToast } = useToast()
 
 const archiveOutcome = ref<'empty' | 'discarded' | 'expired'>('empty')
 const archiveNotes = ref('')
+const isSubmitting = ref(false)
 
 const executeArchive = async () => {
+  isSubmitting.value = true
   try {
+    const archivedDate = new Date().toISOString()
+
     await updateShelfStatus(props.item.id, 'archived', {
       outcome: archiveOutcome.value,
-      notes: archiveNotes.value
+      notes: archiveNotes.value,
+      archived_at: archivedDate
     })
-    emit('success')
+
+    emit('success') // Tells the modal to close and refresh!
   } catch (error) {
-    // Parent handle errors via catch cascade patterns
+    console.error("Archive Failed:", error)
+    addToast('Failed to save archive entry. Check backend logs.', 'error')
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
@@ -67,8 +78,9 @@ const executeArchive = async () => {
   </div>
 
   <div class="p-4 border-t border-stone-200 dark:border-stone-800 bg-brand-bg-light dark:bg-brand-bg-dark flex-shrink-0">
-    <button @click="executeArchive" class="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-orange-800 active:scale-[0.98] transition-all text-sm">
-      Complete Archive Entry
+    <button @click="executeArchive" :disabled="isSubmitting" class="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-orange-800 active:scale-[0.98] transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-70">
+      <svg v-if="isSubmitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      {{ isSubmitting ? 'Saving...' : 'Complete Archive Entry' }}
     </button>
   </div>
 </template>

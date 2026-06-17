@@ -24,26 +24,27 @@ export const analyzeProduct = async (productId: string) => {
 export const markItemOpened = async (
   itemId: string,
   openedDate: string,
-  expirationDate: string,
+  expirationDate: string | null,
   usageState: string
 ) => {
   const response = await apiClient.patch(`/shelf/${itemId}/open`, {
     opened_date: openedDate,
     expiration_date: expirationDate,
-    usage_state: usageState // Send to backend
+    usage_state: usageState
   })
   return response.data
 }
 export const updateShelfStatus = async (
   itemId: string,
   usageState: string,
-  metadata?: { outcome?: string; notes?: string }
+  metadata?: { outcome?: string | null; notes?: string | null; archived_at?: string | null }
 ) => {
   const url = `/shelf/${itemId}/status`;
   const response = await apiClient.patch(url, {
     usage_state: usageState,
-    outcome: metadata?.outcome || null,
-    notes: metadata?.notes || null
+    outcome: metadata?.outcome !== undefined ? metadata.outcome : null,
+    notes: metadata?.notes !== undefined ? metadata.notes : null,
+    archived_at: metadata?.archived_at !== undefined ? metadata.archived_at : null
   });
 
   return response.data;
