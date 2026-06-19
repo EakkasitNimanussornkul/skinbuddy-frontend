@@ -75,24 +75,6 @@ const usageLifespan = computed(() => {
   return diffTime > 0 ? Math.ceil(diffTime / (1000 * 3600 * 24)) : 0
 })
 
-const handleUnarchive = async () => {
-  try {
-    const restoredState = props.item.opened_date ? 'active' : 'unopened'
-    await updateShelfStatus(props.item.id, restoredState, { outcome: null, notes: null, archived_at: null })
-    props.item.usage_state = restoredState
-
-    // Clear out local proxy so UI reflects the wipe immediately
-    props.item.archive_outcome = null
-    props.item.archive_notes = null
-    props.item.archived_at = null
-
-    emit('refresh')
-    handleClose()
-    addToast('Product successfully restored to your shelf!', 'success')
-  } catch (error) {
-    addToast('Failed to restore product', 'error')
-  }
-}
 
 const handleArchiveSuccess = () => {
   emit('refresh')
@@ -217,7 +199,6 @@ const goToRoutinePlanner = () => {
         <div class="p-4 border-t border-stone-200 dark:border-stone-800 bg-brand-bg-light dark:bg-brand-bg-dark flex-shrink-0">
           <div v-if="!isConfirmingDelete" class="space-y-2">
             <button v-if="item.usage_state !== 'archived'" @click="startArchivingFlow" class="w-full py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700 transition-all text-sm">Archive Product</button>
-            <button v-else @click="handleUnarchive" class="w-full py-3 bg-brand-primary/10 dark:bg-orange-900/20 text-brand-primary dark:text-orange-400 font-bold rounded-xl border border-brand-primary/20 dark:border-orange-900/30 hover:bg-brand-primary/20 transition-all text-sm animate-fade-in">Restore to Shelf (Unarchive)</button>
             <button @click="isConfirmingDelete = true" class="w-full py-2 bg-transparent text-red-500 font-bold text-xs uppercase tracking-widest hover:text-red-600 transition-all">Permanently Delete</button>
           </div>
           <div v-else>
