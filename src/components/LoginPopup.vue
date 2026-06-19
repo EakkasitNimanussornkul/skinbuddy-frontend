@@ -6,14 +6,8 @@
             <div
                 class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl p-8 text-center max-w-sm w-[90%] shadow-2xl border border-stone-200 dark:border-stone-800 transition-colors duration-300">
 
-                <!-- Icon badge -->
-                <div
-                    class="w-16 h-16 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-5 border border-brand-primary/20 dark:border-orange-700/30">
-                    <svg class="w-8 h-8 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                <div class="w-20 h-20 mx-auto mb-5 flex items-center justify-center">
+                    <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-contain" />
                 </div>
 
                 <!-- Heading -->
