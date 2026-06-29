@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { searchProducts } from '../api/products'
-import { addToShelf, analyzeProduct } from '../api/shelfapi'
-import SearchResultCard from './SearchResultCard.vue'
-import CustomDatePicker from './CustomDatePicker.vue'
+import { searchProducts } from '../../api/products.ts'
+import { addToShelf, analyzeProduct } from '../../api/shelfapi.ts'
+import SearchResultCard from '../Catalog/SearchResultCard.vue'
+import CustomDatePicker from '../Shared/CustomDatePicker.vue'
 import KeyActivesGrid from './KeyActivesGrid.vue'
-import { useToast } from '../composables/useToast'
+import { useToast } from '../../composables/useToast.ts'
 import SafetyWarningModal from './SafetyWarningModal.vue'
 
 const emit = defineEmits(['close', 'refresh'])
@@ -23,8 +23,12 @@ const selectedBrand = ref('All')
 // --- Configuration State ---
 const selectedProduct = ref<any>(null)
 const expirationDate = ref('')
-const selectedPAO = ref<number | null>(null)
+const selectedPao = ref<number | null>(null)
 const isOpened = ref(true)
+
+// NEW: Tooltip and PAO Array
+const showPaoTooltip = ref(false)
+const paoOptions = [1, 3, 6, 9, 12, 18, 24, 36]
 
 // Get today's date in YYYY-MM-DD to pass down for past-date blocking
 const todayString = computed(() => new Date().toISOString().split('T')[0])
@@ -83,12 +87,12 @@ const selectProduct = (product: any) => {
 const clearSelection = () => {
   selectedProduct.value = null
   isOpened.value = true
-  selectedPAO.value = null
+  selectedPao.value = null
   expirationDate.value = ''
 }
 
-const setPAO = (months: number) => {
-  selectedPAO.value = months
+const setPao= (months: number) => {
+  selectedPao.value = months
   const d = new Date()
   d.setMonth(d.getMonth() + months)
   expirationDate.value = d.toISOString().split('T')[0]
@@ -126,7 +130,7 @@ const handleAddToShelf = async (forceSave = false) => {
       usage_state: isOpened.value ? 'active' : 'unopened', // ✅ Matches database constraint case
       opened_date: isOpened.value ? today : null,
       expiration_date: isOpened.value ? (expirationDate.value || null) : null,
-      pao: selectedPAO.value
+      pao: selectedPao.value
     })
 
     addToast('Successfully added to your shelf!', 'success')
@@ -264,14 +268,54 @@ const handleAddToShelf = async (forceSave = false) => {
               </p>
             </div>
           </div>
+          <div class="flex items-center gap-2 mb-3 relative">
+            <label class="text-sm font-semibold text-brand-text dark:text-white">
+              Period After Opening (PAO)
+            </label>
 
-          <!-- Configuration Section: Expiration Tracking -->
+            <button
+              type="button"
+              @click.prevent="showPaoTooltip = !showPaoTooltip"
+              @mouseenter="showPaoTooltip = true"
+              @mouseleave="showPaoTooltip = false"
+              class="text-stone-400 hover:text-orange-500 transition-colors focus:outline-none p-1 -ml-1"
+            >
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+
+            <Transition name="fade">
+              <div
+                v-if="showPaoTooltip"
+                class="absolute bottom-full left-0 mb-2 w-64 p-3 bg-stone-800 dark:bg-stone-700 text-xs text-white leading-relaxed rounded-xl shadow-xl z-50 pointer-events-none"
+              >
+                Look for the small open-jar symbol on the back of your physical product.
+                <br><br>
+                <span class="font-bold text-orange-300">"6M"</span> means it is safe for 6 months after opening.
+                <div class="absolute top-full left-6 border-[6px] border-transparent border-t-stone-800 dark:border-t-stone-700"></div>
+              </div>
+            </Transition>
+          </div>
+
           <div class="mb-4 transition-all">
             <label class="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-2">Expiration Tracking</label>
-            <div class="flex gap-2 mb-3">
-              <button @click="setPAO(3)" :class="selectedPAO === 3 ? 'bg-stone-800 text-white border-stone-800' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-stone-400 transition-colors shadow-sm">3M</button>
-              <button @click="setPAO(6)" :class="selectedPAO === 6 ? 'bg-stone-800 text-white border-stone-800' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-stone-400 transition-colors shadow-sm">6M</button>
-              <button @click="setPAO(12)" :class="selectedPAO === 12 ? 'bg-stone-800 text-white border-stone-800' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="flex-1 py-2 rounded-lg text-xs font-bold border hover:border-stone-400 transition-colors shadow-sm">12M</button>
+
+            <div class="flex overflow-x-auto gap-3 pb-2 snap-x hide-scrollbar -mx-1 px-1">
+              <button
+                v-for="months in paoOptions"
+                :key="months"
+                type="button"
+                @click="setPao(months)"
+                :class="[
+                  'snap-start shrink-0 px-6 py-2.5 rounded-xl border text-sm font-bold transition-all shadow-sm',
+                  selectedPao === months
+                    ? 'bg-stone-800 text-white border-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:border-stone-100'
+                    : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500'
+                ]"
+              >
+                {{ months }}M
+              </button>
             </div>
 
             <div v-if="isOpened" class="animate-fade-in relative z-20">
@@ -310,4 +354,13 @@ const handleAddToShelf = async (forceSave = false) => {
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
 </style>

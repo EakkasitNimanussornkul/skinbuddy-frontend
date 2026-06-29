@@ -5,8 +5,8 @@ import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/themeStore'
 import { useToast } from '../composables/useToast'
 import { updateUserSkinType } from '../api/authApi'
-import SettingsRow from '../components/SettingsRow.vue'
-import ExpressSkinSelectorModal from '../components/ExpressSkinSelectorModal.vue'
+import SettingsRow from '../components/Auth/SettingsRow.vue'
+import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()

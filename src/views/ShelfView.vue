@@ -3,12 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { getMyShelf, removeFromShelf } from '../api/shelfapi'
 import { useToast } from '../composables/useToast'
 
-import ShelfCard from '../components/ShelfCard.vue'
-import ItemDetailsModal from '../components/ItemDetailsModal.vue'
-import AddProductModal from '../components/AddProductModal.vue'
-import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
-import EmptyState from '../components/EmptyState.vue'
-import FilterPills from '../components/FilterPills.vue'
+import ShelfCard from '../components/Shelf/ShelfCard.vue'
+import ItemDetailsModal from '../components/Shelf/ItemDetailsModal.vue'
+import AddProductModal from '../components/Shelf/AddProductModal.vue'
+import ConfirmDeleteModal from '../components/Shared/ConfirmDeleteModal.vue'
+import EmptyState from '../components/Shared/EmptyState.vue'
+import FilterPills from '../components/Catalog/FilterPills.vue'
 // --- State ---
 const myShelf = ref<any[]>([])
 const isLoading = ref(true)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { updateShelfStatus } from '../api/shelfapi'
-import { useToast } from '../composables/useToast'
+import { updateShelfStatus } from '../../api/shelfapi'
+import { useToast } from '../../composables/useToast'
 
 const props = defineProps<{
   item: any

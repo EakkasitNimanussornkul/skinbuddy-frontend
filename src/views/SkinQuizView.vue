@@ -7,10 +7,10 @@ import { baumannQuiz } from '../data/baumannQuiz'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from '../composables/useToast'
 
-import QuestionCard from '../components/QuestionCard.vue'
-import QuizResultDashboard from '../components/QuizResultDashboard.vue'
-import ConfirmCancelModal from '../components/ConfirmCancelModal.vue'
-import LoadingScreen from '../components/LoadingScreen.vue'
+import QuestionCard from '../components/Quiz/QuestionCard.vue'
+import QuizResultDashboard from '../components/Quiz/QuizResultDashboard.vue'
+import ConfirmCancelModal from '../components/Shared/ConfirmCancelModal.vue'
+import LoadingScreen from '../components/Shared/LoadingScreen.vue'
 
 const quizStore = useQuizStore()
 const router = useRouter()

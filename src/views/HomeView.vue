@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { updateUserSkinType } from '../api/authApi'
-import ExpressSkinSelectorModal from '../components/ExpressSkinSelectorModal.vue'
+import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
 import { useToast } from '../composables/useToast'
 import { useAuthStore } from '../stores/auth'
 

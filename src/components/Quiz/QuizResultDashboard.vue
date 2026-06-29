@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { skinProfiles } from '../data/skinprofiles'
+import { skinProfiles } from '../../data/skinprofiles'
 
 const props = defineProps<{
   skinType: string

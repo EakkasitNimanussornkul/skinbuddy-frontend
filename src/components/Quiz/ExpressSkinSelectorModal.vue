@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { skinProfiles } from '../data/skinprofiles' // Using your existing data file!
+import { skinProfiles } from '../../data/skinprofiles.ts'
 import SkinProfileCard from './SkinProfileCard.vue'
 
 const props = defineProps<{

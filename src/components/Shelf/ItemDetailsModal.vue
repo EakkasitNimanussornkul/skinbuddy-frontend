@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { removeFromShelf, updateShelfStatus } from '../api/shelfapi'
-import { useToast } from '../composables/useToast'
+import { removeFromShelf, updateShelfStatus } from '../../api/shelfapi.ts'
+import { useToast } from '../../composables/useToast.ts'
 
 import KeyActivesGrid from './KeyActivesGrid.vue'
 import ProductLifecycleController from './ProductLifecycleController.vue'
