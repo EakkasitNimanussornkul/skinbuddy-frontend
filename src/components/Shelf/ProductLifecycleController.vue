@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue' // Added computed
 import { markItemOpened, updateShelfStatus } from '../../api/shelfapi.js'
 import { useToast } from '../../composables/useToast.js'
-import CustomDatePicker from '../Shared/CustomDatePicker.vue' // 🌟 IMPORT NEW COMPONENT
+import CustomDatePicker from '../Shared/CustomDatePicker.vue'
 
 const props = defineProps<{
   item: any
