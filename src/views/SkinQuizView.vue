@@ -10,7 +10,7 @@ import { useToast } from '../composables/useToast'
 import QuestionCard from '../components/QuestionCard.vue'
 import QuizResultDashboard from '../components/QuizResultDashboard.vue'
 import ConfirmCancelModal from '../components/ConfirmCancelModal.vue'
-import LoadingScreen from '../components/LoadingScreen.vue' // NEW IMPORT
+import LoadingScreen from '../components/LoadingScreen.vue'
 
 const quizStore = useQuizStore()
 const router = useRouter()
@@ -18,17 +18,14 @@ const authStore = useAuthStore()
 const { addToast } = useToast()
 const totalQuestions = baumannQuiz.length
 
-// Loading and Modal State
 const showCancelModal = ref(false)
-const isLoading = ref(true) // Start the page in a loading state
+const isLoading = ref(true)
 
 onMounted(() => {
-  // Reset if they are coming back for a retake
   if (quizStore.currentQuestionIndex >= totalQuestions) {
     quizStore.resetQuiz()
   }
 
-  // Create the artificial "App Loading" delay (1.8 seconds)
   setTimeout(() => {
     isLoading.value = false
   }, 1800)
@@ -44,7 +41,6 @@ const isQuizFinished = computed(() => {
   return quizStore.currentQuestionIndex >= totalQuestions
 })
 
-// Inside SkinQuizView.vue <script setup>
 const handleAnswer = (payload: { points: number, optionIndex: number | 'not_sure' }) => {
   if (currentQuestionData.value) {
     quizStore.answerQuestion(
@@ -56,12 +52,10 @@ const handleAnswer = (payload: { points: number, optionIndex: number | 'not_sure
   }
 }
 
-// 1. Opens the warning modal
 const requestCancel = () => {
   showCancelModal.value = true
 }
 
-// 2. Executes the actual cancel if they click "Yes, Exit"
 const executeCancel = () => {
   showCancelModal.value = false
   quizStore.resetQuiz()
@@ -96,15 +90,12 @@ const saveAndContinue = async () => {
 <template>
   <div class="min-h-screen bg-[#F7F9F8] dark:bg-[#111412] font-sans text-slate-800 relative flex flex-col">
 
-    <!-- THE FULL-SCREEN LOADER -->
     <Transition name="fade">
       <LoadingScreen v-if="isLoading" message="Preparing Quiz..." />
     </Transition>
 
-    <!-- WRAPPER: Only renders AFTER loading is totally finished -->
     <div v-if="!isLoading" class="flex-grow flex flex-col">
 
-      <!-- Active Quiz Phase -->
       <div v-if="!isQuizFinished">
         <QuestionCard
           v-if="currentQuestionData"
@@ -119,7 +110,6 @@ const saveAndContinue = async () => {
         />
       </div>
 
-      <!-- Completed Analysis Phase -->
 <div v-else class="pb-32">
         <QuizResultDashboard
           :skin-type="quizStore.finalSkinType"

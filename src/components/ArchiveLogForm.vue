@@ -26,7 +26,7 @@ const executeArchive = async () => {
       archived_at: archivedDate
     })
 
-    emit('success') // Tells the modal to close and refresh!
+    emit('success')
   } catch (error) {
     console.error("Archive Failed:", error)
     addToast('Failed to save archive entry. Check backend logs.', 'error')

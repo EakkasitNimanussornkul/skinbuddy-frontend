@@ -173,16 +173,20 @@ const executeDelete = async () => {
           </div>
       </template>
 
-      <!-- True Empty State (Zero items on shelf entirely) -->
+<!-- True Empty State (Zero items on shelf entirely) -->
       <EmptyState
         v-else
-        title="Your shelf is empty"
-        message="Start adding products to build your perfect skincare routine."
-        action-label="Add First Product"
+        title="Let's build your skincare shelf!"
+        message="Start building your routine. Add your daily cleanser or moisturizer so SkinBuddy can monitor your ingredient safety and timelines."
+        action-label="Add Your First Product"
         @action="isAddModalOpen = true"
       >
         <template #icon>
-          <svg class="w-10 h-10 text-stone-300 dark:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <img
+            src="/images/jelly.png"
+            alt="SkinBuddy Mascot"
+            class="w-14 h-14 object-contain animate-float drop-shadow-md"
+          />
         </template>
       </EmptyState>
 
@@ -206,4 +210,17 @@ const executeDelete = async () => {
 <style scoped>
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 </style>
