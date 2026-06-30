@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue' // Added computed
-import { markItemOpened, updateShelfStatus } from '../../api/shelfapi.js'
-import { useToast } from '../../composables/useToast.js'
+import { ref, computed } from 'vue'
+import { markItemOpened, updateShelfStatus } from '../../api/shelfapi.ts'
+import { useToast } from '../../composables/useToast.ts'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
 
 const props = defineProps<{
@@ -11,14 +11,19 @@ const props = defineProps<{
 const emit = defineEmits(['updated'])
 const { addToast } = useToast()
 
+// --- State ---
 const isEditingExpiration = ref(false)
 const editExpirationDate = ref('')
+const showPaoTooltip = ref(false)
+const activeEditPao = ref<number | null>(null) // NEW: Tracks which button was clicked
 
-// Get today's date to pass to the calendar to block past dates
+const paoOptions = [1, 3, 6, 9, 12, 18, 24, 36]
 const todayString = computed(() => new Date().toISOString().split('T')[0])
 
+// --- Actions ---
 const startEditingExpiration = () => {
   editExpirationDate.value = props.item.expiration_date || ''
+  activeEditPao.value = null // Reset the button highlight when opening the editor
   isEditingExpiration.value = true
 }
 
@@ -30,6 +35,8 @@ const formatDate = (dateString: string | null) => {
 
 const setEditPAO = (months: number) => {
   if (!props.item?.opened_date) return
+  activeEditPao.value = months // Highlight the clicked button
+
   const d = new Date(props.item.opened_date)
   d.setMonth(d.getMonth() + months)
   editExpirationDate.value = d.toISOString().split('T')[0]
@@ -77,7 +84,9 @@ const handleStartPAO = async () => {
 
 <template>
   <div class="space-y-2">
+
     <div v-if="item.opened_date" class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl transition-all">
+
       <div v-if="!isEditingExpiration" class="flex justify-between items-center group">
         <div class="flex flex-col">
           <span class="text-sm font-bold text-red-600 dark:text-red-400">Expiration Date</span>
@@ -94,14 +103,46 @@ const handleStartPAO = async () => {
       </div>
 
       <div v-else class="space-y-4 pt-1 animate-fade-in">
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-sm font-bold text-red-600 dark:text-red-400">Update Expiration</span>
+
+        <div class="flex justify-between items-center relative z-10">
+          <div class="flex items-center gap-1">
+            <span class="text-sm font-bold text-red-600 dark:text-red-400">Update PAO / Expiration</span>
+            <button
+              type="button"
+              @click.prevent="showPaoTooltip = !showPaoTooltip"
+              @mouseenter="showPaoTooltip = true"
+              @mouseleave="showPaoTooltip = false"
+              class="text-red-400 hover:text-red-600 transition-colors focus:outline-none p-1"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
           <button @click="isEditingExpiration = false" class="text-xs font-bold text-stone-400 hover:text-red-500 transition-colors">Cancel</button>
+
+          <Transition name="fade">
+            <div v-if="showPaoTooltip" class="absolute bottom-full left-0 mb-2 w-64 p-3 bg-stone-800 dark:bg-stone-700 text-xs text-white leading-relaxed rounded-xl shadow-xl z-50 pointer-events-none">
+              Select the PAO (Period After Opening) symbol found on your physical product jar to recalculate your expiration date.
+              <div class="absolute top-full left-6 border-[6px] border-transparent border-t-stone-800 dark:border-t-stone-700"></div>
+            </div>
+          </Transition>
         </div>
-        <div class="flex gap-2">
-          <button @click="setEditPAO(3)" class="flex-1 py-2 bg-white dark:bg-stone-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-stone-600 dark:text-stone-300 hover:border-red-300 transition-colors">3M</button>
-          <button @click="setEditPAO(6)" class="flex-1 py-2 bg-white dark:bg-stone-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-stone-600 dark:text-stone-300 hover:border-red-300 transition-colors">6M</button>
-          <button @click="setEditPAO(12)" class="flex-1 py-2 bg-white dark:bg-stone-800 rounded-lg text-xs font-bold border border-red-100 dark:border-red-900/30 text-stone-600 dark:text-stone-300 hover:border-red-300 transition-colors">12M</button>
+
+        <div class="flex overflow-x-auto gap-2 pb-2 snap-x hide-scrollbar -mx-1 px-1">
+          <button
+            v-for="months in paoOptions"
+            :key="months"
+            @click="setEditPAO(months)"
+            :class="[
+              'snap-start shrink-0 px-4 py-2 rounded-lg text-xs font-bold border transition-colors shadow-sm',
+              activeEditPao === months
+                ? 'bg-red-800 text-white border-red-800 dark:bg-red-200 dark:text-red-900'
+                : 'bg-white dark:bg-stone-800 border-red-100 dark:border-red-900/30 text-stone-600 dark:text-stone-300 hover:border-red-400 dark:hover:border-red-600'
+            ]"
+          >
+            {{ months }}M
+          </button>
         </div>
 
         <CustomDatePicker
@@ -127,10 +168,16 @@ const handleStartPAO = async () => {
         {{ item.pao ? 'Open Today & Start Clock' : 'Mark as Opened Today' }}
       </button>
     </div>
+
   </div>
 </template>
 
 <style scoped>
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.fade-enter-active,
+.fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.fade-enter-from,
+.fade-leave-to { opacity: 0; transform: translateY(4px); }
 </style>

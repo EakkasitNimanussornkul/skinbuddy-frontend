@@ -32,3 +32,24 @@ body {
 .dark body {
   @apply bg-brand-bg-dark text-stone-100;
 }
+/* Hide scrollbar on touch devices (mobile) but keep it visible and styled on desktop */
+
+@media (pointer: fine) {
+  .hide-scrollbar {
+    /* Keep native scrollbar width for desktop precision */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px; /* Needed for horizontal scrollbars */
+  }
+  .hide-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .hide-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #d6d3d1; /* Tailwind stone-300 */
+    border-radius: 20px;
+  }
+  .dark .hide-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #44403c; /* Tailwind stone-700 */
+  }
+}

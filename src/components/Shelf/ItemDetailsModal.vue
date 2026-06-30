@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { removeFromShelf, updateShelfStatus } from '../../api/shelfapi.ts'
+import { removeFromShelf } from '../../api/shelfapi.ts'
 import { useToast } from '../../composables/useToast.ts'
 
 import KeyActivesGrid from './KeyActivesGrid.vue'
 import ProductLifecycleController from './ProductLifecycleController.vue'
 import ArchiveLogForm from './ArchiveLogForm.vue'
+import ArchiveLogSummary from './ArchiveLogSummary.vue' // NEW IMPORT
 
 const props = defineProps<{
   item: any
@@ -16,14 +17,18 @@ const emit = defineEmits(['close', 'refresh', 'delete'])
 const { addToast } = useToast()
 const router = useRouter()
 
-// Smart Catch: Instantly fix the state if the backend sends bad data
-if (props.item.usage_state !== 'archived') {
-  if (props.item.opened_date || (props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY')) {
-    props.item.usage_state = 'active'
+// --- Data Initialization (Fixing Prop Mutation) ---
+// Create a reactive, mutable copy of the item
+const localItem = ref({ ...props.item })
+
+// Smart Catch: Fix state on the local copy
+if (localItem.value.usage_state !== 'archived') {
+  if (localItem.value.opened_date || (localItem.value.status && localItem.value.status.trim() !== '' && localItem.value.status !== 'EMPTY')) {
+    localItem.value.usage_state = 'active'
   }
 }
 
-// --- UI Sub-Views & Animation State ───
+// --- UI Sub-Views & Animation State ---
 const isClosing = ref(false)
 const currentView = ref<'details' | 'archive_form'>('details')
 
@@ -36,45 +41,31 @@ const startArchivingFlow = () => {
   currentView.value = 'archive_form'
 }
 
-// ─── Computational Product Properties ───
-const brand = computed(() => props.item.products?.brand || 'Unknown Brand')
-const name = computed(() => props.item.products?.name || 'Unknown Product')
-const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
-const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
-const description = computed(() => props.item.products?.description || 'No description available for this product.')
+// --- Computational Product Properties ---
+const brand = computed(() => localItem.value.products?.brand || 'Unknown Brand')
+const name = computed(() => localItem.value.products?.name || 'Unknown Product')
+const category = computed(() => localItem.value.category || localItem.value.products?.category || 'Uncategorized')
+const imageUrl = computed(() => localItem.value.image_url || localItem.value.products?.image_url || null)
+const description = computed(() => localItem.value.products?.description || 'No description available for this product.')
 
 const isAssignedToRoutine = computed(() => {
-  return props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY'
-})
-
-const activeOutcome = computed(() => props.item.archive_outcome || 'empty')
-const activeNotes = computed(() => props.item.archive_notes || '')
-
-const archiveOutcomeDetails = computed(() => {
-  const details = {
-    empty: { label: 'Finished Product', color: 'text-green-600 dark:text-green-400', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-    discarded: { label: 'Abandoned / Discarded', color: 'text-amber-600 dark:text-amber-400', icon: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z' },
-    expired: { label: 'Expired Inventory', color: 'text-red-600 dark:text-red-400', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' }
-  }
-  return details[activeOutcome.value as 'empty' | 'discarded' | 'expired'] || details.empty
+  return localItem.value.status && localItem.value.status.trim() !== '' && localItem.value.status !== 'EMPTY'
 })
 
 // 🌟 BULLETPROOF LIFESPAN CALCULATION 🌟
 const usageLifespan = computed(() => {
-  if (!props.item?.opened_date) return null
-  const opened = new Date(props.item.opened_date)
+  if (!localItem.value?.opened_date) return null
+  const opened = new Date(localItem.value.opened_date)
 
-  let endPoint = new Date() // Default to today (ticking)
+  let endPoint = new Date()
 
-  // If archived, FREEZE the clock using the archived_at database timestamp
-  if (props.item.usage_state === 'archived' && props.item.archived_at) {
-    endPoint = new Date(props.item.archived_at)
+  if (localItem.value.usage_state === 'archived' && localItem.value.archived_at) {
+    endPoint = new Date(localItem.value.archived_at)
   }
 
   const diffTime = endPoint.getTime() - opened.getTime()
   return diffTime > 0 ? Math.ceil(diffTime / (1000 * 3600 * 24)) : 0
 })
-
 
 const handleArchiveSuccess = () => {
   emit('refresh')
@@ -85,7 +76,7 @@ const handleArchiveSuccess = () => {
 const isConfirmingDelete = ref(false)
 const handleExecuteDelete = async () => {
   try {
-    await removeFromShelf(props.item.id)
+    await removeFromShelf(localItem.value.id)
     emit('refresh')
     handleClose()
     addToast('Product removed from your shelf', 'info')
@@ -115,90 +106,63 @@ const goToRoutinePlanner = () => {
       </button>
 
       <template v-if="currentView === 'details'">
+
         <div class="bg-stone-50 dark:bg-stone-900/50 h-48 sm:h-56 flex items-center justify-center p-6 border-b border-stone-100 dark:border-stone-800 flex-shrink-0">
           <img v-if="imageUrl" :src="imageUrl" class="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl" />
           <svg v-else class="w-16 h-16 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
         </div>
 
         <div class="overflow-y-auto p-6 flex-grow hide-scrollbar">
+
           <p class="text-xs text-brand-primary dark:text-orange-400 font-bold uppercase tracking-widest mb-1">{{ brand }}</p>
           <h2 class="text-2xl font-serif font-bold text-brand-text dark:text-white leading-tight mb-2">{{ name }}</h2>
-
           <div class="flex flex-wrap gap-2 mb-4">
             <span class="text-xs bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-lg font-semibold border border-stone-200 dark:border-stone-700">{{ category }}</span>
           </div>
-
           <div class="mb-5">
             <p class="text-sm sm:text-[15px] text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
           </div>
 
-          <div v-if="item.usage_state === 'archived'" class="mb-6 bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800/80 p-4 rounded-2xl flex flex-col gap-3">
-            <h4 class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 px-0.5">Historical Log Summary</h4>
-            <div class="grid grid-cols-2 gap-2.5">
-              <div class="p-3 bg-white dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 rounded-xl flex flex-col justify-center">
-                <span class="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-wider">Outcome</span>
-                <div class="flex items-center gap-1.5 mt-1" :class="archiveOutcomeDetails.color">
-                  <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" :d="archiveOutcomeDetails.icon" /></svg>
-                  <span class="text-xs font-bold leading-tight">{{ archiveOutcomeDetails.label.split(' ')[0] }}</span>
-                </div>
-              </div>
-              <div class="p-3 bg-white dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 rounded-xl flex flex-col justify-center">
-                <span class="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-wider">Total Lifespan</span>
-                <span class="text-sm font-mono font-bold text-brand-primary dark:text-orange-400 mt-0.5">{{ usageLifespan !== null ? `${usageLifespan} Days` : 'Not Opened' }}</span>
-              </div>
-            </div>
-            <div v-if="activeNotes" class="p-3 bg-white dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 rounded-xl">
-              <span class="block text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-wider mb-1">Skin Diary Note</span>
-              <p class="text-xs text-brand-text dark:text-stone-300 italic leading-relaxed">"{{ activeNotes }}"</p>
-            </div>
-          </div>
+          <ArchiveLogSummary
+            v-if="localItem.usage_state === 'archived'"
+            :item="localItem"
+            :usageLifespan="usageLifespan"
+          />
 
-          <div v-else class="mb-6 flex flex-col gap-3">
+          <div v-else class="mb-6 grid grid-cols-2 gap-3">
 
-            <div class="p-4 bg-brand-primary/5 dark:bg-orange-900/10 border border-brand-primary/20 dark:border-orange-900/30 rounded-2xl flex flex-row items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-brand-primary-light/50 dark:bg-orange-900/40 text-brand-primary dark:text-orange-400 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <div>
-                  <h4 class="text-[10px] font-bold uppercase tracking-wider text-brand-primary/70 dark:text-orange-400/70 mb-0.5">Daily Regimen</h4>
-                  <p class="text-sm font-bold text-brand-text dark:text-stone-200 leading-none">
-                    {{ isAssignedToRoutine ? item.status : 'Not Assigned' }}
-                  </p>
-                </div>
+            <div class="p-3 bg-brand-primary/5 dark:bg-orange-900/10 border border-brand-primary/20 dark:border-orange-900/30 rounded-xl flex flex-col justify-between">
+              <div>
+                <h4 class="text-[10px] font-bold uppercase tracking-wider text-brand-primary/70 dark:text-orange-400/70 mb-1">Regimen</h4>
+                <p class="text-sm font-bold text-brand-text dark:text-stone-200 leading-tight mb-2">
+                  {{ isAssignedToRoutine ? localItem.status : 'Not Assigned' }}
+                </p>
               </div>
-              <button @click="goToRoutinePlanner" class="px-4 py-2 text-xs font-bold bg-white dark:bg-stone-800 text-brand-primary dark:text-orange-400 border border-brand-primary/30 dark:border-orange-900/50 rounded-xl shadow-sm hover:bg-brand-primary hover:text-white dark:hover:bg-orange-900/60 transition-all flex-shrink-0">
-                {{ isAssignedToRoutine ? 'Edit' : 'Assign' }}
+              <button @click="goToRoutinePlanner" class="text-xs font-bold text-brand-primary dark:text-orange-400 hover:underline self-start">
+                {{ isAssignedToRoutine ? 'Edit Routine' : 'Assign Product' }}
               </button>
             </div>
 
-            <div class="p-4 bg-stone-50 dark:bg-stone-900/40 border border-stone-200/60 dark:border-stone-800/80 rounded-2xl flex flex-row items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-stone-200/60 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <div>
-                  <h4 class="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-0.5">Shelf Lifespan</h4>
-                  <p class="text-sm font-bold text-brand-text dark:text-stone-200 leading-none flex items-baseline gap-1">
-                    <span v-if="usageLifespan !== null">
-                      <span class="text-[17px] font-mono text-brand-primary dark:text-orange-400">{{ usageLifespan }}</span> Days
-                    </span>
-                    <span v-else>Unopened</span>
-                  </p>
-                </div>
-              </div>
+            <div class="p-3 bg-stone-50 dark:bg-stone-900/40 border border-stone-200/60 dark:border-stone-800/80 rounded-xl flex flex-col justify-center">
+              <h4 class="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1">Lifespan</h4>
+               <p class="text-sm font-bold text-brand-text dark:text-stone-200 leading-none flex items-baseline gap-1">
+                 <span v-if="usageLifespan !== null">
+                   <span class="text-[17px] font-mono text-brand-primary dark:text-orange-400">{{ usageLifespan }}</span> Days
+                 </span>
+                 <span v-else>Unopened</span>
+               </p>
             </div>
 
           </div>
 
-          <KeyActivesGrid :ingredients="item.products?.product_ingredients" />
+          <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" />
+          <ProductLifecycleController v-if="localItem.usage_state !== 'archived'" :item="localItem" @updated="emit('refresh')" />
 
-          <ProductLifecycleController v-if="item.usage_state !== 'archived'" :item="item" @updated="emit('refresh')" />
         </div>
 
         <div class="p-4 border-t border-stone-200 dark:border-stone-800 bg-brand-bg-light dark:bg-brand-bg-dark flex-shrink-0">
           <div v-if="!isConfirmingDelete" class="space-y-2">
-            <button v-if="item.usage_state !== 'archived'" @click="startArchivingFlow" class="w-full py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700 transition-all text-sm">Archive Product</button>
+            <button v-if="localItem.usage_state !== 'archived'" @click="startArchivingFlow" class="w-full py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700 transition-all text-sm">Archive Product</button>
             <button @click="isConfirmingDelete = true" class="w-full py-2 bg-transparent text-red-500 font-bold text-xs uppercase tracking-widest hover:text-red-600 transition-all">Permanently Delete</button>
           </div>
           <div v-else>
@@ -210,9 +174,10 @@ const goToRoutinePlanner = () => {
           </div>
         </div>
       </template>
+
       <template v-else-if="currentView === 'archive_form'">
         <ArchiveLogForm
-          :item="item"
+          :item="localItem"
           :usage-lifespan="usageLifespan"
           @back="currentView = 'details'"
           @success="handleArchiveSuccess"

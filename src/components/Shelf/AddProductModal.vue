@@ -123,8 +123,23 @@ const handleSave = async (configPayload: any, forceSave = false) => {
 </template>
 
 <style scoped>
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.hide-scrollbar::-webkit-scrollbar { display: none; }
+/* Hide scrollbar on touch devices (mobile) but keep it visible and styled on desktop */
+
+@media (pointer: fine) {
+  .hide-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .hide-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .hide-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #d6d3d1;
+    border-radius: 20px;
+  }
+  .dark .hide-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #44403c;
+  }
+}
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 </style>
