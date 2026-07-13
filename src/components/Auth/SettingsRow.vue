@@ -14,34 +14,37 @@ const emit = defineEmits(['click', 'toggle'])
 <template>
   <button
     @click="type === 'toggle' ? emit('toggle') : emit('click')"
-    class="w-full flex items-center justify-between p-4 sm:p-5 transition-colors text-left"
+    class="w-full flex items-center justify-between p-4 sm:p-5 transition-colors text-left group"
     :class="[
-      isLast ? '' : 'border-b border-stone-100 dark:border-stone-800/50',
-      type === 'link' ? 'hover:bg-stone-50 dark:hover:bg-stone-800/30' : ''
+      isLast ? '' : 'border-b border-brand-surface-border dark:border-stone-800',
+      type === 'link' ? 'hover:bg-brand-bg-light dark:hover:bg-stone-800/40' : ''
     ]"
   >
     <div class="flex items-center gap-4">
-      <div class="w-8 h-8 rounded-full bg-brand-bg-light dark:bg-stone-800/50 flex items-center justify-center text-stone-500 dark:text-stone-400">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath"></path>
+      <div class="w-8 h-8 rounded-full bg-brand-primary-light dark:bg-brand-primary/10 flex items-center justify-center text-brand-primary border border-brand-primary/20 group-hover:bg-brand-primary/20 transition-colors">
+        <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" :d="iconPath"></path>
         </svg>
       </div>
-      <span class="text-sm font-semibold text-brand-text dark:text-stone-200">{{ label }}</span>
+      <span class="text-sm font-bold text-brand-text dark:text-stone-200">{{ label }}</span>
     </div>
 
-    <div v-if="type === 'toggle'">
-      <div class="w-12 h-7 rounded-full relative transition-colors duration-300" :class="toggleState ? 'bg-brand-primary dark:bg-brand-primary-light' : 'bg-stone-200 dark:bg-stone-700'">
-        <div class="absolute top-1 bg-white dark:bg-brand-surface-dark w-5 h-5 rounded-full transition-transform duration-300 shadow-sm" :class="toggleState ? 'translate-x-6' : 'translate-x-1'"></div>
+    <!-- Toggle Switch -->
+    <div v-if="type === 'toggle'" class="flex-shrink-0">
+      <div class="w-11 h-6 rounded-full relative transition-colors duration-300 shadow-inner" :class="toggleState ? 'bg-brand-primary' : 'bg-stone-300 dark:bg-stone-700'">
+        <div class="absolute top-[2px] left-[2px] bg-white w-5 h-5 rounded-full transition-transform duration-300 shadow-sm" :class="toggleState ? 'translate-x-5' : 'translate-x-0'"></div>
       </div>
     </div>
 
-    <div v-else-if="type === 'link'" class="flex items-center gap-2 text-stone-400">
-      <span v-if="rightText" class="text-sm">{{ rightText }}</span>
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+    <!-- Link Arrow -->
+    <div v-else-if="type === 'link'" class="flex items-center gap-2 text-brand-text-muted">
+      <span v-if="rightText" class="text-sm font-medium">{{ rightText }}</span>
+      <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
     </div>
 
-    <div v-else-if="type === 'text'">
-      <span class="text-xs text-stone-500 dark:text-stone-400 font-mono">{{ rightText }}</span>
+    <!-- Read-Only Text -->
+    <div v-else-if="type === 'text'" class="flex-shrink-0">
+      <span class="text-xs text-brand-text-muted font-mono font-bold">{{ rightText }}</span>
     </div>
   </button>
 </template>
