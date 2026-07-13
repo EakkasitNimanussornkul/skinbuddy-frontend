@@ -5,7 +5,7 @@ import BottomNav from './components/Shared/BottomNav.vue'
 import ToastProvider from './components/Shared/ToastProvider.vue'
 import { useThemeStore } from './stores/themeStore'
 import LoginPopup from './components/Auth/LoginPopup.vue'
-
+import TopNav from './components/Shared/TopNav.vue'
 const themeStore = useThemeStore()
 const route = useRoute()
 
@@ -20,6 +20,7 @@ onMounted(() => {
   <div class="bg-white dark:bg-[#121217] min-h-screen text-slate-900 dark:text-white transition-colors duration-300">
     <LoginPopup />
 
+    <TopNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
     <RouterView />
 
     <BottomNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />

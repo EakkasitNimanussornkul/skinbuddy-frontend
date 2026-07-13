@@ -3,53 +3,55 @@
 /* Dark mode variant support */
 @variant dark (&:where(.dark, .dark *));
 
-/* The "Minimalist Apothecary" Theme
-  Warm Terracotta, Oat, and Charcoal
-*/
+/* The "Clinical Cyan & Muted Neutrals" Theme */
 @theme {
-  /* Primary accents (The Terracotta / Orange-700) */
-  --color-brand-primary: #C2410C;
-  --color-brand-primary-light: #FFEDD5; /* Subtle badges (Orange-100) */
+  /* Primary accents */
+  --color-brand-primary: #6CC1C5; /* Blue Button */
+  --color-brand-primary-hover: #94D3D3; /* Cyan Gradient Midpoint */
+  --color-brand-primary-accent: #B0F1F1; /* Primary Cyan Highlight */
+  --color-brand-primary-light: #DFF4F3; /* Light Cyan */
 
   /* Text colors */
-  --color-brand-text: #1C1917; /* Dark Charcoal for light mode */
-  --color-brand-text-muted: #78716C; /* Stone-500 */
+  --color-brand-text: #434343; /* Neutral Black */
+  --color-brand-text-muted: #95A2A4; /* Dark Grey */
 
   /* Backgrounds */
-  --color-brand-bg-light: #FAFAF9; /* Warm Oat (Stone-50) */
-  --color-brand-bg-dark: #1C1917; /* Charcoal (Stone-900) */
+  --color-brand-bg-light: #F3F7F8; /* Soft Ice BG */
+  --color-brand-bg-dark: #2C2C2C; /* Deepened Neutral Black */
 
   /* Surface/Card Backgrounds */
   --color-brand-surface-light: #FFFFFF;
-  --color-brand-surface-dark: #292524; /* Lighter Charcoal (Stone-800) */
+  --color-brand-surface-dark: #434343;
+  --color-brand-surface-border: #DCE5E8; /* Light Grey */
+
+  /* Semantic Alerts */
+  --color-semantic-warning: #E9BF54; /* Yellow Button */
+  --color-semantic-error: #DC5E58; /* Red Button */
 }
 
-/* Base body styling that respects dark mode! */
+/* Base body styling */
 body {
   @apply bg-brand-bg-light text-brand-text transition-colors duration-300;
 }
 
 .dark body {
-  @apply bg-brand-bg-dark text-stone-100;
+  @apply bg-brand-bg-dark text-white;
 }
-/* Hide scrollbar on touch devices (mobile) but keep it visible and styled on desktop */
 
+/* Scrollbar Styling */
 @media (pointer: fine) {
-  .hide-scrollbar {
-    /* Keep native scrollbar width for desktop precision */
-  }
   .hide-scrollbar::-webkit-scrollbar {
     width: 6px;
-    height: 6px; /* Needed for horizontal scrollbars */
+    height: 6px;
   }
   .hide-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
   .hide-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #d6d3d1; /* Tailwind stone-300 */
+    background-color: var(--color-brand-surface-border);
     border-radius: 20px;
   }
   .dark .hide-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #44403c; /* Tailwind stone-700 */
+    background-color: var(--color-brand-text-muted);
   }
 }
