@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import ItemBadge from './ItemBadge.vue'
+import ItemBadge from '../Shelf/ItemBadge.vue'
 
 const props = defineProps<{
   item: any
@@ -8,120 +8,78 @@ const props = defineProps<{
 
 const emit = defineEmits(['open-details', 'delete'])
 
-const brand = computed(() => props.item.products?.brand || 'Unknown Brand')
-const name = computed(() => props.item.products?.name || 'Unknown Product')
-const category = computed(() => props.item.category || props.item.products?.category || 'Uncategorized')
-const imageUrl = computed(() => props.item.image_url || props.item.products?.image_url || null)
-
-// --- Dynamic Smart States ---
-const usageState = computed(() => {
-  if (props.item.usage_state === 'archived') return 'archived'
-
-  // Smart Catch: If it has an opened date OR is in a routine, force it to 'active'
-  if (props.item.opened_date || (props.item.status && props.item.status.trim() !== '' && props.item.status !== 'EMPTY')) {
-    return 'active'
+// Smart Expiration & Countdown Engine
+const expirationInfo = computed(() => {
+  const state = props.item.usage_state || 'unopened'
+  if (state === 'archived') {
+    return { label: 'Archived', badgeType: 'archived', dateText: 'Archived Item' }
   }
-  return props.item.usage_state || 'unopened'
-})
 
-// Dynamically determine the badge text for active items
-const activeBadgeText = computed(() => {
-  const status = props.item.status
-  if (status && status.trim() !== '' && status !== 'EMPTY') {
-    return 'In Routine'
+  let targetDate: Date | null = null
+
+  // Safely extract PAO whether it's stored as a string ('6M') or integer (6)
+  const safePao = props.item.pao ? (typeof props.item.pao === 'string' ? props.item.pao.replace('M', '') : String(props.item.pao)) : null
+
+  if (props.item.expiration_date) {
+    targetDate = new Date(props.item.expiration_date)
+  } else if (props.item.opened_date && safePao) {
+    const months = parseInt(safePao) || 12
+    targetDate = new Date(props.item.opened_date)
+    targetDate.setMonth(targetDate.getMonth() + months)
   }
-  return 'Active'
-})
 
-// Reads the archive metadata log attributes saved to the item object
-const archiveOutcomeText = computed(() => {
-  if (usageState.value !== 'archived') return null
-  const outcome = props.item.archive_outcome || props.item.outcome || 'empty'
-
-  if (outcome === 'empty') return 'Finished'
-  if (outcome === 'discarded') return 'Abandoned'
-  if (outcome === 'expired') return 'Expired'
-  return null
-})
-
-const expirationStatus = computed(() => {
-  if (!props.item.expiration_date || usageState.value === 'archived') return null
+  if (!targetDate) {
+    return { label: 'Unopened', badgeType: 'unopened', dateText: `PAO: ${safePao ? safePao + 'M' : '12M'}` }
+  }
 
   const today = new Date()
-  const exp = new Date(props.item.expiration_date)
-  const daysLeft = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 3600 * 24))
+  const daysLeft = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
+  const formattedDate = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-  if (daysLeft < 0) return 'expired'
-  if (daysLeft <= 30) return 'expiring_soon'
+  if (daysLeft < 0) {
+    return { label: 'Expired', badgeType: 'error', dateText: `Expired: ${formattedDate}` }
+  }
+  if (daysLeft <= 30) {
+    return { label: `In ${daysLeft} days`, badgeType: 'warning', dateText: `Expires: ${formattedDate}` }
+  }
 
-  return null
+  return { label: `In ${daysLeft} days`, badgeType: 'good', dateText: `Expires: ${formattedDate}` }
 })
 </script>
 
 <template>
-  <div
-    @click="emit('open-details')"
-    class="relative group bg-brand-surface-light dark:bg-[#292524] rounded-3xl p-3 border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col hover:shadow-md transition-all duration-300 cursor-pointer"
-    :class="usageState === 'archived' ? 'opacity-60 grayscale-[20%] hover:opacity-100 hover:grayscale-0' : ''"
-  >
+  <div class="group relative bg-brand-surface-light dark:bg-brand-surface-dark rounded-2xl p-3.5 sm:p-4 border border-brand-surface-border dark:border-stone-800 shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 flex flex-col justify-between h-full overflow-hidden">
 
-    <div v-if="expirationStatus" class="absolute -top-3 inset-x-0 flex justify-center z-30 pointer-events-none">
+    <div class="flex items-center justify-between gap-1 mb-2.5">
       <ItemBadge
-        v-if="expirationStatus === 'expired'"
-        type="error"
-        text="Expired"
-        class="shadow-md px-3 border-2 border-red-200 dark:border-red-900/50"
+        :type="expirationInfo.badgeType"
+        :text="expirationInfo.label"
+        class="truncate max-w-[80%]"
+        :class="expirationInfo.badgeType === 'warning' ? 'animate-pulse' : ''"
       />
-      <ItemBadge
-        v-else-if="expirationStatus === 'expiring_soon'"
-        type="warning"
-        text="Expiring Soon"
-        class="shadow-md px-3 border-2 border-amber-200 dark:border-amber-700/50"
-      />
-    </div>
 
-    <div class="w-full aspect-square sm:h-36 bg-stone-50 dark:bg-[#1C1917] rounded-2xl mb-3 flex items-center justify-center relative overflow-hidden border border-stone-100 dark:border-stone-800/50" :class="expirationStatus ? 'mt-1' : ''">
-      <img v-if="imageUrl" :src="imageUrl" :alt="name" class="w-full h-full object-cover mix-blend-multiply dark:mix-blend-normal p-1 animate-fade-in" />
-      <svg v-else class="w-10 h-10 text-stone-300 dark:text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-      </svg>
-
-      <div class="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
-        <ItemBadge v-if="usageState === 'archived'" type="archived" text="Archived" />
-        <ItemBadge v-else-if="usageState === 'unopened'" type="unopened" text="Unopened" />
-        <ItemBadge v-else-if="usageState === 'active'" type="routine" :text="activeBadgeText" />
-      </div>
-
-      <button
-        @click.stop.prevent="emit('delete', item)"
-        class="absolute top-2 right-2 bg-white/80 dark:bg-stone-800/80 backdrop-blur-sm p-1.5 rounded-full text-stone-400 hover:text-red-500 border border-stone-200 dark:border-stone-600 hover:border-red-300 dark:hover:border-red-900/50 transition-all z-20 shadow-sm"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-        </svg>
+      <!-- Replaced hardcoded rose hover with semantic error token -->
+      <button @click.stop="emit('delete')" class="w-6 h-6 rounded-full flex items-center justify-center text-brand-text-muted hover:text-semantic-error transition-colors shrink-0">
+        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
       </button>
     </div>
 
-    <div class="flex flex-col flex-grow">
-      <p class="text-[9px] font-bold text-brand-primary dark:text-stone-400 uppercase tracking-wider mb-0.5 line-clamp-1">
-        {{ brand }}
+    <!-- Product Image Thumbnail -->
+    <div @click="emit('open-details')" class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl bg-brand-bg-light dark:bg-brand-bg-dark border border-brand-surface-border dark:border-stone-800 flex items-center justify-center overflow-hidden mb-3 cursor-pointer group-hover:scale-105 transition-transform p-1.5">
+      <img v-if="item.products?.image_url" :src="item.products.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+      <svg v-else class="w-7 h-7 text-brand-text-muted/60 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+    </div>
+
+    <!-- Product Text & Exact Expiration Date -->
+    <div @click="emit('open-details')" class="cursor-pointer text-center sm:text-left flex-1 flex flex-col justify-end">
+      <p class="text-[9px] font-bold text-brand-primary uppercase tracking-wider truncate">{{ item.products?.brand || 'Unknown Brand' }}</p>
+      <h4 class="text-xs sm:text-sm font-bold text-brand-text dark:text-stone-100 truncate line-clamp-1 group-hover:text-brand-primary transition-colors mt-0.5">
+        {{ item.products?.name || 'Unnamed Product' }}
+      </h4>
+      <p class="text-[10px] font-semibold text-brand-text-muted dark:text-stone-400 mt-1.5 flex items-center justify-center sm:justify-start gap-1 bg-brand-bg-light dark:bg-stone-800/80 px-2 py-1 rounded-md border border-brand-surface-border/50 dark:border-stone-800/50">
+        <svg class="w-3 h-3 stroke-[2] text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        <span class="truncate">{{ expirationInfo.dateText }}</span>
       </p>
-      <h3 class="text-xs sm:text-sm font-semibold text-brand-text dark:text-stone-100 leading-snug line-clamp-2 mb-2 group-hover:text-brand-primary transition-colors">
-        {{ name }}
-      </h3>
-
-      <div class="mt-auto flex items-center justify-between">
-        <span class="text-[10px] text-brand-text-muted dark:text-stone-500 font-medium">
-          {{ category }}
-        </span>
-
-        <span
-          v-if="archiveOutcomeText"
-          class="text-[9px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 px-1.5 py-0.5 rounded-md border border-stone-200/40 dark:border-stone-700/60"
-        >
-          {{ archiveOutcomeText }}
-        </span>
-      </div>
     </div>
 
   </div>
