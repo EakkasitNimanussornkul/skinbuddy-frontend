@@ -21,7 +21,6 @@ const formatDateForInput = (date: Date) => {
   return `${yyyy}-${mm}-${dd}`
 }
 
-// Keep internal state synced with the parent's v-model
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     const d = new Date(newVal)
@@ -45,7 +44,6 @@ const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const calendarGrid = computed(() => {
   const year = currentMonthView.value.getFullYear()
   const month = currentMonthView.value.getMonth()
-
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const daysInPrevMonth = new Date(year, month, 0).getDate()
@@ -56,12 +54,6 @@ const calendarGrid = computed(() => {
   }
   for (let i = 1; i <= daysInMonth; i++) {
     days.push({ date: new Date(year, month, i), isCurrentMonth: true })
-  }
-  const remainingSlots = (7 - (days.length % 7)) % 7
-  if (remainingSlots < 7) {
-    for (let i = 1; i <= remainingSlots; i++) {
-      days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
-    }
   }
   return days
 })
@@ -83,18 +75,8 @@ const prevMonth = () => currentMonthView.value = new Date(currentMonthView.value
 
 const handleDateSelect = (date: Date) => {
   if (isPastDate(date)) return
-  const formatted = formatDateForInput(date)
-  emit('update:modelValue', formatted)
+  emit('update:modelValue', formatDateForInput(date))
   isCalendarOpen.value = false
-}
-
-const handleManualInputBlur = () => {
-  const parsedDate = new Date(manualInput.value + 'T00:00:00')
-  if (isNaN(parsedDate.getTime()) || isPastDate(parsedDate)) {
-    manualInput.value = selectedDate.value ? formatDateForInput(selectedDate.value) : ''
-    return
-  }
-  emit('update:modelValue', formatDateForInput(parsedDate))
 }
 </script>
 
@@ -104,33 +86,31 @@ const handleManualInputBlur = () => {
       <input
         type="text"
         v-model="manualInput"
-        @blur="handleManualInputBlur"
-        @keyup.enter="handleManualInputBlur"
         :placeholder="placeholder || 'YYYY-MM-DD'"
-        class="w-full bg-white dark:bg-stone-900 border-2 border-red-100 dark:border-red-900/50 text-brand-text dark:text-white px-3 py-2.5 pr-10 rounded-xl focus:outline-none focus:border-red-400 text-sm shadow-sm transition-colors placeholder:text-stone-400 placeholder:font-normal"
+        class="w-full bg-white dark:bg-brand-surface-dark border-2 border-stone-200 dark:border-stone-800 text-brand-text dark:text-stone-200 px-3 py-3 rounded-xl focus:outline-none focus:border-brand-primary dark:focus:border-brand-primary text-sm shadow-sm transition-all"
       />
       <button
         @click="isCalendarOpen = !isCalendarOpen"
         class="absolute right-2 p-1.5 rounded-lg transition-colors"
-        :class="isCalendarOpen ? 'text-red-500 bg-red-50 dark:bg-red-900/30' : 'text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'"
+        :class="isCalendarOpen ? 'text-brand-primary bg-brand-primary-light' : 'text-stone-400 hover:text-brand-primary'"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
       </button>
     </div>
 
-    <div v-show="isCalendarOpen" class="mt-2 bg-white dark:bg-stone-900 border-2 border-red-100 dark:border-red-900/50 rounded-xl p-3 shadow-inner animate-expand">
-      <div class="flex items-center justify-between mb-3">
-        <button @click="prevMonth" class="w-7 h-7 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
+    <div v-show="isCalendarOpen" class="mt-2 bg-white dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-2xl p-4 shadow-xl z-50 absolute w-full animate-expand">
+      <div class="flex items-center justify-between mb-4">
+        <button @click="prevMonth" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <span class="text-xs font-bold text-brand-text dark:text-stone-200">{{ monthYearLabel }}</span>
-        <button @click="nextMonth" class="w-7 h-7 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
+        <span class="text-xs font-bold text-brand-text dark:text-stone-200 tracking-widest uppercase">{{ monthYearLabel }}</span>
+        <button @click="nextMonth" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
         </button>
       </div>
 
-      <div class="grid grid-cols-7 mb-1">
-        <span v-for="day in daysOfWeek" :key="day" class="text-center text-[10px] font-bold text-stone-400 uppercase tracking-widest">{{ day }}</span>
+      <div class="grid grid-cols-7 mb-2">
+        <span v-for="day in daysOfWeek" :key="day" class="text-center text-[10px] font-bold text-stone-400">{{ day }}</span>
       </div>
 
       <div class="grid grid-cols-7 gap-1">
@@ -141,10 +121,10 @@ const handleManualInputBlur = () => {
           @click="handleDateSelect(day.date)"
           class="aspect-square w-full flex items-center justify-center rounded-lg text-xs font-semibold transition-all"
           :class="[
-            isPastDate(day.date) ? 'opacity-25 cursor-not-allowed line-through decoration-stone-500' : 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95',
-            day.isCurrentMonth ? 'text-brand-text dark:text-stone-200' : 'text-stone-300 dark:text-stone-600',
-            isSameDay(day.date, selectedDate) ? '!bg-red-500 text-white shadow-md shadow-red-500/30' : '',
-            isSameDay(day.date, new Date()) && !isSameDay(day.date, selectedDate) ? 'text-red-500 border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-900/10' : ''
+            isPastDate(day.date) ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:bg-brand-primary-light dark:hover:bg-brand-primary/20',
+            day.isCurrentMonth ? 'text-brand-text dark:text-stone-200' : 'text-stone-300 dark:text-stone-700',
+            isSameDay(day.date, selectedDate) ? '!bg-brand-primary text-white shadow-md' : '',
+            isSameDay(day.date, new Date()) && !isSameDay(day.date, selectedDate) ? 'text-brand-primary font-bold' : ''
           ]"
         >
           {{ day.date.getDate() }}
@@ -155,12 +135,8 @@ const handleManualInputBlur = () => {
 </template>
 
 <style scoped>
-.animate-expand {
-  animation: expandDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform-origin: top center;
-}
-@keyframes expandDown {
-  from { opacity: 0; transform: scaleY(0.95); }
-  to { opacity: 1; transform: scaleY(1); }
-}
+.animate-expand { animation: expandDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes expandDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
 </style>

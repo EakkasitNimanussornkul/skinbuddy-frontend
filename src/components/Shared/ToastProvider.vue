@@ -3,14 +3,19 @@ import { useToast, type ToastType } from '../../composables/useToast'
 
 const { toasts, removeToast } = useToast()
 
-// Define colors based on the ToastType
+// Theme-compliant colors using your custom CSS variables
 const getIconColor = (type: ToastType) => {
   switch (type) {
-    case 'success': return 'text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30'
-    case 'error': return 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30'
-    case 'warning': return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30'
+    case 'success':
+      return 'text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
+    case 'error':
+      return 'text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
+    case 'warning':
+      return 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20'
     case 'info':
-    default: return 'text-brand-primary dark:text-orange-400 bg-brand-primary/10 dark:bg-orange-900/20 border-brand-primary/20 dark:border-orange-900/30'
+    default:
+      // Fully respects your brand-primary variable in both light and dark modes
+      return 'text-brand-primary bg-brand-primary-light border-brand-primary/20 dark:bg-brand-primary/10 dark:border-brand-primary/30'
   }
 }
 </script>
@@ -22,10 +27,11 @@ const getIconColor = (type: ToastType) => {
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="pointer-events-auto flex items-start justify-between gap-3 px-4 py-3.5 rounded-2xl shadow-lg border max-w-md w-full bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-stone-200 dark:border-stone-800"
+        class="pointer-events-auto flex items-start justify-between gap-3 px-4 py-3.5 rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/40 border w-full max-w-[calc(100vw-2rem)] sm:max-w-md bg-white/95 dark:bg-brand-surface-dark/95 backdrop-blur-md border-stone-200 dark:border-stone-800 transition-all"
       >
         <div class="flex items-start gap-3 overflow-hidden mt-0.5">
 
+          <!-- Dynamic Icon Container -->
           <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border" :class="getIconColor(toast.type)">
 
             <svg v-if="toast.type === 'success'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,12 +52,18 @@ const getIconColor = (type: ToastType) => {
 
           </div>
 
-          <p class="text-sm font-semibold text-brand-text dark:text-stone-200 line-clamp-2 leading-relaxed break-words">
+          <!-- Toast Message -->
+          <p class="text-sm font-semibold text-brand-text dark:text-stone-100 line-clamp-3 leading-relaxed break-words pr-2">
             {{ toast.message }}
           </p>
         </div>
 
-        <button @click="removeToast(toast.id)" class="flex-shrink-0 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors p-1 mt-1">
+        <!-- Close Button -->
+        <button
+          @click="removeToast(toast.id)"
+          class="flex-shrink-0 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors p-1.5 -mr-1 -mt-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          aria-label="Close notification"
+        >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -64,24 +76,23 @@ const getIconColor = (type: ToastType) => {
 </template>
 
 <style scoped>
-/* Vue TransitionGroup Classes */
+/* Improved Vue TransitionGroup Curve */
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.1); /* Slight spring effect */
 }
 
 .toast-enter-from {
   opacity: 0;
-  transform: translateY(-20px) scale(0.95);
+  transform: translateY(-24px) scale(0.92);
 }
 
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.95);
+  transform: translateY(-12px) scale(0.95);
 }
 
-/* Ensures smooth movement of other toasts when one is removed */
 .toast-move {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 </style>
