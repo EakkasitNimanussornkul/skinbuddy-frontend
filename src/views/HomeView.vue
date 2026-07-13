@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { updateUserSkinType } from '../api/authApi'
 import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
@@ -18,7 +18,8 @@ const getGreeting = () => {
 }
 
 const greeting = getGreeting()
-const firstName = authStore.user?.name?.split(' ')[0] || 'there'
+const firstName = computed(() => authStore.user?.name?.split(' ')[0] || 'there')
+const currentSkinType = computed(() => authStore.user?.skin_type || 'Unknown Skin Type')
 
 const showSelector = ref(false)
 const isSaving = ref(false)
@@ -45,302 +46,281 @@ const handleExpressConfirm = async (selectedType: string) => {
 
 const quickActions = [
   {
-    label: 'AI Chat',
-    sublabel: 'Ask SkinBuddy anything',
-    icon: 'chat',
-    route: '/chat'
+    label: 'AI Skin Consulter',
+    sublabel: 'Instant skin analysis & active ingredient advice',
+    icon: 'sparkles',
+    route: '/chat',
+    highlight: true
   },
   {
-    label: 'Explore',
-    sublabel: 'Find & Compare Products',
+    label: 'Skincare Check',
+    sublabel: 'Check ingredient compatibility & PAO timers',
+    icon: 'checkShield',
+    route: '/shelf',
+    highlight: false
+  },
+  {
+    label: 'Explore Catalog',
+    sublabel: 'Compare products tailored to your barrier',
     icon: 'search',
-    route: '/explore'
+    route: '/explore',
+    highlight: false
   },
   {
-    label: 'My Skincare',
-    sublabel: 'Your product stash',
-    icon: 'storage',
-    route: '/shelf'
-  },
-  {
-    label: 'Routine',
-    sublabel: 'Daily skin schedule',
+    label: 'Daily Regimen',
+    sublabel: 'Step-by-step AM/PM schedules',
     icon: 'routine',
-    route: '/routine'
+    route: '/routine',
+    highlight: false
   },
 ]
 
 const icons: Record<string, string> = {
-  chat: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
+  sparkles: 'm12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z',
+  checkShield: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
   search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-  storage: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M10 12a1 1 0 102 0 1 1 0 00-2 0',
   routine: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
   skin: 'M12 2.69l5.66 5.66a8 8 0 11-11.31 0z',
   bell: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
 }
 
-const tips = [
-  { text: 'Apply SPF every morning — even on cloudy days, UV rays penetrate through clouds.' },
-  { text: 'Double-cleanse at night to fully remove sunscreen and makeup before your routine.' },
-  { text: 'Hydrate from within — drinking enough water supports your skin barrier.' },
-  { text: 'Layer your serums thinnest to thickest for maximum absorption.' },
+const heroIngredients = [
+  { name: 'Ceramide NP', role: 'Hero Active', desc: 'Rebuilds lipid barrier & locks moisture.', type: 'hero' },
+  { name: 'Niacinamide', role: 'Hero Active', desc: 'Calms redness & balances oil production.', type: 'hero' },
+  { name: 'Centella Asiatica', role: 'Hero Active', desc: 'Soothes inflammation & speeds healing.', type: 'hero' },
+  { name: 'Denatured Alcohol', role: 'Avoid Inside', desc: 'Strips moisture barrier & causes dryness.', type: 'avoid' },
+  { name: 'Synthetic Fragrance', role: 'Avoid Inside', desc: 'High risk of contact dermatitis.', type: 'avoid' },
 ]
-const tip = tips[new Date().getDay() % tips.length]
+
+const recommendedProducts = [
+  { name: 'Barrier Relief Cream', brand: 'SkinBuddy Lab', match: '98% Match', tag: 'Deep Nourish' },
+  { name: 'Soothing Centella Toner', brand: 'PureDerma', match: '95% Match', tag: 'Calming' },
+  { name: 'Hyaluronic Hydration Boost', brand: 'HydraCare', match: '92% Match', tag: 'Plumping' },
+]
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-28 transition-colors duration-300">
-    <div class="max-w-md lg:max-w-5xl mx-auto px-4 sm:px-6 flex flex-col">
+  <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-28 transition-colors duration-300">
+    <div class="max-w-md md:max-w-3xl lg:max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-6">
 
-      <div class="flex items-center justify-between pt-6 pb-5">
+      <!-- Top Header Profile Row -->
+      <div class="flex items-center justify-between pt-6">
         <button @click="router.push('/settings')" class="flex items-center gap-3 group">
-          <div
-            class="w-11 h-11 rounded-full overflow-hidden border-2 border-brand-primary/30 dark:border-orange-600/40 bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
-            <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile"
-              class="w-full h-full object-cover" />
-            <svg v-else class="w-6 h-6 text-stone-400 dark:text-stone-500" fill="none" stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-brand-primary/40 bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
+            <svg v-else class="w-6 h-6 text-brand-text-muted stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
           <div class="text-left">
-            <p class="text-[11px] text-brand-text-muted dark:text-stone-500 leading-none mb-0.5">Welcome back</p>
-            <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ authStore.user?.name ||
-              'Guest' }}</p>
+            <p class="text-[11px] text-brand-text-muted leading-none mb-0.5">Welcome back</p>
+            <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ greeting }}, {{ firstName }}</p>
           </div>
         </button>
 
         <div class="flex items-center gap-2">
-          <button
-            class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 flex items-center justify-center text-brand-text-muted dark:text-stone-400 hover:text-brand-primary dark:hover:text-orange-400 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.bell" />
-            </svg>
+          <button @click="router.push('/settings')" class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border border-brand-surface-border dark:border-stone-700 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors shadow-sm">
+            <svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.bell" /></svg>
           </button>
-          <button @click="router.push('/settings')"
-            class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-700 flex items-center justify-center text-brand-text-muted dark:text-stone-400 hover:text-brand-primary dark:hover:text-orange-400 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.settings" />
-            </svg>
+          <button @click="router.push('/settings')" class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border border-brand-surface-border dark:border-stone-700 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors shadow-sm">
+            <svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.settings" /></svg>
           </button>
         </div>
       </div>
 
+      <!-- Main Layout Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
 
+        <!-- Left Column -->
         <div class="lg:col-span-8 flex flex-col gap-6 w-full">
 
-          <div class="relative rounded-3xl overflow-hidden bg-brand-primary shadow-md">
-            <div class="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10" />
-            <div class="absolute -bottom-10 -right-4 w-28 h-28 rounded-full bg-white/5" />
-            <div class="absolute top-4 right-16 w-8 h-8 rounded-full bg-white/10" />
+          <!-- 🌟 Hero Banner with Native Tailwind Gradient 🌟 -->
+          <div class="relative rounded-[2rem] overflow-hidden bg-gradient-to-br from-brand-primary to-brand-primary-hover shadow-md border border-brand-primary-accent/30">
+            <div class="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/30 pointer-events-none" />
+            <div class="absolute -bottom-10 -right-4 w-28 h-28 rounded-full bg-white/20 pointer-events-none" />
 
-            <div class="relative z-10 px-6 py-5 flex items-center justify-between">
-              <div>
-                <p class="text-orange-200 text-xs font-semibold tracking-widest uppercase mb-1">{{ greeting }}</p>
-                <h2 class="text-white font-serif text-2xl font-bold leading-tight">{{ firstName }},</h2>
-                <p class="text-orange-100/80 text-sm mt-1 leading-snug">Ready for your skin routine?</p>
-              </div>
-
-              <div class="w-16 h-16 flex-shrink-0">
-                <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-contain animate-jelly-float" />
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="lg:hidden bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
-            <button @click="router.push('/profile')"
-              class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
-              <div
-                class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.skin" />
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">
-                  Skin Type</p>
-                <p
-                  class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
-                  {{ authStore.user?.skin_type || 'Take the quiz to discover yours' }}
+            <div class="relative z-10 px-6 sm:px-8 py-6 sm:py-8 flex items-center justify-between">
+              <div class="max-w-[70%]">
+                <span class="inline-block bg-brand-text/10 dark:bg-brand-bg-dark/20 text-brand-text dark:text-brand-bg-dark text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 border border-brand-text/10">
+                  Active Profile: {{ currentSkinType }}
+                </span>
+                <h2 class="text-brand-text font-serif text-2xl sm:text-3xl font-bold leading-tight">Your Skin Dashboard</h2>
+                <p class="text-brand-text/80 text-xs sm:text-sm mt-1.5 leading-snug font-medium">
+                  Let AI Consulter inspect your regimen compatibility or discover tailored formulas below.
                 </p>
               </div>
-              <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none"
-                stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <div class="flex gap-2">
-              <button @click="showSelector = true"
-                class="flex-1 text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30">
-                Update Skin Type
-              </button>
-              <button @click="router.push('/quiz')"
-                class="flex-1 text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
-                {{ authStore.user?.skin_type ? 'Retake Quiz' : 'Take Quiz' }}
-              </button>
+
+              <div class="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 drop-shadow-md">
+                <img src="/images/jelly.png" alt="SkinBuddy Mascot" class="w-full h-full object-contain animate-jelly-float" />
+              </div>
             </div>
           </div>
 
+          <!-- Architecture Action Cards -->
           <div>
-            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">
-              Others Features</h3>
+            <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest mb-3 px-1">Core Actions</h3>
             <div class="grid grid-cols-2 gap-4">
-              <button v-for="action in quickActions" :key="action.route" @click="router.push(action.route)"
-                class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-3xl p-5 text-left hover:border-brand-primary/40 dark:hover:border-orange-600/40 hover:scale-[1.015] hover:shadow-md active:scale-[0.98] transition-all group flex flex-col justify-between min-h-[140px] md:min-h-[150px]">
+              <button
+                v-for="action in quickActions"
+                :key="action.route"
+                @click="router.push(action.route)"
+                :class="[
+                  'border rounded-3xl p-5 text-left transition-all group flex flex-col justify-between min-h-[140px]',
+                  action.highlight
+                    ? 'bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border-brand-primary/40 shadow-sm hover:scale-[1.015]'
+                    : 'bg-brand-surface-light dark:bg-brand-surface-dark border-brand-surface-border dark:border-stone-800 hover:border-brand-primary/40 hover:scale-[1.015] hover:shadow-sm'
+                ]"
+              >
                 <div>
-                  <div
-                    class="w-11 h-11 rounded-2xl bg-brand-primary/10 dark:bg-orange-900/25 border border-brand-primary/15 dark:border-orange-700/25 flex items-center justify-center mb-3 group-hover:bg-brand-primary/20 dark:group-hover:bg-orange-900/40 transition-colors">
-                    <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
-                      viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons[action.icon]" />
+                  <div class="w-11 h-11 rounded-2xl bg-brand-primary-light dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-3 group-hover:bg-brand-primary-accent/40 dark:group-hover:bg-brand-primary/20 transition-colors">
+                    <svg class="w-5 h-5 text-brand-primary stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" :d="icons[action.icon]" />
                     </svg>
                   </div>
                   <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ action.label }}</p>
                 </div>
-                <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-2 leading-snug">{{ action.sublabel }}
-                </p>
+                <p class="text-[11px] text-brand-text-muted mt-2 leading-snug">{{ action.sublabel }}</p>
               </button>
             </div>
           </div>
 
+          <!-- Featured Match Container -->
           <div>
             <div class="flex items-center justify-between mb-3 px-1">
-              <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">Today's
-                Routine</h3>
-              <button @click="router.push('/routine')"
-                class="text-xs font-bold text-brand-primary dark:text-orange-400 hover:underline underline-offset-2 transition-all">See
-                all</button>
-            </div>
-
-            <div
-              class="bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-3xl shadow-sm overflow-hidden flex flex-col">
-              <div class="flex items-center gap-4 px-5 py-4 border-b border-stone-100 dark:border-stone-800">
-                <div
-                  class="w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-orange-400 dark:text-orange-300" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <p class="text-xs font-bold text-brand-text dark:text-stone-100">Morning Routine</p>
-                  <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-0.5">Cleanser · Toner · Moisturiser
-                    · SPF</p>
-                </div>
-                <span
-                  class="text-[10px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-800/40">Done</span>
+              <div>
+                <span class="text-[10px] bg-brand-primary-light dark:bg-brand-primary/10 text-brand-primary font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Featured Match</span>
+                <h3 class="text-base sm:text-lg font-serif font-bold text-brand-text dark:text-stone-100 mt-1">Tailored For {{ currentSkinType }}</h3>
               </div>
-
-              <div class="flex items-center gap-4 px-5 py-4">
-                <div
-                  class="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-brand-text-muted dark:text-stone-400" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <p class="text-xs font-bold text-brand-text dark:text-stone-100">Evening Routine</p>
-                  <p class="text-[11px] text-brand-text-muted dark:text-stone-500 mt-0.5">Double Cleanse · Serum · Night
-                    Cream</p>
-                </div>
-                <span
-                  class="text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-brand-text-muted dark:text-stone-400 px-2.5 py-1 rounded-full border border-stone-200 dark:border-stone-700">Pending</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="lg:col-span-4 flex flex-col gap-6 w-full lg:pt-0">
-          <div class="hidden lg:block">
-            <div
-              class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm p-4 flex flex-col gap-3">
-              <button @click="router.push('/profile')"
-                class="flex items-center gap-4 px-1 text-left group hover:opacity-80 transition-all">
-                <div
-                  class="w-10 h-10 rounded-full bg-brand-primary/10 dark:bg-orange-900/30 border border-brand-primary/20 dark:border-orange-700/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="icons.skin" />
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-[11px] font-bold text-brand-text-muted dark:text-stone-500 uppercase tracking-widest">
-                    Skin Type</p>
-                  <p
-                    class="text-sm font-bold text-brand-text dark:text-stone-100 mt-0.5 group-hover:text-brand-primary transition-colors">
-                    {{ authStore.user?.skin_type || 'Take the quiz to discover yours' }}
-                  </p>
-                </div>
-                <svg class="w-4 h-4 text-stone-400 group-hover:text-brand-primary transition-colors" fill="none"
-                  stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
+              <button @click="router.push('/explore')" class="text-xs font-bold text-brand-primary hover:underline flex items-center gap-1">
+                <span>Browse All</span>
+                <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
               </button>
+            </div>
 
-              <div class="flex flex-col gap-2">
-                <button @click="showSelector = true"
-                  class="w-full text-[11px] sm:text-xs font-bold text-brand-primary dark:text-orange-400 bg-brand-primary/5 dark:bg-orange-900/10 hover:bg-brand-primary/10 dark:hover:bg-orange-900/30 py-3 rounded-xl transition-all border border-brand-primary/20 dark:border-orange-700/30 shadow-sm">
-                  Update Current Skin Type
-                </button>
-                <button @click="router.push('/quiz')"
-                  class="w-full text-[11px] sm:text-xs font-bold text-white bg-brand-primary hover:bg-orange-800 py-3 rounded-xl transition-all shadow-sm">
-                  {{ authStore.user?.skin_type ? 'Retake Quiz' : 'Take Quiz' }}
-                </button>
+            <!-- Responsive Render Container -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 flex sm:grid snap-x hide-scrollbar">
+              <div
+                v-for="(prod, i) in recommendedProducts"
+                :key="i"
+                @click="router.push('/explore')"
+                class="snap-start flex-shrink-0 w-64 sm:w-auto bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border border-brand-surface-border dark:border-stone-800 rounded-2xl p-4 sm:p-5 cursor-pointer hover:border-brand-primary/60 hover:shadow-md transition-all flex flex-col justify-between group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/50">{{ prod.match }}</span>
+                    <span class="text-[10px] text-brand-text-muted uppercase font-semibold tracking-wider">{{ prod.tag }}</span>
+                  </div>
+                  <h4 class="text-sm sm:text-base font-bold text-brand-text dark:text-stone-100 line-clamp-1 group-hover:text-brand-primary transition-colors">{{ prod.name }}</h4>
+                  <p class="text-xs text-brand-text-muted mt-0.5">{{ prod.brand }}</p>
+                </div>
+                <div class="mt-5 pt-3 border-t border-brand-surface-border dark:border-stone-800 flex items-center justify-between text-xs font-bold text-brand-primary">
+                  <span>Inspect Breakdown</span>
+                  <svg class="w-4 h-4 stroke-[2] transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </div>
               </div>
             </div>
           </div>
 
+          <!-- Deep Nourishment Profile Summary -->
           <div>
-            <h3 class="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-3 px-1">Tip
-              of the Day</h3>
-            <div
-              class="bg-brand-primary/8 dark:bg-orange-900/15 border border-brand-primary/20 dark:border-orange-700/25 rounded-3xl px-5 py-4 flex gap-4 items-start shadow-sm">
+            <div class="mb-3 px-1">
+              <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest">Active Ingredients Summary</h3>
+              <p class="text-xs font-bold text-brand-text dark:text-stone-200">Hero Support vs. Formulas To Avoid Inside</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 flex sm:grid snap-x hide-scrollbar">
               <div
-                class="w-9 h-9 rounded-xl bg-brand-primary/15 dark:bg-orange-900/35 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg class="w-5 h-5 text-brand-primary dark:text-orange-400" fill="none" stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.636-6.364l.707.707M12 21v-1M6.343 17.657l-.707-.707M17.657 17.657l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                </svg>
+                v-for="(ing, idx) in heroIngredients"
+                :key="idx"
+                :class="[
+                  'snap-start flex-shrink-0 w-60 sm:w-auto rounded-2xl p-4 border flex flex-col justify-between shadow-sm bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark',
+                  ing.type === 'hero'
+                    ? 'border-emerald-200 dark:border-emerald-800/40'
+                    : 'border-rose-200 dark:border-rose-800/40'
+                ]"
+              >
+                <div>
+                  <span :class="[
+                    'text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border',
+                    ing.type === 'hero' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400' : 'bg-rose-100 text-semantic-error border-rose-200 dark:bg-rose-900/30 dark:border-rose-800/50 dark:text-rose-400'
+                  ]">
+                    {{ ing.role }}
+                  </span>
+                  <h4 class="text-sm font-bold text-brand-text dark:text-stone-100 mt-2">{{ ing.name }}</h4>
+                  <p class="text-xs text-brand-text-muted mt-1 leading-relaxed">{{ ing.desc }}</p>
+                </div>
               </div>
-              <p class="text-sm text-brand-text dark:text-stone-200 leading-relaxed">{{ tip.text }}</p>
             </div>
           </div>
 
         </div>
+
+        <!-- Right Column: Desktop Command Center & Profile Control -->
+        <div class="lg:col-span-4 flex flex-col gap-6 w-full">
+
+          <!-- Desktop AI Consulter Spotlight Card -->
+          <div class="hidden lg:block bg-gradient-to-br from-brand-surface-dark to-brand-bg-dark text-white rounded-[2rem] p-6 border border-stone-600 shadow-lg relative overflow-hidden">
+            <div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-brand-primary-accent/20 blur-xl pointer-events-none" />
+            <div class="flex items-center gap-2 text-brand-primary-accent mb-3">
+              <svg class="w-5 h-5 animate-pulse stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.sparkles"/></svg>
+              <span class="text-xs font-bold uppercase tracking-wider">AI Skin Consulter</span>
+            </div>
+            <h4 class="font-serif font-bold text-xl leading-snug">Need an expert second opinion?</h4>
+            <p class="text-xs text-stone-300 mt-2 leading-relaxed font-medium">Let our AI Consulter cross-reference your exact routine against potential active clashing or seasonal barrier degradation.</p>
+            <button @click="router.push('/chat')" class="mt-5 w-full bg-gradient-to-br from-brand-primary to-brand-primary-hover hover:opacity-90 text-brand-text font-bold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+              <span>Launch Consultation</span>
+              <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+          </div>
+
+          <!-- Skin Profile Management Card -->
+          <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm p-6 flex flex-col gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full bg-brand-primary-light dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-brand-primary stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="icons.skin" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest">Active Diagnosis</p>
+                <p class="text-base font-bold text-brand-text dark:text-stone-100">{{ currentSkinType }}</p>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-2.5 pt-3 border-t border-brand-surface-border dark:border-stone-800">
+              <button @click="showSelector = true" class="w-full text-xs font-bold text-brand-primary bg-brand-primary-light dark:bg-brand-primary/10 hover:bg-brand-primary/20 py-3 rounded-xl transition-all border border-brand-primary/20">
+                Quick Update Skin Type
+              </button>
+              <button @click="router.push('/quiz')" class="w-full text-xs font-bold text-brand-text bg-gradient-to-br from-brand-primary to-brand-primary-hover hover:opacity-90 py-3 rounded-xl transition-all shadow-sm">
+                {{ authStore.user?.skin_type ? 'Retake Baumann Quiz' : 'Take Skin Quiz' }}
+              </button>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
 
-    <ExpressSkinSelectorModal :is-open="showSelector" :is-saving="isSaving" @close="showSelector = false"
-      @confirm="handleExpressConfirm" />
+    <ExpressSkinSelectorModal :is-open="showSelector" :is-saving="isSaving" @close="showSelector = false" @confirm="handleExpressConfirm" />
   </div>
 </template>
 
 <style scoped>
-/* ── Isolated Mascot Floating & Eye-Blinking Core Keyframes ── */
 .animate-jelly-float {
   animation: jellyFloat 3s infinite ease-in-out;
 }
-
 @keyframes jellyFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.02); }
+}
 
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-
-  50% {
-    transform: translateY(-4px) scale(1.02);
-  }
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 </style>
