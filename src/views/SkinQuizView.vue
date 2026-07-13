@@ -88,7 +88,8 @@ const saveAndContinue = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F7F9F8] dark:bg-[#111412] font-sans text-slate-800 relative flex flex-col">
+  <!-- Updated background to semantic tokens -->
+  <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark font-sans text-brand-text dark:text-stone-100 relative flex flex-col">
 
     <Transition name="fade">
       <LoadingScreen v-if="isLoading" message="Preparing Quiz..." />
@@ -110,17 +111,18 @@ const saveAndContinue = async () => {
         />
       </div>
 
-<div v-else class="pb-32">
+      <div v-else class="pb-32">
         <QuizResultDashboard
           :skin-type="quizStore.finalSkinType"
           :scores="quizStore.scores"
         />
 
-        <div class="fixed bottom-0 left-0 w-full bg-brand-surface-light dark:bg-brand-surface-dark border-t border-stone-200 dark:border-stone-800 p-4 sm:p-6 z-20">
+        <!-- Sticky Footer for saving -->
+        <div class="fixed bottom-0 left-0 w-full bg-brand-surface-light dark:bg-brand-surface-dark border-t border-brand-surface-border dark:border-stone-800 p-4 sm:p-6 z-20">
           <div class="max-w-md mx-auto">
             <button
               @click="saveAndContinue"
-              class="w-full bg-brand-primary text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md flex justify-center items-center gap-2 hover:bg-orange-800 active:scale-[0.98]"
+              class="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
             >
               Save Skin Profile
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
