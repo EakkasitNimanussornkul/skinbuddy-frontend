@@ -11,6 +11,8 @@ import ShelfView from '../views/ShelfView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
 import SkinTypeLanding from '../views/SkinTypeLanding.vue'
 import SkinProfileView from '../views/SkinProfileView.vue'
+import ProductDetailView from '../views/ProductDetailView.vue'
+import CompareView from '../views/CompareView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -76,6 +78,17 @@ const router = createRouter({
       component: ChatbotView,
       meta: { requiresAuth: true },
     },
+    {
+    path: '/product/:slug',
+    name: 'ProductDetail',
+    component: ProductDetailView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/compare',
+    name: 'Compare',
+    component: CompareView
+  },
 
   ],
 })
