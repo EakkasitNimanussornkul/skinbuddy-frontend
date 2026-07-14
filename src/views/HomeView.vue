@@ -81,8 +81,8 @@ const icons: Record<string, string> = {
   search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
   routine: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
-  skin: 'M12 2.69l5.66 5.66a8 8 0 11-11.31 0z',
   bell: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
+  skin: 'M12 2.69l5.66 5.66a8 8 0 11-11.31 0z',
 }
 
 const heroIngredients = [
@@ -102,57 +102,98 @@ const recommendedProducts = [
 
 <template>
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-28 transition-colors duration-300">
-    <div class="max-w-md md:max-w-3xl lg:max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-6">
+    <div class="max-w-md md:max-w-3xl lg:max-w-[1400px] mx-auto px-4 sm:px-6 flex flex-col gap-8">
 
       <!-- Top Header Profile Row -->
-      <div class="flex items-center justify-between pt-6">
+      <div class="flex items-center justify-between pt-6 lg:pt-10">
         <button @click="router.push('/settings')" class="flex items-center gap-3 group">
-          <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-brand-primary/40 bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0 shadow-sm">
+          <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-brand-primary/40 bg-brand-surface-light dark:bg-stone-800 flex items-center justify-center flex-shrink-0 shadow-sm">
             <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
-            <svg v-else class="w-6 h-6 text-brand-text-muted stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+            <svg v-else class="w-6 h-6 text-brand-text-muted stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
           </div>
           <div class="text-left">
-            <p class="text-[11px] text-brand-text-muted leading-none mb-0.5">Welcome back</p>
-            <p class="text-sm font-bold text-brand-text dark:text-stone-100 leading-tight">{{ greeting }}, {{ firstName }}</p>
+            <p class="text-xs font-bold text-brand-text-muted uppercase tracking-widest mb-0.5">Welcome back</p>
+            <p class="text-base font-serif font-bold text-brand-text dark:text-white leading-tight">{{ greeting }}, {{ firstName }}</p>
           </div>
         </button>
 
-        <div class="flex items-center gap-2">
-          <button @click="router.push('/settings')" class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border border-brand-surface-border dark:border-stone-700 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors shadow-sm">
+        <div class="flex items-center gap-3">
+          <button @click="router.push('/settings')" class="w-11 h-11 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-all shadow-sm hover:shadow-md">
             <svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.bell" /></svg>
           </button>
-          <button @click="router.push('/settings')" class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border border-brand-surface-border dark:border-stone-700 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors shadow-sm">
+          <button @click="router.push('/settings')" class="w-11 h-11 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-all shadow-sm hover:shadow-md">
             <svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.settings" /></svg>
           </button>
         </div>
       </div>
 
-      <!-- Main Layout Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+      <!-- Main Layout Grid (Desktop Split) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
 
-        <!-- Left Column -->
-        <div class="lg:col-span-8 flex flex-col gap-6 w-full">
+        <!-- Left Column: Core Feed -->
+        <div class="lg:col-span-8 flex flex-col gap-8 w-full">
 
-          <!-- 🌟 Hero Banner with Native Tailwind Gradient 🌟 -->
-          <div class="relative rounded-[2rem] overflow-hidden bg-gradient-to-br from-brand-primary to-brand-primary-hover shadow-md border border-brand-primary-accent/30">
+          <!-- 🌟 Restored Hero Banner: Compact on Mobile, Large on Desktop 🌟 -->
+          <div class="relative rounded-[2rem] overflow-hidden bg-gradient-to-br from-brand-primary to-brand-primary-hover shadow-md border border-brand-primary-accent/30 min-h-[160px] sm:min-h-[280px]">
+            <!-- Restored sharp circle patterns -->
             <div class="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/30 pointer-events-none" />
             <div class="absolute -bottom-10 -right-4 w-28 h-28 rounded-full bg-white/20 pointer-events-none" />
 
-            <div class="relative z-10 px-6 sm:px-8 py-6 sm:py-8 flex items-center justify-between">
-              <div class="max-w-[70%]">
-                <span class="inline-block bg-brand-text/10 dark:bg-brand-bg-dark/20 text-brand-text dark:text-brand-bg-dark text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 border border-brand-text/10">
+            <div class="relative z-10 px-6 sm:px-12 py-6 sm:py-12 flex items-center justify-between h-full">
+              <div class="max-w-[70%] sm:max-w-[60%]">
+                <span class="inline-block bg-brand-text/10 dark:bg-brand-bg-dark/20 text-brand-text dark:text-brand-bg-dark text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 border border-brand-text/10 shadow-sm">
                   Active Profile: {{ currentSkinType }}
                 </span>
-                <h2 class="text-brand-text font-serif text-2xl sm:text-3xl font-bold leading-tight">Your Skin Dashboard</h2>
-                <p class="text-brand-text/80 text-xs sm:text-sm mt-1.5 leading-snug font-medium">
-                  Let AI Consulter inspect your regimen compatibility or discover tailored formulas below.
+                <h2 class="text-brand-text font-serif text-2xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-1.5 sm:mb-3">Your Skin Dashboard</h2>
+                <!-- Hide subtitle on very small mobile to save space, show on sm+ -->
+                <p class="hidden sm:block text-brand-text/90 text-sm leading-relaxed font-medium max-w-md">
+                  Let AI Consulter inspect your regimen compatibility or discover tailored formulas designed strictly for your barrier.
                 </p>
               </div>
 
-              <div class="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 drop-shadow-md">
+              <!-- Mascot scales down smoothly -->
+              <div class="w-20 h-20 sm:w-40 sm:h-40 flex-shrink-0 drop-shadow-md">
                 <img src="/images/jelly.png" alt="SkinBuddy Mascot" class="w-full h-full object-contain animate-jelly-float" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 🌟 MOBILE ONLY: AI Consulter & Profile Management (Directly under banner) 🌟 -->
+          <div class="flex flex-col gap-6 lg:hidden">
+            <!-- Mobile AI Consulter Spotlight Card -->
+            <div class="bg-brand-surface-dark text-white rounded-[2rem] p-6 border border-stone-800 shadow-xl relative overflow-hidden">
+              <div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-brand-primary/20 blur-2xl pointer-events-none" />
+              <div class="flex items-center gap-2 text-brand-primary mb-3">
+                <svg class="w-5 h-5 animate-pulse stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.sparkles"/></svg>
+                <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider">AI Skin Consulter</span>
+              </div>
+              <h4 class="font-serif font-bold text-xl leading-snug">Need an expert second opinion?</h4>
+              <p class="text-xs text-stone-400 mt-2 leading-relaxed font-medium">Let our AI Consulter cross-reference your exact routine against potential active clashing.</p>
+              <button @click="router.push('/chat')" class="mt-5 w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                <span>Launch Consultation</span>
+                <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </button>
+            </div>
+
+            <!-- Mobile Skin Profile Management Card -->
+            <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm p-6 flex flex-col gap-4">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-brand-primary-light/50 dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-6 h-6 text-brand-primary stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.skin" /></svg>
+                </div>
+                <div>
+                  <p class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest">Active Diagnosis</p>
+                  <p class="text-base font-bold text-brand-text dark:text-stone-100">{{ currentSkinType }}</p>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-2.5 pt-3 border-t border-brand-surface-border dark:border-stone-800">
+                <button @click="showSelector = true" class="w-full text-xs font-bold text-brand-primary bg-brand-primary-light/50 dark:bg-brand-primary/10 hover:bg-brand-primary/20 py-3 rounded-xl transition-all border border-brand-primary/20">
+                  Quick Update Skin Type
+                </button>
+                <button @click="router.push('/quiz')" class="w-full text-xs font-bold text-brand-text dark:text-stone-100 bg-brand-bg-light dark:bg-stone-800 hover:opacity-90 py-3 rounded-xl transition-all shadow-sm border border-brand-surface-border dark:border-stone-700">
+                  {{ authStore.user?.skin_type ? 'Retake Baumann Quiz' : 'Take Skin Quiz' }}
+                </button>
               </div>
             </div>
           </div>
@@ -166,15 +207,15 @@ const recommendedProducts = [
                 :key="action.route"
                 @click="router.push(action.route)"
                 :class="[
-                  'border rounded-3xl p-5 text-left transition-all group flex flex-col justify-between min-h-[140px]',
+                  'border rounded-3xl p-5 text-left transition-all group flex flex-col justify-between min-h-[140px] bg-brand-surface-light dark:bg-brand-surface-dark',
                   action.highlight
-                    ? 'bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border-brand-primary/40 shadow-sm hover:scale-[1.015]'
-                    : 'bg-brand-surface-light dark:bg-brand-surface-dark border-brand-surface-border dark:border-stone-800 hover:border-brand-primary/40 hover:scale-[1.015] hover:shadow-sm'
+                    ? 'border-brand-primary/40 shadow-sm hover:-translate-y-1'
+                    : 'border-brand-surface-border dark:border-stone-800 hover:border-brand-primary/40 hover:-translate-y-1 hover:shadow-sm'
                 ]"
               >
                 <div>
-                  <div class="w-11 h-11 rounded-2xl bg-brand-primary-light dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-3 group-hover:bg-brand-primary-accent/40 dark:group-hover:bg-brand-primary/20 transition-colors">
-                    <svg class="w-5 h-5 text-brand-primary stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-11 h-11 rounded-2xl bg-brand-primary-light/50 dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-3 group-hover:bg-brand-primary/20 transition-colors text-brand-primary">
+                    <svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" :d="icons[action.icon]" />
                     </svg>
                   </div>
@@ -185,114 +226,113 @@ const recommendedProducts = [
             </div>
           </div>
 
-          <!-- Featured Match Container -->
+          <!-- 🌟 Clean Card Design for Featured Match (Mobile Slider / Desktop Grid) 🌟 -->
           <div>
-            <div class="flex items-center justify-between mb-3 px-1">
+            <div class="flex items-end justify-between mb-4 px-1">
               <div>
-                <span class="text-[10px] bg-brand-primary-light dark:bg-brand-primary/10 text-brand-primary font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Featured Match</span>
-                <h3 class="text-base sm:text-lg font-serif font-bold text-brand-text dark:text-stone-100 mt-1">Tailored For {{ currentSkinType }}</h3>
+                <span class="text-[10px] bg-brand-primary-light/50 dark:bg-brand-primary/10 text-brand-primary font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-brand-primary/20">Featured Match</span>
+                <h3 class="text-lg sm:text-xl font-serif font-bold text-brand-text dark:text-white mt-1.5">Tailored For {{ currentSkinType }}</h3>
               </div>
-              <button @click="router.push('/explore')" class="text-xs font-bold text-brand-primary hover:underline flex items-center gap-1">
+              <button @click="router.push('/explore')" class="text-xs font-bold text-brand-primary hover:text-brand-primary-hover transition-colors flex items-center gap-1 mb-1">
                 <span>Browse All</span>
-                <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
               </button>
             </div>
 
-            <!-- Responsive Render Container -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 flex sm:grid snap-x hide-scrollbar">
+            <!-- Native Flex Carousel -->
+            <div class="flex overflow-x-auto sm:grid sm:grid-cols-3 gap-4 pb-4 sm:pb-0 snap-x snap-mandatory hide-scrollbar">
               <div
                 v-for="(prod, i) in recommendedProducts"
                 :key="i"
                 @click="router.push('/explore')"
-                class="snap-start flex-shrink-0 w-64 sm:w-auto bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark border border-brand-surface-border dark:border-stone-800 rounded-2xl p-4 sm:p-5 cursor-pointer hover:border-brand-primary/60 hover:shadow-md transition-all flex flex-col justify-between group"
+                class="w-[75vw] sm:w-auto shrink-0 snap-center bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 rounded-2xl p-5 cursor-pointer hover:border-brand-primary/50 hover:shadow-lg transition-all flex flex-col group"
               >
-                <div>
-                  <div class="flex items-center justify-between mb-3">
-                    <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/50">{{ prod.match }}</span>
-                    <span class="text-[10px] text-brand-text-muted uppercase font-semibold tracking-wider">{{ prod.tag }}</span>
-                  </div>
-                  <h4 class="text-sm sm:text-base font-bold text-brand-text dark:text-stone-100 line-clamp-1 group-hover:text-brand-primary transition-colors">{{ prod.name }}</h4>
-                  <p class="text-xs text-brand-text-muted mt-0.5">{{ prod.brand }}</p>
+                <!-- Badge Row -->
+                <div class="flex items-center justify-between mb-4">
+                  <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/50">{{ prod.match }}</span>
+                  <span class="text-[10px] text-brand-text-muted uppercase font-bold tracking-wider">{{ prod.tag }}</span>
                 </div>
-                <div class="mt-5 pt-3 border-t border-brand-surface-border dark:border-stone-800 flex items-center justify-between text-xs font-bold text-brand-primary">
+                <!-- Content -->
+                <div class="mb-4">
+                  <h4 class="text-sm font-bold text-brand-text dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors">{{ prod.name }}</h4>
+                  <p class="text-[11px] font-medium text-brand-text-muted mt-1">{{ prod.brand }}</p>
+                </div>
+                <!-- Card Footer Divider -->
+                <div class="mt-auto pt-3 border-t border-brand-surface-border dark:border-stone-800 flex items-center justify-between text-xs font-bold text-brand-primary">
                   <span>Inspect Breakdown</span>
-                  <svg class="w-4 h-4 stroke-[2] transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                  <svg class="w-4 h-4 stroke-[2.5] transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Deep Nourishment Profile Summary -->
+          <!-- 🌟 Clean Card Design for Ingredients Summary (Mobile Slider / Desktop Grid) 🌟 -->
           <div>
-            <div class="mb-3 px-1">
-              <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest">Active Ingredients Summary</h3>
-              <p class="text-xs font-bold text-brand-text dark:text-stone-200">Hero Support vs. Formulas To Avoid Inside</p>
+            <div class="mb-4 px-1">
+              <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest mb-1.5">Active Ingredients Summary</h3>
+              <p class="text-lg font-serif font-bold text-brand-text dark:text-white">Hero Support vs. Formulas To Avoid</p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 flex sm:grid snap-x hide-scrollbar">
+            <div class="flex overflow-x-auto sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 sm:pb-0 snap-x snap-mandatory hide-scrollbar">
               <div
                 v-for="(ing, idx) in heroIngredients"
                 :key="idx"
+                class="w-[70vw] sm:w-auto shrink-0 snap-center rounded-2xl p-5 border flex flex-col shadow-sm bg-brand-surface-light dark:bg-brand-surface-dark transition-all hover:-translate-y-1"
                 :class="[
-                  'snap-start flex-shrink-0 w-60 sm:w-auto rounded-2xl p-4 border flex flex-col justify-between shadow-sm bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark',
-                  ing.type === 'hero'
-                    ? 'border-emerald-200 dark:border-emerald-800/40'
-                    : 'border-rose-200 dark:border-rose-800/40'
+                  ing.type === 'hero' ? 'border-emerald-200 dark:border-emerald-800/40 hover:shadow-emerald-500/10 hover:shadow-lg' : 'border-semantic-error/30 dark:border-semantic-error/20 hover:shadow-semantic-error/10 hover:shadow-lg'
                 ]"
               >
-                <div>
-                  <span :class="[
-                    'text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border',
-                    ing.type === 'hero' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400' : 'bg-rose-100 text-semantic-error border-rose-200 dark:bg-rose-900/30 dark:border-rose-800/50 dark:text-rose-400'
-                  ]">
-                    {{ ing.role }}
-                  </span>
-                  <h4 class="text-sm font-bold text-brand-text dark:text-stone-100 mt-2">{{ ing.name }}</h4>
-                  <p class="text-xs text-brand-text-muted mt-1 leading-relaxed">{{ ing.desc }}</p>
-                </div>
+                <span :class="[
+                  'text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border inline-block mb-3 self-start',
+                  ing.type === 'hero' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400' : 'bg-semantic-error/10 text-semantic-error border-semantic-error/20'
+                ]">
+                  {{ ing.role }}
+                </span>
+                <h4 class="text-sm font-bold text-brand-text dark:text-white">{{ ing.name }}</h4>
+                <p class="text-xs font-medium text-brand-text-muted mt-1.5 leading-relaxed">{{ ing.desc }}</p>
               </div>
             </div>
           </div>
 
         </div>
 
-        <!-- Right Column: Desktop Command Center & Profile Control -->
-        <div class="lg:col-span-4 flex flex-col gap-6 w-full">
+        <!-- 🌟 DESKTOP ONLY: Right Column Command Center (Hidden on Mobile) 🌟 -->
+        <div class="hidden lg:flex lg:col-span-4 flex-col gap-6 w-full lg:sticky lg:top-28">
 
           <!-- Desktop AI Consulter Spotlight Card -->
-          <div class="hidden lg:block bg-gradient-to-br from-brand-surface-dark to-brand-bg-dark text-white rounded-[2rem] p-6 border border-stone-600 shadow-lg relative overflow-hidden">
-            <div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-brand-primary-accent/20 blur-xl pointer-events-none" />
-            <div class="flex items-center gap-2 text-brand-primary-accent mb-3">
-              <svg class="w-5 h-5 animate-pulse stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.sparkles"/></svg>
+          <div class="bg-brand-surface-dark text-white rounded-[2rem] p-8 border border-stone-800 shadow-2xl relative overflow-hidden group">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-brand-primary/20 blur-2xl pointer-events-none transition-transform group-hover:scale-110 duration-700" />
+            <div class="flex items-center gap-2 text-brand-primary mb-4">
+              <svg class="w-5 h-5 animate-pulse stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.sparkles"/></svg>
               <span class="text-xs font-bold uppercase tracking-wider">AI Skin Consulter</span>
             </div>
-            <h4 class="font-serif font-bold text-xl leading-snug">Need an expert second opinion?</h4>
-            <p class="text-xs text-stone-300 mt-2 leading-relaxed font-medium">Let our AI Consulter cross-reference your exact routine against potential active clashing or seasonal barrier degradation.</p>
-            <button @click="router.push('/chat')" class="mt-5 w-full bg-gradient-to-br from-brand-primary to-brand-primary-hover hover:opacity-90 text-brand-text font-bold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+            <h4 class="font-serif font-bold text-2xl leading-snug mb-3">Need an expert second opinion?</h4>
+            <p class="text-sm text-stone-400 leading-relaxed font-medium mb-8">Let our AI Consulter cross-reference your exact routine against potential active clashing or seasonal barrier degradation.</p>
+            <button @click="router.push('/chat')" class="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm py-4 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
               <span>Launch Consultation</span>
-              <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
             </button>
           </div>
 
-          <!-- Skin Profile Management Card -->
-          <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm p-6 flex flex-col gap-4">
+          <!-- Desktop Skin Profile Management Card (Restored Original Style) -->
+          <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm p-8 flex flex-col gap-6">
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-full bg-brand-primary-light dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center flex-shrink-0">
+              <div class="w-14 h-14 rounded-full bg-brand-primary-light/50 dark:bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center flex-shrink-0">
                 <svg class="w-6 h-6 text-brand-primary stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" :d="icons.skin" />
                 </svg>
               </div>
               <div>
-                <p class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest">Active Diagnosis</p>
-                <p class="text-base font-bold text-brand-text dark:text-stone-100">{{ currentSkinType }}</p>
+                <p class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest mb-1">Active Diagnosis</p>
+                <p class="text-xl font-serif font-bold text-brand-text dark:text-stone-100">{{ currentSkinType }}</p>
               </div>
             </div>
 
-            <div class="flex flex-col gap-2.5 pt-3 border-t border-brand-surface-border dark:border-stone-800">
-              <button @click="showSelector = true" class="w-full text-xs font-bold text-brand-primary bg-brand-primary-light dark:bg-brand-primary/10 hover:bg-brand-primary/20 py-3 rounded-xl transition-all border border-brand-primary/20">
+            <div class="flex flex-col gap-3 pt-6 border-t border-brand-surface-border dark:border-stone-800">
+              <button @click="showSelector = true" class="w-full text-xs font-bold text-brand-text dark:text-white bg-brand-bg-light dark:bg-stone-800 hover:border-brand-primary/50 py-3.5 rounded-xl transition-all border border-brand-surface-border dark:border-stone-700 shadow-sm active:scale-95">
                 Quick Update Skin Type
               </button>
-              <button @click="router.push('/quiz')" class="w-full text-xs font-bold text-brand-text bg-gradient-to-br from-brand-primary to-brand-primary-hover hover:opacity-90 py-3 rounded-xl transition-all shadow-sm">
+              <button @click="router.push('/quiz')" class="w-full text-xs font-bold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-white py-3.5 rounded-xl transition-all border border-brand-primary/20 shadow-sm active:scale-95">
                 {{ authStore.user?.skin_type ? 'Retake Baumann Quiz' : 'Take Skin Quiz' }}
               </button>
             </div>
