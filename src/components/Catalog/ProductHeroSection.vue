@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { addToShelf } from '../../api/shelfapi'
+import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import { useToast } from '../../composables/useToast'
+import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
+import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
 const props = defineProps<{
   product: any
@@ -18,6 +20,58 @@ const selectedPao = ref('12M')
 const paoOptions = ['3M', '6M', '12M', '18M', '24M', '36M']
 const customDate = ref(new Date().toISOString().split('T')[0])
 
+// --- Unified Safety Pipeline States ---
+const isSafetyModalOpen = ref(false)
+const showWarningModal = ref(false) // 🌟 Interception modal controller state
+const isAnalyzing = ref(false)
+const hasCheckedSafety = ref(false)
+const backendWarnings = ref<any[]>([])
+
+// Shared analysis routing module
+const runBackendAnalysis = async () => {
+  if (!props.product?.id) return
+  isAnalyzing.value = true
+  backendWarnings.value = []
+  try {
+    const analysis = await analyzeProduct(props.product.id)
+    if (analysis && analysis.warnings) {
+      backendWarnings.value = analysis.warnings
+    }
+  } catch (error) {
+    console.error('Safety evaluation client request failed:', error)
+    addToast('Could not complete safety diagnostic verification.', 'error')
+  } finally {
+    isAnalyzing.value = false
+  }
+}
+
+// Flow A: Safety Check Dashboard Button Click
+const handleTriggerSafetyCheck = async () => {
+  isSafetyModalOpen.value = true
+  hasCheckedSafety.value = false
+  await runBackendAnalysis()
+  hasCheckedSafety.value = true
+}
+
+// Flow B: Save to Shelf Interception Flow Gateway
+const handleOpenConfigurator = async () => {
+  await runBackendAnalysis()
+
+  // If your backend lists conflicts, intercept and trigger your full overlay window component
+  if (backendWarnings.value.length > 0) {
+    showWarningModal.value = true
+  } else {
+    // Completely clear record, open setup parameters directly
+    isConfiguringAdd.value = true
+  }
+}
+
+// Triggered when clicking "Proceed Anyway" inside the SafetyWarningModal overlay
+const handleBypassProceed = () => {
+  showWarningModal.value = false
+  isConfiguringAdd.value = true
+}
+
 const handleCommitToShelf = async () => {
   if (!props.product) return
   isSaving.value = true
@@ -27,6 +81,7 @@ const handleCommitToShelf = async () => {
       product_id: props.product.id,
       usage_state: isOpened.value ? 'active' : 'unopened',
       opened_date: isOpened.value ? customDate.value : null,
+      expiration_date: null,
       pao: numericPao
     })
     addToast(`${props.product.name} added to routine!`, 'success')
@@ -43,6 +98,7 @@ const handleCommitToShelf = async () => {
 
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-12 bg-brand-surface-light dark:bg-brand-surface-dark rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-xl overflow-hidden transition-colors duration-300">
+
     <!-- Left Image Showcase -->
     <div class="lg:col-span-5 bg-brand-bg-light dark:bg-stone-900/50 p-8 sm:p-12 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-brand-surface-border dark:border-stone-800">
       <div class="w-56 h-56 sm:w-72 sm:h-72 flex items-center justify-center relative mix-blend-multiply dark:mix-blend-normal">
@@ -66,7 +122,7 @@ const handleCommitToShelf = async () => {
       </div>
 
       <!-- Match Card -->
-      <div class="bg-emerald-500/10 dark:bg-emerald-950/30 border-2 border-emerald-500/20 dark:border-emerald-800/60 rounded-3xl p-6 space-y-4 shadow-2xs">
+      <div class="bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-800/40 rounded-3xl p-6 space-y-4 shadow-2xs">
         <div class="flex items-center justify-between">
           <div>
             <h4 class="text-base font-black text-emerald-900 dark:text-emerald-200">Great match</h4>
@@ -79,12 +135,8 @@ const handleCommitToShelf = async () => {
 
         <div class="space-y-3 pt-3 border-t border-emerald-500/20 dark:border-emerald-800/40 text-xs">
           <div v-for="(reason, i) in (product.match_reasons || ['Formulated to optimize hydration and soothe redness.'])" :key="i" class="flex items-start gap-2.5 text-emerald-900 dark:text-emerald-200">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 flex-shrink-0"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1 flex-shrink-0"></span>
             <span class="leading-relaxed">{{ reason }}</span>
-          </div>
-          <div v-if="!product.caution_reasons?.length" class="flex items-start gap-2.5 text-emerald-900 dark:text-emerald-200 font-semibold">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 mt-1 flex-shrink-0"></span>
-            <span class="leading-relaxed">No major concerns detected against your routine profile.</span>
           </div>
         </div>
       </div>
@@ -92,17 +144,24 @@ const handleCommitToShelf = async () => {
       <!-- Action Controllers -->
       <div class="pt-2">
         <div v-if="!isConfiguringAdd" class="flex flex-col sm:flex-row items-center gap-3">
-          <button @click="isConfiguringAdd = true" class="w-full sm:w-1/2 py-4 bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm rounded-2xl shadow-md shadow-brand-primary/20 transition-all cursor-pointer active:scale-95">
-            Save To Shelf
+          <button @click="handleOpenConfigurator" class="w-full sm:w-1/3 py-4 bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95">
+            <svg v-if="isAnalyzing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span>Save To Shelf</span>
           </button>
-          <button @click="emit('open-compare-selector', product)" class="w-full sm:w-1/2 py-4 bg-brand-bg-light dark:bg-stone-800/80 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 dark:hover:text-white font-bold text-sm rounded-2xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95">
+
+          <button @click="handleTriggerSafetyCheck" class="w-full sm:w-1/3 py-4 bg-brand-primary-light dark:bg-stone-800 text-brand-primary dark:text-brand-primary-accent font-bold text-sm rounded-2xl border border-brand-primary/20 dark:border-stone-700 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 hover:bg-brand-primary dark:hover:bg-stone-700 hover:text-white">
+            <span class="w-2 h-2 rounded-full bg-brand-primary" :class="isAnalyzing ? 'animate-ping' : 'animate-pulse'"></span>
+            <span>Safety Check</span>
+          </button>
+
+          <button @click="emit('open-compare-selector', product)" class="w-full sm:w-1/3 py-4 bg-brand-bg-light dark:bg-stone-800/80 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 dark:hover:text-white font-bold text-sm rounded-2xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95">
             <span>Compare</span>
             <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
           </button>
         </div>
 
         <!-- Shelf Configurator Accordion -->
-        <div v-else class="bg-brand-bg-light dark:bg-stone-900 p-6 rounded-3xl border border-brand-surface-border dark:border-stone-800 space-y-5 shadow-inner">
+        <div v-else class="bg-brand-bg-light dark:bg-stone-900 p-6 rounded-3xl border border-brand-surface-border dark:border-stone-800 space-y-4 shadow-inner animate-fade-in">
           <div class="flex items-center justify-between border-b border-brand-surface-border dark:border-stone-800 pb-3">
             <span class="text-xs font-bold uppercase tracking-wider text-brand-primary">Configure Routine Item</span>
             <button @click="isConfiguringAdd = false" class="text-xs font-bold text-brand-text-muted hover:text-brand-text dark:hover:text-white cursor-pointer transition-colors">Cancel</button>
@@ -133,5 +192,25 @@ const handleCommitToShelf = async () => {
         </div>
       </div>
     </div>
+
+    <!-- Live Unified Safety Checker Modal Portal -->
+    <SafetyCheckModal
+      :is-open="isSafetyModalOpen"
+      :product="product"
+      :is-loading="isAnalyzing"
+      :warnings="backendWarnings"
+      :has-checked="hasCheckedSafety"
+      @close="isSafetyModalOpen = false"
+    />
+
+    <!-- 🌟 Overlay Gate Interceptor Modal Portal Injection 🌟 -->
+    <Teleport to="body">
+      <SafetyWarningModal
+        v-if="showWarningModal"
+        :warnings="backendWarnings"
+        @cancel="showWarningModal = false"
+        @proceed="handleBypassProceed"
+      />
+    </Teleport>
   </div>
 </template>
