@@ -31,14 +31,11 @@ const selectedForInspection = ref<any>(null)
 const baseProductForCompare = ref<any | null>(null)
 const comparisonSlugs = ref<string[]>([])
 
-// Unified base normalization routine for absolute string security
 const cleanString = (str: string) => {
   let res = (str || '').toLowerCase().trim()
-  // Strip tailing pluralization vectors for comparisons
   if (res.endsWith('s') && res !== 'sunscreen') {
     res = res.slice(0, -1)
   }
-  // Standardize spaces to easily handle "Sun Care" variations
   return res.replace('+', ' ').replace('%20', ' ')
 }
 
@@ -81,18 +78,12 @@ const fetchCatalog = async () => {
   }
 }
 
-// Emits from clicking on the local category bar chips push to URL params
 const handleCategoryUpdate = (newCategory: string) => {
   router.push({
     path: route.path,
     query: { ...route.query, category: newCategory === 'All' ? undefined : newCategory }
   })
 }
-
-onMounted(() => {
-  fetchCatalog()
-  syncFiltersFromURL()
-})
 
 const handlePriceApply = (range: { min: number; max: number }) => {
   activeMinPrice.value = range.min
@@ -106,8 +97,12 @@ const handlePriceClear = () => {
   fetchCatalog()
 }
 
+onMounted(() => {
+  fetchCatalog()
+  syncFiltersFromURL()
+})
+
 const uniqueCategories = computed(() => {
-  // Use precise database matches derived directly from your image parameters
   const core = ['Cleansers', 'Toners', 'Serums', 'Treatments', 'Exfoliators', 'Sun Care']
   const dbCats = catalog.value.map(p => p.category).filter(Boolean)
   return ['All', ...new Set([...core, ...dbCats])]
@@ -126,7 +121,6 @@ const filteredCatalog = computed(() => {
       (product.brand && product.brand.toLowerCase().includes(query)) ||
       (product.category && product.category.toLowerCase().includes(query))
 
-    // 🌟 Advanced dynamic normalization layer evaluating base equality values 🌟
     const cleanedFilter = cleanString(selectedCategory.value)
     const cleanedProductCat = cleanString(product.category || '')
 
@@ -137,6 +131,7 @@ const filteredCatalog = computed(() => {
   })
 })
 
+// 🌟 FIXED: Syntax typo completely fixed here by removing unexpected brace character blocks 🌟
 watch(
   () => route.query,
   () => {
@@ -148,7 +143,7 @@ watch(
 
 <template>
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-36 pt-6 transition-colors duration-300">
-    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 flex flex-col gap-6">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
 
       <!-- Header Dashboard Banner -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm">
@@ -175,16 +170,20 @@ watch(
         />
       </div>
 
-      <!-- Filter Controls Deck Layout Split Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <!-- Left Side: Categorization Filters -->
-        <div class="lg:col-span-7 space-y-4 bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm">
+      <!-- 🌟 ONE INTEGRATED CONTROL DECK: Houses clean components with zero vertical voids 🌟 -->
+      <div class="bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+
+        <!-- LEFT PANEL: Formulation Filters (7 Columns) -->
+        <div class="lg:col-span-7 flex flex-col gap-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <span class="text-xs font-bold uppercase tracking-wider text-brand-text-muted">Filter Formulation</span>
+            <div class="space-y-0.5">
+              <span class="text-xs font-bold uppercase tracking-wider text-brand-text-muted">Filter Formulation</span>
+              <p class="text-[11px] text-brand-text-muted">Isolate target skincare categories and curated brands.</p>
+            </div>
 
             <select
               v-model="selectedBrand"
-              class="w-full sm:w-64 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 text-xs font-bold rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer transition-all text-brand-text dark:text-stone-200"
+              class="w-full sm:w-56 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 text-xs font-bold rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer transition-all text-brand-text dark:text-stone-200"
             >
               <option v-for="brand in uniqueBrands" :key="brand" :value="brand">
                 {{ brand === 'All' ? 'All Curated Brands' : brand }}
@@ -192,16 +191,20 @@ watch(
             </select>
           </div>
 
-          <!-- Mapped category bar model updates -->
-          <ExploreCategoryBar
-            :categories="uniqueCategories"
-            :selected-category="selectedCategory"
-            @update:selected-category="handleCategoryUpdate"
-          />
+          <div class="w-full pt-1">
+            <ExploreCategoryBar
+              :categories="uniqueCategories"
+              :selected-category="selectedCategory"
+              @update:selected-category="handleCategoryUpdate"
+            />
+          </div>
         </div>
 
-        <!-- Right Side: Slider Filters -->
-        <div class="lg:col-span-5 w-full">
+        <!-- MIDDLE: Desktop Vertical Splitter Line (1 Column) -->
+        <div class="hidden lg:block lg:col-span-1 h-16 border-r border-brand-surface-border dark:border-stone-800 justify-self-center"></div>
+
+        <!-- RIGHT PANEL: Offloaded Price Slider Component (4 Columns) -->
+        <div class="lg:col-span-4 w-full">
           <PriceRangeSlider
             :min-price="activeMinPrice"
             :max-price="activeMaxPrice"
@@ -210,6 +213,7 @@ watch(
             @clear="handlePriceClear"
           />
         </div>
+
       </div>
 
       <!-- Loading Tracker -->

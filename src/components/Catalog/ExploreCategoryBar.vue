@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 defineProps<{
   categories: string[]
   selectedCategory: string
@@ -6,7 +8,9 @@ defineProps<{
 
 const emit = defineEmits(['update:selectedCategory'])
 
-// Icon mapping index strictly maps base forms
+const categoryScrollContainer = ref<HTMLElement | null>(null)
+
+// SVG path dictionary
 const categoryIcons: Record<string, string> = {
   all: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
   cleanser: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
@@ -21,7 +25,6 @@ const categoryIcons: Record<string, string> = {
 
 const fallbackIcon = 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z'
 
-// Standard normalization layer to map icons correctly regardless of trailing "s" characters
 const getSanitizedIconKey = (name: string): string => {
   const normalized = name.toLowerCase().trim()
   if (normalized.endsWith('s') && normalized !== 'sunscreen') {
@@ -29,16 +32,28 @@ const getSanitizedIconKey = (name: string): string => {
   }
   return normalized
 }
+
+// Intercept desktop scroll wheel rotations and convert them horizontally
+const handleHorizontalScrollWheel = (event: WheelEvent) => {
+  if (!categoryScrollContainer.value) return
+  event.preventDefault()
+  categoryScrollContainer.value.scrollLeft += event.deltaY
+}
 </script>
 
 <template>
-  <div class="flex overflow-x-auto gap-2.5 pb-2 pt-1 hide-scrollbar snap-x">
+  <!-- 🌟 Added an intentional custom scrollbar class and bound the mousewheel interceptor hook 🌟 -->
+  <div
+    ref="categoryScrollContainer"
+    @wheel="handleHorizontalScrollWheel"
+    class="flex overflow-x-auto gap-2.5 pb-2 pt-1 custom-category-scroll snap-x select-none w-full"
+  >
     <button
       v-for="cat in categories"
       :key="cat"
       @click="emit('update:selectedCategory', cat)"
       :class="[
-        'snap-start flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border cursor-pointer select-none',
+        'snap-start flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border cursor-pointer',
         selectedCategory.toLowerCase().trim() === cat.toLowerCase().trim()
           ? 'bg-brand-primary text-white border-brand-primary shadow-sm scale-[1.01]'
           : 'bg-brand-bg-light dark:bg-stone-900 text-brand-text dark:text-stone-300 border-brand-surface-border dark:border-stone-800 hover:border-brand-primary/40'
@@ -53,6 +68,18 @@ const getSanitizedIconKey = (name: string): string => {
 </template>
 
 <style scoped>
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.hide-scrollbar::-webkit-scrollbar { display: none; }
+/* 🌟 Custom high-end thin scrollbar indicator for clean desktop hints 🌟 */
+.custom-category-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.custom-category-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-category-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 113, 108, 0.2);
+  border-radius: 10px;
+}
+.custom-category-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(120, 113, 108, 0.4);
+}
 </style>
