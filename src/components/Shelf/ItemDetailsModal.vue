@@ -42,7 +42,7 @@ const baumannMatch = computed(() => {
       title: 'Proceed with Caution',
       score,
       badgeClass: 'bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20',
-      containerClass: 'bg-semantic-warning/5 border-semantic-warning/10',
+      containerClass: 'bg-semantic-warning/5 border-semantic-warning/10 dark:border-amber-500/20',
       matchReasons,
       cautionReasons,
       skinType
@@ -53,7 +53,7 @@ const baumannMatch = computed(() => {
     title: 'Great match',
     score,
     badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    containerClass: 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-500/10',
+    containerClass: 'bg-emerald-50/50 dark:bg-emerald-950/20 border-brand-surface-border dark:border-stone-800',
     matchReasons,
     cautionReasons,
     skinType
@@ -84,7 +84,8 @@ const handleExecuteDelete = async () => {
 
 <template>
   <div class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-stone-900/60 backdrop-blur-md p-0 sm:p-4 animate-fade-in" @click.self="emit('close')">
-    <div class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-4xl rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl border border-brand-surface-border dark:border-stone-800 flex flex-col max-h-[92vh] overflow-hidden animate-slide-up">
+    <!-- 🌟 MODAL SIZE ADJUSTMENT: Increased desktop sizing from max-w-4xl to max-w-5xl for optimized multi-column pacing -->
+    <div class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl border border-brand-surface-border dark:border-stone-800 flex flex-col max-h-[92vh] overflow-hidden animate-slide-up">
 
       <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-brand-surface-border dark:border-stone-800 flex items-center justify-between flex-shrink-0 bg-brand-bg-light/80 dark:bg-brand-bg-dark/80 backdrop-blur-md z-10">
@@ -96,8 +97,8 @@ const handleExecuteDelete = async () => {
         </button>
       </div>
 
-      <!-- Main Section Frame with Native Scrollbar Tracking on Desktop -->
-      <div v-if="currentView === 'details'" class="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto flex-1 custom-modal-scroll">
+      <!-- Main Section Frame with Global Scrollbar Class -->
+      <div v-if="currentView === 'details'" class="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto flex-1 hide-scrollbar">
 
         <!-- Left Pane: Visuals -->
         <div class="lg:col-span-5 bg-brand-bg-light dark:bg-stone-900/30 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-brand-surface-border dark:border-stone-800 space-y-6">
@@ -109,7 +110,7 @@ const handleExecuteDelete = async () => {
             <div class="mt-4 text-center sm:text-left">
               <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">{{ brand }}</span>
               <h2 class="text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white leading-tight mt-0.5">{{ name }}</h2>
-              <span class="inline-block mt-2 text-[11px] font-bold uppercase tracking-wider bg-brand-surface-light dark:bg-brand-surface-dark px-3 py-1 rounded-xl text-brand-text-muted border border-brand-surface-border dark:border-stone-700">{{ category }}</span>
+              <span class="inline-block mt-2 text-[11px] font-bold uppercase tracking-wider bg-brand-surface-light dark:bg-brand-surface-dark px-3 py-1 rounded-xl text-brand-text-muted border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-200">{{ category }}</span>
             </div>
           </div>
 
@@ -129,7 +130,7 @@ const handleExecuteDelete = async () => {
         <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
           <div class="space-y-6">
             <div :class="['p-5 rounded-3xl border transition-all space-y-4 shadow-sm', baumannMatch.containerClass]">
-              <div class="flex items-center justify-between border-b border-brand-surface-border dark:border-stone-800 pb-3">
+              <div class="flex items-center justify-between border-b border-brand-surface-border dark:border-stone-800 pb-2">
                 <div>
                   <h4 class="font-bold text-base text-brand-text dark:text-white">{{ baumannMatch.title }}</h4>
                   <p class="text-[11px] font-medium text-brand-text-muted mt-0.5">Tailored compatibility for <strong class="text-brand-text dark:text-stone-200 font-mono">{{ baumannMatch.skinType }}</strong></p>
@@ -142,7 +143,7 @@ const handleExecuteDelete = async () => {
               <!-- Match Reasons -->
               <div class="space-y-2">
                 <div v-for="(reason, idx) in baumannMatch.matchReasons" :key="idx" class="flex items-start gap-2.5 text-xs font-medium text-brand-text dark:text-stone-300">
-                  <svg class="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  <svg class="w-4 h-4 text-brand-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                   <span class="leading-relaxed">{{ reason }}</span>
                 </div>
               </div>
@@ -156,25 +157,28 @@ const handleExecuteDelete = async () => {
             <ArchiveLogSummary v-if="localItem.usage_state === 'archived'" :item="localItem" :usage-lifespan="usageLifespan" />
             <ProductLifecycleController v-else :item="localItem" @updated="emit('refresh')" />
 
-            <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" />
+            <!-- 🌟 INLINE CONFIGURATION WRAPPER: Removed parent scoping grid layer inside the loop -->
+            <div class="pt-2 border-t border-brand-surface-border dark:border-stone-800/60">
+              <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" />
+            </div>
           </div>
 
-          <!-- Footer Actions Configured to Ensure Smooth Hover Transitions -->
+          <!-- Footer Actions -->
           <div class="pt-6 border-t border-brand-surface-border dark:border-stone-800 space-y-2.5">
             <div v-if="!isConfirmingDelete" class="grid grid-cols-2 gap-3">
               <button v-if="localItem.usage_state !== 'archived'" @click="currentView = 'archive_form'" class="py-3 bg-brand-surface-light dark:bg-stone-800 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 font-bold rounded-xl text-xs transition-all border border-brand-surface-border dark:border-stone-700 shadow-sm cursor-pointer">
                 Archive Product
               </button>
-              <button @click="isConfirmingDelete = true" class="py-3 bg-semantic-error/5 dark:bg-semantic-error/10 text-semantic-error font-bold rounded-xl text-xs hover:bg-semantic-error/20 dark:hover:bg-semantic-error/20 transition-all border border-semantic-error/20 shadow-sm cursor-pointer">
+              <button @click="isConfirmingDelete = true" class="py-3 bg-semantic-error/5 dark:bg-semantic-error/10 text-semantic-error font-bold rounded-xl text-xs hover:bg-semantic-error/20 dark:hover:bg-brand-surface-dark transition-all border border-semantic-error/20 shadow-sm cursor-pointer">
                 Permanently Delete
               </button>
             </div>
 
-            <div v-else class="bg-semantic-error/10 p-4 rounded-2xl border border-semantic-error/20 space-y-3 shadow-sm">
+            <div v-if="isConfirmingDelete" class="bg-semantic-error/10 p-4 rounded-2xl border border-semantic-error/20 space-y-3 shadow-sm animate-fade-in">
               <p class="text-center text-xs font-bold text-semantic-error">Permanently delete this item from your routine?</p>
               <div class="grid grid-cols-2 gap-3">
                 <button @click="isConfirmingDelete = false" class="py-2.5 rounded-xl font-bold text-xs bg-brand-surface-light dark:bg-stone-800 hover:bg-brand-surface-border dark:hover:bg-stone-700 border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-300 shadow-sm cursor-pointer">Cancel</button>
-                <button @click="handleExecuteDelete" class="py-2.5 rounded-xl font-bold text-xs bg-semantic-error hover:bg-rose-600 text-white shadow-sm transition-transform active:scale-[0.98] cursor-pointer">Yes, Delete</button>
+                <button @click="handleExecuteDelete" class="py-2.5 rounded-xl font-bold text-xs bg-semantic-error hover:opacity-90 text-white shadow-sm transition-transform active:scale-[0.98] cursor-pointer">Yes, Delete</button>
               </div>
             </div>
           </div>
@@ -182,34 +186,10 @@ const handleExecuteDelete = async () => {
         </div>
       </div>
 
-      <div v-else-if="currentView === 'archive_form'" class="p-6 sm:p-8 flex-1 overflow-y-auto">
+      <div v-else-if="currentView === 'archive_form'" class="p-6 sm:p-8 flex-1 overflow-y-auto hide-scrollbar">
         <ArchiveLogForm :item="localItem" :usage-lifespan="usageLifespan" @back="currentView = 'details'" @success="emit('refresh'); emit('close')" />
       </div>
 
     </div>
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
-.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Desktop-Native visible scroll track updates */
-@media (min-w: 1024px) {
-  .custom-modal-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-modal-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-modal-scroll::-webkit-scrollbar-thumb {
-    background-color: rgba(120, 113, 108, 0.3);
-    border-radius: 20px;
-  }
-  .custom-modal-scroll::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(120, 113, 108, 0.5);
-  }
-}
-</style>
