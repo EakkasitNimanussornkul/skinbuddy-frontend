@@ -13,6 +13,7 @@ import SkinTypeLanding from '../views/SkinTypeLanding.vue'
 import SkinProfileView from '../views/SkinProfileView.vue'
 import ProductDetailView from '../views/ProductDetailView.vue'
 import CompareView from '../views/CompareView.vue'
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -79,27 +80,38 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-    path: '/product/:slug',
-    name: 'ProductDetail',
-    component: ProductDetailView,
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/compare',
-    name: 'Compare',
-    component: CompareView
-  },
+      path: '/product/:slug',
+      name: 'ProductDetail',
+      component: ProductDetailView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/compare',
+      name: 'Compare',
+      component: CompareView,
+    },
 
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: ErrorView,
+      beforeEnter: (to) => {
+        to.query = {
+          ...to.query,
+          title: '404 - Page Not Found',
+          message: `The path "${to.path}" is not found. Please check the URL or return to the home page.`,
+        }
+      }
+    }
   ],
 })
-// If you want the any link to be protected, write the line below:
-// meta: { requiresAuth: true }
+
 // Route Guard: Check if the user is allowed to view the page
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
-  // Always allow callback and error pages to load
-  if (to.name === 'authCallback' || to.name === 'error') {
+  // Always allow callback, error, and wildcard 404 pages to load without blocking
+  if (to.name === 'authCallback' || to.name === 'error' || to.name === 'not-found') {
     next()
     return
   }
