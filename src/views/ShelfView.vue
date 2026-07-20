@@ -99,7 +99,7 @@ const executeDelete = async () => {
 
 <template>
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans transition-colors duration-300 pb-28 pt-6">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col gap-6">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-6 w-full">
 
       <!-- Header Title -->
       <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
@@ -121,7 +121,8 @@ const executeDelete = async () => {
         <p class="text-xs font-bold uppercase tracking-widest text-brand-primary">Running Safety Check...</p>
       </div>
 
-      <template v-else-if="myShelf.length > 0">
+      <!-- 🌟 FIXED: Changed from <template v-slot:default v-if="..."> to clean condition conditional tag block 🌟 -->
+      <div v-else-if="myShelf.length > 0" class="flex flex-col gap-6 w-full">
         <!-- Interactive Search Input -->
         <div class="relative">
           <svg class="absolute inset-y-0 left-4 my-auto w-5 h-5 text-brand-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -131,7 +132,7 @@ const executeDelete = async () => {
             class="w-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 text-sm rounded-2xl block pl-11 p-4 shadow-sm outline-none focus:ring-2 focus:ring-brand-primary/50 dark:focus:ring-brand-primary/30 transition-all text-brand-text dark:text-white"
             placeholder="Search your checked routine products..."
           >
-          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-4 my-auto text-brand-text-muted hover:text-brand-primary">✕</button>
+          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-4 my-auto text-brand-text-muted hover:text-brand-primary cursor-pointer">✕</button>
         </div>
 
         <!-- Filter Pill Components -->
@@ -140,8 +141,8 @@ const executeDelete = async () => {
           <FilterPills v-model="activeStatus" :options="statuses" variant="brand" />
         </div>
 
-        <!-- Crisp Product Summary Grid -->
-        <div v-if="filteredProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4.5 pt-2">
+        <!-- Grid Container -->
+        <div v-if="filteredProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
           <ShelfCard
             v-for="item in filteredProducts"
             :key="item.id"
@@ -154,9 +155,9 @@ const executeDelete = async () => {
         <!-- Filter Empty State -->
         <div v-else class="text-center py-12 bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 mt-2 shadow-sm">
           <p class="text-brand-text-muted mb-3 text-sm font-medium">No items match your current search or status filters.</p>
-          <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-xs underline hover:text-brand-primary-hover transition-colors">Reset Filters</button>
+          <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-xs underline hover:text-brand-primary-hover transition-colors cursor-pointer">Reset Filters</button>
         </div>
-      </template>
+      </div>
 
       <!-- True Application Empty State -->
       <EmptyState

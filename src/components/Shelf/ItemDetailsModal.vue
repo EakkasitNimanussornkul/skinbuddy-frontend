@@ -29,7 +29,6 @@ const category = computed(() => localItem.value.category || localItem.value.prod
 const imageUrl = computed(() => localItem.value.image_url || localItem.value.products?.image_url || null)
 const description = computed(() => localItem.value.products?.description || 'Active skincare routine item.')
 
-// --- Dynamic Baumann Skin Match Breakdown ---
 const baumannMatch = computed(() => {
   const score = localItem.value.products?.skin_match_score || 88
   const matchReasons = localItem.value.products?.match_reasons || [
@@ -87,16 +86,18 @@ const handleExecuteDelete = async () => {
   <div class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-stone-900/60 backdrop-blur-md p-0 sm:p-4 animate-fade-in" @click.self="emit('close')">
     <div class="bg-brand-surface-light dark:bg-brand-surface-dark w-full max-w-4xl rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl border border-brand-surface-border dark:border-stone-800 flex flex-col max-h-[92vh] overflow-hidden animate-slide-up">
 
+      <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-brand-surface-border dark:border-stone-800 flex items-center justify-between flex-shrink-0 bg-brand-bg-light/80 dark:bg-brand-bg-dark/80 backdrop-blur-md z-10">
         <span class="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-brand-primary-light dark:bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
           Shelf Item Inspection
         </span>
-        <button @click="emit('close')" class="w-8 h-8 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors border border-brand-surface-border dark:border-stone-800">
+        <button @click="emit('close')" class="w-8 h-8 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors border border-brand-surface-border dark:border-stone-800 cursor-pointer">
           <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
 
-      <div v-if="currentView === 'details'" class="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto flex-1 hide-scrollbar">
+      <!-- Main Section Frame with Native Scrollbar Tracking on Desktop -->
+      <div v-if="currentView === 'details'" class="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto flex-1 custom-modal-scroll">
 
         <!-- Left Pane: Visuals -->
         <div class="lg:col-span-5 bg-brand-bg-light dark:bg-stone-900/30 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-brand-surface-border dark:border-stone-800 space-y-6">
@@ -127,7 +128,6 @@ const handleExecuteDelete = async () => {
         <!-- Right Pane: Details & Configuration -->
         <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
           <div class="space-y-6">
-
             <div :class="['p-5 rounded-3xl border transition-all space-y-4 shadow-sm', baumannMatch.containerClass]">
               <div class="flex items-center justify-between border-b border-brand-surface-border dark:border-stone-800 pb-3">
                 <div>
@@ -159,13 +159,13 @@ const handleExecuteDelete = async () => {
             <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" />
           </div>
 
-          <!-- Footer Actions -->
+          <!-- Footer Actions Configured to Ensure Smooth Hover Transitions -->
           <div class="pt-6 border-t border-brand-surface-border dark:border-stone-800 space-y-2.5">
             <div v-if="!isConfirmingDelete" class="grid grid-cols-2 gap-3">
-              <button v-if="localItem.usage_state !== 'archived'" @click="currentView = 'archive_form'" class="py-3 bg-brand-surface-light dark:bg-stone-800 text-brand-text dark:text-stone-200 font-bold rounded-xl text-xs hover:bg-brand-surface-border transition-all border border-brand-surface-border dark:border-stone-700 shadow-sm">
+              <button v-if="localItem.usage_state !== 'archived'" @click="currentView = 'archive_form'" class="py-3 bg-brand-surface-light dark:bg-stone-800 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 font-bold rounded-xl text-xs transition-all border border-brand-surface-border dark:border-stone-700 shadow-sm cursor-pointer">
                 Archive Product
               </button>
-              <button @click="isConfirmingDelete = true" class="py-3 bg-semantic-error/5 dark:bg-semantic-error/10 text-semantic-error font-bold rounded-xl text-xs hover:bg-semantic-error/10 transition-all border border-semantic-error/20 shadow-sm">
+              <button @click="isConfirmingDelete = true" class="py-3 bg-semantic-error/5 dark:bg-semantic-error/10 text-semantic-error font-bold rounded-xl text-xs hover:bg-semantic-error/20 dark:hover:bg-semantic-error/20 transition-all border border-semantic-error/20 shadow-sm cursor-pointer">
                 Permanently Delete
               </button>
             </div>
@@ -173,8 +173,8 @@ const handleExecuteDelete = async () => {
             <div v-else class="bg-semantic-error/10 p-4 rounded-2xl border border-semantic-error/20 space-y-3 shadow-sm">
               <p class="text-center text-xs font-bold text-semantic-error">Permanently delete this item from your routine?</p>
               <div class="grid grid-cols-2 gap-3">
-                <button @click="isConfirmingDelete = false" class="py-2.5 rounded-xl font-bold text-xs bg-brand-surface-light dark:bg-stone-800 border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-300 shadow-sm">Cancel</button>
-                <button @click="handleExecuteDelete" class="py-2.5 rounded-xl font-bold text-xs bg-semantic-error hover:bg-semantic-error/90 text-white shadow-sm transition-transform active:scale-[0.98]">Yes, Delete</button>
+                <button @click="isConfirmingDelete = false" class="py-2.5 rounded-xl font-bold text-xs bg-brand-surface-light dark:bg-stone-800 hover:bg-brand-surface-border dark:hover:bg-stone-700 border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-300 shadow-sm cursor-pointer">Cancel</button>
+                <button @click="handleExecuteDelete" class="py-2.5 rounded-xl font-bold text-xs bg-semantic-error hover:bg-rose-600 text-white shadow-sm transition-transform active:scale-[0.98] cursor-pointer">Yes, Delete</button>
               </div>
             </div>
           </div>
@@ -191,10 +191,25 @@ const handleExecuteDelete = async () => {
 </template>
 
 <style scoped>
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.hide-scrollbar::-webkit-scrollbar { display: none; }
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Desktop-Native visible scroll track updates */
+@media (min-w: 1024px) {
+  .custom-modal-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-modal-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-modal-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(120, 113, 108, 0.3);
+    border-radius: 20px;
+  }
+  .custom-modal-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(120, 113, 108, 0.5);
+  }
+}
 </style>

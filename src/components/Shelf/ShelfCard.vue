@@ -48,36 +48,39 @@ const expirationInfo = computed(() => {
 </script>
 
 <template>
-  <div class="group relative bg-brand-surface-light dark:bg-brand-surface-dark rounded-2xl p-3.5 sm:p-4 border border-brand-surface-border dark:border-stone-800 shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 flex flex-col justify-between h-full overflow-hidden">
+  <!-- 🌟 Added sm:rounded-2xl lg:rounded-[1.75rem] and expanded padding to lg:p-5 for desktop substance 🌟 -->
+  <div class="group relative bg-brand-surface-light dark:bg-brand-surface-dark rounded-2xl lg:rounded-[1.75rem] p-3.5 sm:p-4 lg:p-5 border border-brand-surface-border dark:border-stone-800 shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 flex flex-col justify-between h-full overflow-hidden">
 
     <div class="flex items-center justify-between gap-1 mb-2.5">
       <ItemBadge
         :type="expirationInfo.badgeType"
         :text="expirationInfo.label"
-        class="truncate max-w-[80%]"
+        class="truncate max-w-[80%] text-[10px] lg:text-xs"
         :class="expirationInfo.badgeType === 'warning' ? 'animate-pulse' : ''"
       />
 
-      <!-- Replaced hardcoded rose hover with semantic error token -->
-      <button @click.stop="emit('delete')" class="w-6 h-6 rounded-full flex items-center justify-center text-brand-text-muted hover:text-semantic-error transition-colors shrink-0">
+      <button @click.stop="emit('delete')" class="w-6 h-6 rounded-full flex items-center justify-center text-brand-text-muted hover:text-semantic-error transition-colors shrink-0 cursor-pointer">
         <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
       </button>
     </div>
 
-    <!-- Product Image Thumbnail -->
-    <div @click="emit('open-details')" class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl bg-brand-bg-light dark:bg-brand-bg-dark border border-brand-surface-border dark:border-stone-800 flex items-center justify-center overflow-hidden mb-3 cursor-pointer group-hover:scale-105 transition-transform p-1.5">
+    <!-- 🌟 Expanded thumbnail size on desktop with lg:w-24 lg:h-24 🌟 -->
+    <div @click="emit('open-details')" class="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 mx-auto rounded-xl bg-brand-bg-light dark:bg-brand-bg-dark border border-brand-surface-border dark:border-stone-800/60 flex items-center justify-center overflow-hidden mb-4 cursor-pointer group-hover:scale-105 transition-transform p-2.5">
       <img v-if="item.products?.image_url" :src="item.products.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
-      <svg v-else class="w-7 h-7 text-brand-text-muted/60 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+      <svg v-else class="w-8 h-8 text-brand-text-muted/60 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
     </div>
 
     <!-- Product Text & Exact Expiration Date -->
     <div @click="emit('open-details')" class="cursor-pointer text-center sm:text-left flex-1 flex flex-col justify-end">
-      <p class="text-[9px] font-bold text-brand-primary uppercase tracking-wider truncate">{{ item.products?.brand || 'Unknown Brand' }}</p>
-      <h4 class="text-xs sm:text-sm font-bold text-brand-text dark:text-stone-100 truncate line-clamp-1 group-hover:text-brand-primary transition-colors mt-0.5">
+      <p class="text-[9px] lg:text-[10px] font-bold text-brand-primary uppercase tracking-wider truncate">{{ item.products?.brand || 'Unknown Brand' }}</p>
+
+      <!-- 🌟 Boosted desktop text size slightly with lg:text-base 🌟 -->
+      <h4 class="text-xs sm:text-sm lg:text-base font-serif sm:font-sans lg:font-serif font-bold text-brand-text dark:text-stone-100 truncate line-clamp-1 group-hover:text-brand-primary transition-colors mt-0.5">
         {{ item.products?.name || 'Unnamed Product' }}
       </h4>
-      <p class="text-[10px] font-semibold text-brand-text-muted dark:text-stone-400 mt-1.5 flex items-center justify-center sm:justify-start gap-1 bg-brand-bg-light dark:bg-stone-800/80 px-2 py-1 rounded-md border border-brand-surface-border/50 dark:border-stone-800/50">
-        <svg class="w-3 h-3 stroke-[2] text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+
+      <p class="text-[10px] lg:text-[11px] font-semibold text-brand-text-muted dark:text-stone-400 mt-2 flex items-center justify-center sm:justify-start gap-1.5 bg-brand-bg-light dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-brand-surface-border/50 dark:border-stone-800/50">
+        <svg class="w-3 h-3 lg:w-3.5 lg:h-3.5 stroke-[2] text-brand-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
         <span class="truncate">{{ expirationInfo.dateText }}</span>
       </p>
     </div>
