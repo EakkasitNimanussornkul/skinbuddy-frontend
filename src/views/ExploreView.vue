@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { searchProducts } from '../api/products'
-import { useAuthStore } from '../stores/auth'
-import { useToast } from '../composables/useToast'
+import { searchProducts } from '../api/products.ts'
+import { useAuthStore } from '../stores/auth.ts'
+import { useToast } from '../composables/useToast.ts'
 
-import SearchAutocompleteInput from '../components/Shared/SearchAutocompleteInput.vue'
-import ExploreProductCard from '../components/Catalog/ExploreProductCard.vue'
-import ExploreCategoryBar from '../components/Catalog/ExploreCategoryBar.vue'
-import UniversalProductModal from '../components/Catalog/UniversalProductModal.vue'
-import CompareSelectorModal from '../components/Catalog/CompareSelectorModal.vue'
-import PriceRangeSlider from '../components/Catalog/PriceRangeSlider.vue'
-import EmptyState from '../components/Shared/EmptyState.vue'
+import SearchAutocompleteInput from '../Shared/SearchAutocompleteInput.vue'
+import ExploreProductCard from '../Catalog/ExploreProductCard.vue'
+import ExploreCategoryBar from '../Catalog/ExploreCategoryBar.vue'
+import UniversalProductModal from '../Catalog/UniversalProductModal.vue'
+import CompareSelectorModal from '../Compare/CompareSelectorModal.vue'
+import PriceRangeSlider from '../Catalog/PriceRangeSlider.vue'
+import EmptyState from '../Shared/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()

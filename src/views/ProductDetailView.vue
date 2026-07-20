@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductBySlug } from '../api/products'
 import ProductSpecContent from '../components/Catalog/ProductSpecContent.vue'
-import CompareSelectorModal from '../components/Catalog/CompareSelectorModal.vue'
+import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue'
 import SimilarProductsWidget from '../components/Catalog/SimilarProductsWidget.vue'
 import EmptyState from '../components/Shared/EmptyState.vue'
 
