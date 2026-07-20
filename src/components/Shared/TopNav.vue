@@ -100,7 +100,7 @@ const authStore = useAuthStore()
         </div>
 
         <RouterLink to="/routine" class="text-xs font-bold text-brand-text-muted hover:text-brand-primary transition-colors" active-class="text-brand-primary dark:text-brand-primary-accent">Routine</RouterLink>
-        <RouterLink to="/shelf" class="text-xs font-bold text-brand-text-muted hover:text-brand-primary transition-colors" active-class="text-brand-primary dark:text-brand-primary-accent">Check Shelves</RouterLink>
+        <RouterLink to="/shelf" class="text-xs font-bold text-brand-text-muted hover:text-brand-primary transition-colors" active-class="text-brand-primary dark:text-brand-primary-accent">Shelves</RouterLink>
 
         <!-- SkinBuddy AI Button -->
         <RouterLink to="/chat" class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-brand-primary-light/50 dark:bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent font-bold text-xs border border-brand-primary/20 hover:bg-brand-primary hover:text-white transition-all shadow-sm" active-class="bg-brand-primary text-white">
