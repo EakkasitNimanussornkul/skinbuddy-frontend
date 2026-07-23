@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import { useToast } from '../../composables/useToast'
+import { useAuthStore } from '../../stores/auth'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
@@ -12,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['open-compare-selector', 'shelf-updated', 'close'])
 const { addToast } = useToast()
+const authStore = useAuthStore()
 
 const isConfiguringAdd = ref(false)
 const isSaving = ref(false)
@@ -22,12 +24,11 @@ const customDate = ref(new Date().toISOString().split('T')[0])
 
 // --- Unified Safety Pipeline States ---
 const isSafetyModalOpen = ref(false)
-const showWarningModal = ref(false) // 🌟 Interception modal controller state
+const showWarningModal = ref(false)
 const isAnalyzing = ref(false)
 const hasCheckedSafety = ref(false)
 const backendWarnings = ref<any[]>([])
 
-// Shared analysis routing module
 const runBackendAnalysis = async () => {
   if (!props.product?.id) return
   isAnalyzing.value = true
@@ -47,6 +48,10 @@ const runBackendAnalysis = async () => {
 
 // Flow A: Safety Check Dashboard Button Click
 const handleTriggerSafetyCheck = async () => {
+  if (!authStore.isAuthenticated) {
+    authStore.triggerLoginPopup('Sign in to perform routine safety checks on your skin barrier.')
+    return
+  }
   isSafetyModalOpen.value = true
   hasCheckedSafety.value = false
   await runBackendAnalysis()
@@ -55,18 +60,27 @@ const handleTriggerSafetyCheck = async () => {
 
 // Flow B: Save to Shelf Interception Flow Gateway
 const handleOpenConfigurator = async () => {
+  if (!authStore.isAuthenticated) {
+    authStore.triggerLoginPopup('Sign in to save this product to your digital skincare shelf.')
+    return
+  }
   await runBackendAnalysis()
 
-  // If your backend lists conflicts, intercept and trigger your full overlay window component
   if (backendWarnings.value.length > 0) {
     showWarningModal.value = true
   } else {
-    // Completely clear record, open setup parameters directly
     isConfiguringAdd.value = true
   }
 }
 
-// Triggered when clicking "Proceed Anyway" inside the SafetyWarningModal overlay
+const handleCompareClick = () => {
+  if (!authStore.isAuthenticated) {
+    authStore.triggerLoginPopup('Sign in to compare skin formulas side-by-side.')
+    return
+  }
+  emit('open-compare-selector', props.product)
+}
+
 const handleBypassProceed = () => {
   showWarningModal.value = false
   isConfiguringAdd.value = true
@@ -88,7 +102,7 @@ const handleCommitToShelf = async () => {
     isConfiguringAdd.value = false
     emit('shelf-updated')
     if (props.mode !== 'detail') emit('close')
-  } catch (error: any) {
+  } catch {
     addToast('Could not save product.', 'error')
   } finally {
     isSaving.value = false
@@ -121,15 +135,15 @@ const handleCommitToShelf = async () => {
         </div>
       </div>
 
-      <!-- Match Card -->
-      <div class="bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-800/40 rounded-3xl p-6 space-y-4 shadow-2xs">
+      <!-- Match Card: Authenticated User -->
+      <div v-if="authStore.isAuthenticated" class="bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-800/40 rounded-3xl p-6 space-y-4 shadow-2xs">
         <div class="flex items-center justify-between">
           <div>
             <h4 class="text-base font-black text-emerald-900 dark:text-emerald-200">Great match</h4>
             <p class="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Strong compatibility for your skin profile</p>
           </div>
           <div class="w-14 h-14 rounded-full border-4 border-emerald-500 flex items-center justify-center font-mono font-black text-lg text-emerald-800 dark:text-emerald-200 bg-white dark:bg-stone-900 shadow-sm">
-            {{ product.skin_match_score || 89 }}
+            {{ product.skin_match_score || 89 }}%
           </div>
         </div>
 
@@ -141,6 +155,19 @@ const handleCommitToShelf = async () => {
         </div>
       </div>
 
+      <!-- Match Card: Unregistered Visitor Preview -->
+        <div v-else class="bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 rounded-3xl p-6 flex items-center justify-between gap-4">
+          <div>
+            <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Skin Compatibility Score</h4>
+            <p class="text-xs text-brand-text-muted mt-0.5">Log in to analyze this formula against your Baumann skin profile.</p>
+          </div>
+          <button
+            @click="authStore.triggerLoginPopup('Sign in to view your personalized skin compatibility score.')"
+            class="px-4 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer whitespace-nowrap transition-all active:scale-95"
+          >
+            Check Match
+          </button>
+        </div>
       <!-- Action Controllers -->
       <div class="pt-2">
         <div v-if="!isConfiguringAdd" class="flex flex-col sm:flex-row items-center gap-3">
@@ -154,7 +181,7 @@ const handleCommitToShelf = async () => {
             <span>Safety Check</span>
           </button>
 
-          <button @click="emit('open-compare-selector', product)" class="w-full sm:w-1/3 py-4 bg-brand-bg-light dark:bg-stone-800/80 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 dark:hover:text-white font-bold text-sm rounded-2xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95">
+          <button @click="handleCompareClick" class="w-full sm:w-1/3 py-4 bg-brand-bg-light dark:bg-stone-800/80 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 dark:hover:text-white font-bold text-sm rounded-2xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95">
             <span>Compare</span>
             <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
           </button>
@@ -203,7 +230,7 @@ const handleCommitToShelf = async () => {
       @close="isSafetyModalOpen = false"
     />
 
-    <!-- 🌟 Overlay Gate Interceptor Modal Portal Injection 🌟 -->
+    <!-- Overlay Gate Interceptor Modal Portal Injection -->
     <Teleport to="body">
       <SafetyWarningModal
         v-if="showWarningModal"

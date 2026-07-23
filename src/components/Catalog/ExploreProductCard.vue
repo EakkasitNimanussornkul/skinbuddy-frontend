@@ -3,10 +3,9 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   product: any
-  isSelectedForCompare?: boolean
 }>()
 
-const emit = defineEmits(['inspect', 'toggle-compare'])
+const emit = defineEmits(['inspect'])
 
 // Semantic match info using your color palette
 const matchInfo = computed(() => {
@@ -56,7 +55,7 @@ const ingredientsSummary = computed(() => {
       <!-- Right Box: Rich Dynamic Specifications Engine Context Columns -->
       <div class="flex-1 flex flex-col justify-between min-w-0 py-1 space-y-3">
 
-        <!-- Row 1: Brand Identifier & Action Curation Headers -->
+        <!-- Row 1: Brand Identifier & Product Name -->
         <div class="flex items-start justify-between gap-4 w-full">
           <div class="min-w-0">
             <span class="text-[10px] font-bold text-brand-text-muted dark:text-stone-400 uppercase tracking-widest block truncate">
@@ -66,23 +65,6 @@ const ingredientsSummary = computed(() => {
               {{ product.name }}
             </h3>
           </div>
-
-          <!-- Compare Action Vector Button -->
-          <button
-            @click.stop="emit('toggle-compare')"
-            :class="[
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border flex-shrink-0 cursor-pointer shadow-2xs active:scale-95',
-              isSelectedForCompare
-                ? 'bg-brand-primary text-white border-brand-primary shadow-brand-primary/10'
-                : 'bg-brand-bg-light dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700 hover:border-brand-primary/50'
-            ]"
-          >
-            <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path v-if="isSelectedForCompare" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            <span>{{ isSelectedForCompare ? 'Selected' : 'Compare' }}</span>
-          </button>
         </div>
 
         <!-- Row 2: Metadata Core Identifiers Matrix Row -->
