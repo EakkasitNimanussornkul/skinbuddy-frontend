@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { removeFromShelf } from '../../api/shelfapi'
+import { ref, computed, watch, onMounted } from 'vue'
+import { removeFromShelf, analyzeProduct } from '../../api/shelfapi'
 import { useToast } from '../../composables/useToast'
-import { useAuthStore } from '../../stores/auth'
 
 import KeyActivesGrid from './KeyActivesGrid.vue'
 import ProductLifecycleController from './ProductLifecycleController.vue'
 import ArchiveLogForm from './ArchiveLogForm.vue'
 import ArchiveLogSummary from './ArchiveLogSummary.vue'
+import SafetyInspectionCard, { type WarningAlert } from './SafetyInspectionCard.vue'
+import TargetedConcernsSection from './TargetedConcernsSection.vue'
 
 const props = defineProps<{
   item: any
@@ -16,63 +16,65 @@ const props = defineProps<{
 
 const emit = defineEmits(['close', 'refresh'])
 const { addToast } = useToast()
-const router = useRouter()
-const authStore = useAuthStore()
 
-// 🌟 Local visibility wrapper to allow exit animations to play smoothly before unmounting
 const isVisible = ref(false)
+const isAnalyzing = ref(false)
+const warningAlerts = ref<WarningAlert[]>([])
+
+const localItem = ref({ ...props.item })
+
+// 🌟 Auto-fetch safety analysis on mount
+const runAutomaticSafetyCheck = async () => {
+  const productId = localItem.value.product_id || localItem.value.products?.id
+  if (!productId) return
+
+  isAnalyzing.value = true
+  try {
+    const data = await analyzeProduct(productId)
+    if (data && Array.isArray(data.warnings)) {
+      warningAlerts.value = data.warnings
+    }
+  } catch (error) {
+    console.warn('Analysis execution fallback:', error)
+  } finally {
+    isAnalyzing.value = false
+  }
+}
 
 onMounted(() => {
   isVisible.value = true
+  runAutomaticSafetyCheck()
 })
 
 const handleClose = () => {
   isVisible.value = false
-  // Delay emit slightly to let slide-down / fade-out animations finish
   setTimeout(() => {
     emit('close')
   }, 250)
 }
 
-const localItem = ref({ ...props.item })
+watch(
+  () => props.item,
+  (newItem) => {
+    localItem.value = { ...newItem }
+    runAutomaticSafetyCheck()
+  },
+  { deep: true }
+)
+
 const currentView = ref<'details' | 'archive_form'>('details')
 const isConfirmingDelete = ref(false)
 
-const brand = computed(() => localItem.value.products?.brand || 'Unknown Brand')
-const name = computed(() => localItem.value.products?.name || 'Unknown Product')
+const brand = computed(() => localItem.value.products?.brand || localItem.value.brand || 'Unknown Brand')
+const name = computed(() => localItem.value.products?.name || localItem.value.name || 'Unknown Product')
 const category = computed(() => localItem.value.category || localItem.value.products?.category || 'Formulation')
 const imageUrl = computed(() => localItem.value.image_url || localItem.value.products?.image_url || null)
-const description = computed(() => localItem.value.products?.description || 'Active skincare routine item.')
+const description = computed(() => localItem.value.products?.description || localItem.value.description || '')
 
-const baumannMatch = computed(() => {
-  const score = localItem.value.products?.skin_match_score || 88
-  const matchReasons = localItem.value.products?.match_reasons || [
-    'Formulated around essential lipid and humectant components to support overall barrier hydration.'
-  ]
-  const cautionReasons = localItem.value.products?.caution_reasons || []
-  const skinType = authStore.user?.skin_type || 'Your Profile'
-
-  if (cautionReasons.length > 0 || score < 55) {
-    return {
-      title: 'Proceed with Caution',
-      score,
-      badgeClass: 'bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20',
-      containerClass: 'bg-semantic-warning/5 border-semantic-warning/10 dark:border-amber-500/20',
-      matchReasons,
-      cautionReasons,
-      skinType
-    }
-  }
-
-  return {
-    title: 'Great match',
-    score,
-    badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    containerClass: 'bg-emerald-50/50 dark:bg-emerald-950/20 border-brand-surface-border dark:border-stone-800',
-    matchReasons,
-    cautionReasons,
-    skinType
-  }
+const paoDisplay = computed(() => {
+  const pao = localItem.value.pao || localItem.value.products?.pao
+  if (!pao) return 'Not Set'
+  return `${String(pao).replace('M', '')}M`
 })
 
 const usageLifespan = computed(() => {
@@ -84,6 +86,13 @@ const usageLifespan = computed(() => {
   const diff = endPoint.getTime() - opened.getTime()
   return diff > 0 ? Math.ceil(diff / (1000 * 3600 * 24)) : 0
 })
+
+const handleChildUpdate = (updatedItem?: any) => {
+  if (updatedItem) {
+    localItem.value = { ...localItem.value, ...updatedItem }
+  }
+  emit('refresh')
+}
 
 const handleExecuteDelete = async () => {
   try {
@@ -119,7 +128,7 @@ const handleExecuteDelete = async () => {
         <!-- Main Section Frame -->
         <div v-if="currentView === 'details'" class="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto flex-1 hide-scrollbar">
 
-          <!-- Left Pane: Visuals -->
+          <!-- Left Pane: Visuals & Core Stats -->
           <div class="lg:col-span-5 bg-brand-bg-light dark:bg-stone-900/30 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-brand-surface-border dark:border-stone-800 space-y-6">
             <div>
               <div class="w-44 h-44 sm:w-56 sm:h-56 mx-auto bg-white dark:bg-brand-surface-dark rounded-3xl p-4 border border-brand-surface-border dark:border-stone-800 flex items-center justify-center shadow-sm">
@@ -140,45 +149,36 @@ const handleExecuteDelete = async () => {
               </div>
               <div class="bg-brand-surface-light dark:bg-brand-surface-dark p-3.5 rounded-2xl border border-brand-surface-border dark:border-stone-800 text-center shadow-sm">
                 <span class="text-[10px] font-bold text-brand-text-muted uppercase tracking-widest block mb-0.5">PAO Window</span>
-                <span class="text-lg font-mono font-bold text-brand-text dark:text-stone-100">{{ localItem.pao ? localItem.pao + 'M' : '12M' }}</span>
+                <span class="text-lg font-mono font-bold text-brand-text dark:text-stone-100">{{ paoDisplay }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Right Pane: Details & Configuration -->
+          <!-- Right Pane: Safety Warnings, Details & Concerns -->
           <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
             <div class="space-y-6">
-              <div :class="['p-5 rounded-3xl border transition-all space-y-4 shadow-sm', baumannMatch.containerClass]">
-                <div class="flex items-center justify-between border-b border-brand-surface-border dark:border-stone-800 pb-2">
-                  <div>
-                    <h4 class="font-bold text-base text-brand-text dark:text-white">{{ baumannMatch.title }}</h4>
-                    <p class="text-[11px] font-medium text-brand-text-muted mt-0.5">Tailored compatibility for <strong class="text-brand-text dark:text-stone-200 font-mono">{{ baumannMatch.skinType }}</strong></p>
-                  </div>
-                  <span :class="['text-sm font-black px-3 py-1 rounded-full font-mono border', baumannMatch.badgeClass]">
-                    {{ baumannMatch.score }}%
-                  </span>
-                </div>
 
-                <!-- Match Reasons -->
-                <div class="space-y-2">
-                  <div v-for="(reason, idx) in baumannMatch.matchReasons" :key="idx" class="flex items-start gap-2.5 text-xs font-medium text-brand-text dark:text-stone-300">
-                    <svg class="w-4 h-4 text-brand-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    <span class="leading-relaxed">{{ reason }}</span>
-                  </div>
-                </div>
-              </div>
+              <!-- 🌟 1. Safety Inspection Box (With Scanner HUD animation) -->
+              <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" />
 
-              <div>
+              <!-- 🌟 2. Description -->
+              <div v-if="description">
                 <h4 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted mb-1.5">Description</h4>
                 <p class="text-xs sm:text-sm font-medium text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
               </div>
 
-              <ArchiveLogSummary v-if="localItem.usage_state === 'archived'" :item="localItem" :usage-lifespan="usageLifespan" />
-              <ProductLifecycleController v-else :item="localItem" @updated="emit('refresh')" />
+              <!-- 🌟 3. Targeted Skin Concerns Section (Positioned under Description) -->
+              <TargetedConcernsSection :item="localItem" />
 
+              <!-- 🌟 4. Lifecycle Controller -->
+              <ArchiveLogSummary v-if="localItem.usage_state === 'archived'" :item="localItem" :usage-lifespan="usageLifespan" />
+              <ProductLifecycleController v-else :item="localItem" @updated="handleChildUpdate" />
+
+              <!-- 🌟 5. Key Active Ingredients Grid -->
               <div class="pt-2 border-t border-brand-surface-border dark:border-stone-800/60">
                 <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" />
               </div>
+
             </div>
 
             <!-- Footer Actions -->
@@ -214,7 +214,6 @@ const handleExecuteDelete = async () => {
 </template>
 
 <style scoped>
-/* 🌟 BACKDROP & CONTAINER TRANSITIONS 🌟 */
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -225,13 +224,11 @@ const handleExecuteDelete = async () => {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
 }
 
-/* Base Faded State */
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
 }
 
-/* 📱 MOBILE ANIMATION: Slide up from bottom & slide down on close */
 @media (max-width: 639px) {
   .modal-enter-from .modal-content,
   .modal-leave-to .modal-content {
@@ -240,7 +237,6 @@ const handleExecuteDelete = async () => {
   }
 }
 
-/* 💻 DESKTOP ANIMATION: Subtle scale-up & fade */
 @media (min-width: 640px) {
   .modal-enter-from .modal-content,
   .modal-leave-to .modal-content {

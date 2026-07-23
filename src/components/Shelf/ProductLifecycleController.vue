@@ -15,7 +15,6 @@ const isEditingExpiration = ref(false)
 const editExpirationDate = ref('')
 const activeEditPao = ref<number | null>(null)
 
-// Template reference mapping to bind desktop wheel behavior
 const optionsScrollFrame = ref<HTMLElement | null>(null)
 
 const paoOptions = [1, 3, 6, 9, 12, 18, 24, 36]
@@ -23,14 +22,14 @@ const todayString = computed(() => new Date().toISOString().split('T')[0])
 
 const startEditingExpiration = () => {
   editExpirationDate.value = props.item.expiration_date || ''
-  activeEditPao.value = null
+  activeEditPao.value = props.item.pao ? parseInt(String(props.item.pao)) : null
   isEditingExpiration.value = true
 }
 
 const formatDate = (dateString: string | null) => {
-  if (!dateString) return '';
-  const [year, month, day] = dateString.split('-');
-  return `${day}/${month}/${year.slice(2)}`;
+  if (!dateString) return ''
+  const [year, month, day] = dateString.split('-')
+  return `${day}/${month}/${year.slice(2)}`
 }
 
 const setEditPAO = (months: number) => {
@@ -41,21 +40,38 @@ const setEditPAO = (months: number) => {
   editExpirationDate.value = d.toISOString().split('T')[0]
 }
 
-// 🌟 New Desktop Mouse Scroll Capture Vector Hook 🌟
 const handleHorizontalWheel = (event: WheelEvent) => {
   if (!optionsScrollFrame.value) return
   event.preventDefault()
-  // Converts standard vertical mouse scroll rotations cleanly into horizontal pixel offsets
   optionsScrollFrame.value.scrollLeft += event.deltaY
 }
 
+// 🌟 PERSIST PAO TO BACKEND
 const handleUpdateExpiration = async () => {
   try {
-    await markItemOpened(props.item.id, props.item.opened_date, editExpirationDate.value, 'active')
-    props.item.expiration_date = editExpirationDate.value
+    const finalPao = activeEditPao.value || props.item.pao
+
+    await markItemOpened(
+      props.item.id,
+      props.item.opened_date,
+      editExpirationDate.value,
+      'active',
+      finalPao
+    )
+
     isEditingExpiration.value = false
-    emit('updated')
-    addToast('Expiration date updated!', 'success')
+
+    // 🌟 Create a fresh updated clone rather than mutating props.item directly
+    const updatedItem = {
+      ...props.item,
+      expiration_date: editExpirationDate.value,
+      pao: finalPao,
+      usage_state: 'active'
+    }
+
+    // Emit updated clone
+    emit('updated', updatedItem)
+    addToast('Expiration date & PAO updated!', 'success')
   } catch (error) {
     addToast('Could not update date', 'error')
   }
@@ -65,18 +81,34 @@ const handleStartPAO = async () => {
   const today = new Date()
   const openedDateStr = today.toISOString().split('T')[0]
   let expDateStr = null
-  if (props.item.pao) {
+  const currentPao = props.item.pao ? parseInt(String(props.item.pao)) : null
+
+  if (currentPao) {
     const expDate = new Date()
-    expDate.setMonth(expDate.getMonth() + props.item.pao)
+    expDate.setMonth(expDate.getMonth() + currentPao)
     expDateStr = expDate.toISOString().split('T')[0]
   }
+
   try {
-    await markItemOpened(props.item.id, openedDateStr, expDateStr || null, 'active')
+    await markItemOpened(
+      props.item.id,
+      openedDateStr,
+      expDateStr || null,
+      'active',
+      currentPao
+    )
     await updateShelfStatus(props.item.id, 'active')
-    props.item.opened_date = openedDateStr
-    props.item.expiration_date = expDateStr
-    props.item.usage_state = 'active'
-    emit('updated')
+
+    // 🌟 Emit clone without direct prop mutation
+    const updatedItem = {
+      ...props.item,
+      opened_date: openedDateStr,
+      expiration_date: expDateStr,
+      usage_state: 'active',
+      pao: currentPao
+    }
+
+    emit('updated', updatedItem)
     addToast('Product opened! Clock started.', 'success')
   } catch (error) {
     addToast('Could not update product status', 'error')
@@ -92,7 +124,7 @@ const handleStartPAO = async () => {
       <div v-if="!isEditingExpiration" class="flex justify-between items-center group">
         <div class="flex flex-col">
           <span class="text-xs font-bold text-brand-primary">Expiration Date</span>
-          <span v-if="item.pao" class="text-[10px] text-brand-primary font-bold uppercase tracking-widest mt-0.5">({{ item.pao }}M PAO)</span>
+          <span v-if="item.pao" class="text-[10px] text-brand-primary font-bold uppercase tracking-widest mt-0.5">({{ String(item.pao).replace('M', '') }}M PAO)</span>
         </div>
         <div class="flex items-center gap-3">
           <span class="text-sm font-bold text-brand-primary">{{ item.expiration_date ? formatDate(item.expiration_date) : 'Not Set' }}</span>
@@ -109,7 +141,6 @@ const handleStartPAO = async () => {
           <button @click="isEditingExpiration = false" class="text-xs font-bold text-brand-text-muted hover:text-brand-primary transition-colors cursor-pointer">Cancel</button>
         </div>
 
-        <!-- Scrollable PAO Selector Wrapper with Mouse Scroll Interception -->
         <div
           ref="optionsScrollFrame"
           @wheel="handleHorizontalWheel"
@@ -142,7 +173,9 @@ const handleStartPAO = async () => {
           <svg class="w-5 h-5 text-brand-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
           <span class="text-sm font-bold text-brand-text-muted dark:text-stone-300">Status: Unopened</span>
         </div>
-        <span class="text-xs font-bold bg-brand-bg-light dark:bg-stone-800 text-brand-text-muted px-3 py-1 rounded-lg border border-brand-surface-border dark:border-stone-700">{{ item.pao }}M PAO</span>
+        <span class="text-xs font-bold bg-brand-bg-light dark:bg-stone-800 text-brand-text-muted px-3 py-1 rounded-lg border border-brand-surface-border dark:border-stone-700">
+          {{ item.pao ? `${String(item.pao).replace('M', '')}M PAO` : 'PAO: Not Set' }}
+        </span>
       </div>
       <button v-if="item.usage_state !== 'archived'" @click="handleStartPAO" class="w-full py-3.5 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm cursor-pointer">
         Start Product Life
@@ -155,7 +188,6 @@ const handleStartPAO = async () => {
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Elegant visible custom mini-scrollbar track on desktop profiles */
 .horizontal-pao-track::-webkit-scrollbar {
   height: 4px;
 }

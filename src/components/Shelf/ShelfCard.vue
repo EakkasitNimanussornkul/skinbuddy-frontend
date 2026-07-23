@@ -15,21 +15,38 @@ const expirationInfo = computed(() => {
     return { label: 'Archived', badgeType: 'archived', dateText: 'Archived Item' }
   }
 
-  let targetDate: Date | null = null
-
   // Safely extract PAO whether it's stored as a string ('6M') or integer (6)
   const safePao = props.item.pao ? (typeof props.item.pao === 'string' ? props.item.pao.replace('M', '') : String(props.item.pao)) : null
+
+  let targetDate: Date | null = null
 
   if (props.item.expiration_date) {
     targetDate = new Date(props.item.expiration_date)
   } else if (props.item.opened_date && safePao) {
-    const months = parseInt(safePao) || 12
-    targetDate = new Date(props.item.opened_date)
-    targetDate.setMonth(targetDate.getMonth() + months)
+    const months = parseInt(safePao)
+    if (!isNaN(months)) {
+      targetDate = new Date(props.item.opened_date)
+      targetDate.setMonth(targetDate.getMonth() + months)
+    }
   }
 
+  // 🌟 FIX: Check if item is explicitly unopened vs active without an expiration date
+  const isOpened = Boolean(props.item.opened_date) || state === 'active'
+
   if (!targetDate) {
-    return { label: 'Unopened', badgeType: 'unopened', dateText: `PAO: ${safePao ? safePao + 'M' : '12M'}` }
+    if (!isOpened) {
+      return {
+        label: 'Unopened',
+        badgeType: 'unopened',
+        dateText: safePao ? `PAO: ${safePao}M` : 'Status: Unopened'
+      }
+    }
+    // Product IS opened/active, but has no set expiration or PAO
+    return {
+      label: 'Active',
+      badgeType: 'good',
+      dateText: safePao ? `PAO: ${safePao}M` : 'Expiration: Not Set'
+    }
   }
 
   const today = new Date()
@@ -48,7 +65,6 @@ const expirationInfo = computed(() => {
 </script>
 
 <template>
-  <!-- 🌟 Added sm:rounded-2xl lg:rounded-[1.75rem] and expanded padding to lg:p-5 for desktop substance 🌟 -->
   <div class="group relative bg-brand-surface-light dark:bg-brand-surface-dark rounded-2xl lg:rounded-[1.75rem] p-3.5 sm:p-4 lg:p-5 border border-brand-surface-border dark:border-stone-800 shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 flex flex-col justify-between h-full overflow-hidden">
 
     <div class="flex items-center justify-between gap-1 mb-2.5">
@@ -64,7 +80,6 @@ const expirationInfo = computed(() => {
       </button>
     </div>
 
-    <!-- 🌟 Expanded thumbnail size on desktop with lg:w-24 lg:h-24 🌟 -->
     <div @click="emit('open-details')" class="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 mx-auto rounded-xl bg-brand-bg-light dark:bg-brand-bg-dark border border-brand-surface-border dark:border-stone-800/60 flex items-center justify-center overflow-hidden mb-4 cursor-pointer group-hover:scale-105 transition-transform p-2.5">
       <img v-if="item.products?.image_url" :src="item.products.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
       <svg v-else class="w-8 h-8 text-brand-text-muted/60 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
@@ -74,7 +89,6 @@ const expirationInfo = computed(() => {
     <div @click="emit('open-details')" class="cursor-pointer text-center sm:text-left flex-1 flex flex-col justify-end">
       <p class="text-[9px] lg:text-[10px] font-bold text-brand-primary uppercase tracking-wider truncate">{{ item.products?.brand || 'Unknown Brand' }}</p>
 
-      <!-- 🌟 Boosted desktop text size slightly with lg:text-base 🌟 -->
       <h4 class="text-xs sm:text-sm lg:text-base font-serif sm:font-sans lg:font-serif font-bold text-brand-text dark:text-stone-100 truncate line-clamp-1 group-hover:text-brand-primary transition-colors mt-0.5">
         {{ item.products?.name || 'Unnamed Product' }}
       </h4>
