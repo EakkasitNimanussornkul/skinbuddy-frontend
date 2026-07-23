@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { searchProducts } from '../api/products.ts'
 import { useAuthStore } from '../stores/auth.ts'
 import { useToast } from '../composables/useToast.ts'
-
 import SearchAutocompleteInput from '../components/Shared/SearchAutocompleteInput.vue'
 import ExploreProductCard from '../components/Catalog/ExploreProductCard.vue'
 import ExploreCategoryBar from '../components/Catalog/ExploreCategoryBar.vue'
@@ -12,6 +11,7 @@ import UniversalProductModal from '../components/Catalog/UniversalProductModal.v
 import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue'
 import PriceRangeSlider from '../components/Catalog/PriceRangeSlider.vue'
 import EmptyState from '../components/Shared/EmptyState.vue'
+import ProductShowcaseMarquee from '../components/Catalog/ProductShowcaseMarquee.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,7 +53,13 @@ const syncFiltersFromURL = () => {
   }
 }
 
+// Gated feature interceptor for unregistered guests
 const handleCompareToggle = (product: any) => {
+  if (!authStore.isAuthenticated) {
+    authStore.triggerLoginPopup('Sign in to compare skin formulas side-by-side.')
+    return
+  }
+
   const index = comparisonSlugs.value.indexOf(product.slug)
   if (index > -1) {
     comparisonSlugs.value.splice(index, 1)
@@ -66,12 +72,20 @@ const handleCompareToggle = (product: any) => {
   }
 }
 
+const handleInitializeCompare = () => {
+  if (!authStore.isAuthenticated) {
+    authStore.triggerLoginPopup('Sign in to run side-by-side formula comparisons.')
+    return
+  }
+  router.push(`/compare?slugs=${comparisonSlugs.value.join(',')}`)
+}
+
 const fetchCatalog = async () => {
   isLoading.value = true
   try {
     const data = await searchProducts(searchQuery.value, activeMinPrice.value, activeMaxPrice.value)
     catalog.value = data || []
-  } catch (error) {
+  } catch {
     addToast('Failed to load product catalog.', 'error')
   } finally {
     isLoading.value = false
@@ -131,7 +145,6 @@ const filteredCatalog = computed(() => {
   })
 })
 
-// 🌟 FIXED: Syntax typo completely fixed here by removing unexpected brace character blocks 🌟
 watch(
   () => route.query,
   () => {
@@ -145,22 +158,83 @@ watch(
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-36 pt-6 transition-colors duration-300">
     <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
 
-      <!-- Header Dashboard Banner -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm">
-        <div>
-          <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">Global Formulation Registry</span>
-          <h1 class="text-2xl sm:text-3xl font-serif font-bold mt-0.5">Explore Skincare Catalog</h1>
-        </div>
+ <!-- Header Dashboard Banner (Full-Width / Borderless Desktop Variant) -->
+<div class="w-full py-4 sm:py-6 border-b border-brand-surface-border dark:border-stone-800/80 transition-colors duration-300 space-y-6">
 
-        <button
-          v-if="comparisonSlugs.length > 0"
-          @click="router.push(`/compare?slugs=${comparisonSlugs.join(',')}`)"
-          class="flex items-center gap-2 px-5 py-3 bg-brand-primary text-white rounded-xl text-xs font-bold transition-all shadow-md hover:bg-brand-primary-hover active:scale-95 cursor-pointer"
-        >
-          <span>Initialize Compare</span>
-          <span class="bg-white/20 px-2 py-0.5 rounded-md text-[10px] font-mono">{{ comparisonSlugs.length }}</span>
-        </button>
+  <!-- 2-Column Responsive Layout: Content Left, Marquee Right -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+
+    <!-- Left Column: Title & Text (7 cols) -->
+    <div class="lg:col-span-7 space-y-3">
+      <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
+        Global Formulation Registry
+      </span>
+      <h1 class="text-3xl sm:text-5xl font-serif font-bold text-brand-text dark:text-stone-100 tracking-tight">
+        Explore Skincare Catalog
+      </h1>
+      <p class="text-xs sm:text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium max-w-2xl">
+        Discover curated formulations with complete active ingredient breakdowns, sensitivity risk factors, and custom Baumann skin compatibility scores.
+      </p>
+    </div>
+
+    <!-- Right Column: Sliding Marquee (5 cols) -->
+    <div class="lg:col-span-5 flex flex-col items-end justify-center w-full min-w-0">
+      <button
+        v-if="comparisonSlugs.length > 0"
+        @click="handleInitializeCompare"
+        class="mb-3 flex items-center gap-2.5 px-4 py-2 bg-brand-primary text-white rounded-xl text-xs font-bold transition-all shadow-md hover:bg-brand-primary-hover active:scale-95 cursor-pointer"
+      >
+        <span>Initialize Compare</span>
+        <span class="bg-white/20 px-2 py-0.5 rounded-lg text-[10px] font-mono">
+          {{ comparisonSlugs.length }}
+        </span>
+      </button>
+
+      <ProductShowcaseMarquee :products="catalog" />
+    </div>
+
+  </div>
+
+  <!-- Feature Highlights Grid (0 Emojis, Clean SVG Checkmarks) -->
+  <div class="pt-4 border-t border-brand-surface-border dark:border-stone-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
+        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
       </div>
+      <span class="text-xs font-bold text-brand-text dark:text-stone-200">Detailed ingredient breakdowns</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
+        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <span class="text-xs font-bold text-brand-text dark:text-stone-200">Safety & compatibility ratings</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
+        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <span class="text-xs font-bold text-brand-text dark:text-stone-200">Personalized Baumann matching</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
+        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <span class="text-xs font-bold text-brand-text dark:text-stone-200">100% Independent analysis</span>
+    </div>
+  </div>
+
+</div>
 
       <!-- Mobile/Tablet Search Input -->
       <div class="w-full block lg:hidden">
@@ -170,10 +244,10 @@ watch(
         />
       </div>
 
-      <!-- 🌟 ONE INTEGRATED CONTROL DECK: Houses clean components with zero vertical voids 🌟 -->
+      <!-- Control Deck Container -->
       <div class="bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
-        <!-- LEFT PANEL: Formulation Filters (7 Columns) -->
+        <!-- LEFT PANEL: Formulation Filters -->
         <div class="lg:col-span-7 flex flex-col gap-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="space-y-0.5">
@@ -200,10 +274,10 @@ watch(
           </div>
         </div>
 
-        <!-- MIDDLE: Desktop Vertical Splitter Line (1 Column) -->
+        <!-- MIDDLE: Splitter Line -->
         <div class="hidden lg:block lg:col-span-1 h-16 border-r border-brand-surface-border dark:border-stone-800 justify-self-center"></div>
 
-        <!-- RIGHT PANEL: Offloaded Price Slider Component (4 Columns) -->
+        <!-- RIGHT PANEL: Price Slider -->
         <div class="lg:col-span-4 w-full">
           <PriceRangeSlider
             :min-price="activeMinPrice"
