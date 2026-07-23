@@ -47,6 +47,22 @@ const fetchShelf = async () => {
   }
 }
 
+// 🌟 SAFE REFRESH: Re-syncs viewingItem to match the fresh DB object to prevent VNode crashes
+const handleModalRefresh = async () => {
+  try {
+    const freshData = await getMyShelf()
+    myShelf.value = freshData
+    if (viewingItem.value) {
+      const updatedMatch = freshData.find((item: any) => item.id === viewingItem.value.id)
+      if (updatedMatch) {
+        viewingItem.value = updatedMatch
+      }
+    }
+  } catch (error) {
+    console.error("Failed to refresh modal state:", error)
+  }
+}
+
 onMounted(() => fetchShelf())
 
 const filteredProducts = computed(() => {
@@ -121,7 +137,6 @@ const executeDelete = async () => {
         <p class="text-xs font-bold uppercase tracking-widest text-brand-primary">Running Safety Check...</p>
       </div>
 
-      <!-- 🌟 FIXED: Changed from <template v-slot:default v-if="..."> to clean condition conditional tag block 🌟 -->
       <div v-else-if="myShelf.length > 0" class="flex flex-col gap-6 w-full">
         <!-- Interactive Search Input -->
         <div class="relative">
@@ -177,7 +192,7 @@ const executeDelete = async () => {
     <!-- Teleported Flow Overlays -->
     <Teleport to="body">
       <AddProductModal v-if="isAddModalOpen" @close="isAddModalOpen = false" @refresh="fetchShelf" />
-      <ItemDetailsModal v-if="viewingItem" :item="viewingItem" @close="viewingItem = null" @refresh="fetchShelf" />
+      <ItemDetailsModal v-if="viewingItem" :item="viewingItem" @close="viewingItem = null" @refresh="handleModalRefresh" />
       <ConfirmDeleteModal v-if="itemToDelete" :item="itemToDelete" @cancel="itemToDelete = null" @confirm="executeDelete" />
     </Teleport>
   </div>
