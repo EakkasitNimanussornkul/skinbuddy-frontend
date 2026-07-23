@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductBySlug } from '../api/products'
+import { useAuthStore } from '../stores/auth'
 import ProductSpecContent from '../components/Catalog/ProductSpecContent.vue'
 import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue'
 import SimilarProductsWidget from '../components/Catalog/SimilarProductsWidget.vue'
@@ -9,6 +10,8 @@ import EmptyState from '../components/Shared/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+
 const product = ref<any>(null)
 const isLoading = ref(true)
 const baseProductForCompare = ref<any | null>(null)
@@ -25,7 +28,10 @@ const loadPage = async (slug: string) => {
   }
 }
 
-onMounted(() => loadPage((route.params.slug as string) || ''))
+onMounted(() => {
+  loadPage((route.params.slug as string) || '')
+})
+
 watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as string) })
 </script>
 
@@ -36,7 +42,7 @@ watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as s
     <div class="sticky top-0 z-40 bg-brand-surface-light/80 dark:bg-brand-surface-dark/80 backdrop-blur-md pt-4 pb-4 px-4 sm:px-6 flex items-center gap-4 border-b border-brand-surface-border dark:border-stone-800 transition-colors">
       <button
         @click="router.back()"
-        class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 text-brand-text-muted hover:text-brand-primary dark:hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm active:scale-95"
+        class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 text-brand-text-muted hover:text-brand-primary dark:hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm active:scale-95 cursor-pointer"
         aria-label="Go back"
       >
         <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,22 +70,23 @@ watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as s
           <span class="text-brand-text dark:text-stone-200 font-bold truncate">{{ product.brand }}</span>
         </nav>
 
-        <!-- Main Product Specification -->
+        <!-- Main Product Specification Component -->
         <ProductSpecContent
           :product="product"
           mode="detail"
           @open-compare-selector="baseProductForCompare = $event"
         />
 
-        <!-- Extracted Recommended Similar Products Widget -->
+        <!-- Similar Products Widget (Visible for authenticated users) -->
         <SimilarProductsWidget
+          v-if="authStore.isAuthenticated"
           :similar-products="product.similar_products"
           :base-product-slug="product.slug"
         />
 
       </div>
 
-      <!-- Invalid / Non-Existent Product Empty State Trigger -->
+      <!-- Empty State -->
       <div v-else class="py-24 px-4 flex justify-center items-center">
         <EmptyState
           title="Product Not Found"
@@ -89,7 +96,7 @@ watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as s
         >
           <template #icon>
             <svg class="w-10 h-10 text-brand-text-muted/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 0 0118 0z" />
             </svg>
           </template>
         </EmptyState>
