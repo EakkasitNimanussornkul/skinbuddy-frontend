@@ -83,14 +83,12 @@ const router = createRouter({
       path: '/product/:slug',
       name: 'ProductDetail',
       component: ProductDetailView,
-      meta: { requiresAuth: true },
     },
     {
       path: '/compare',
       name: 'Compare',
       component: CompareView,
     },
-
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
@@ -107,24 +105,21 @@ const router = createRouter({
 })
 
 // Route Guard: Check if the user is allowed to view the page
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to) => {
   const authStore = useAuthStore()
 
-  // Always allow callback, error, and wildcard 404 pages to load without blocking
+  // Always allow callback, error, and wildcard 404 pages without checking
   if (to.name === 'authCallback' || to.name === 'error' || to.name === 'not-found') {
-    next()
-    return
+    return true
   }
 
-  // If the page needs auth AND they are not logged in
-  if (to.meta.requiresAuth && !authStore.isAuthenticated()) {
-    authStore.showLoginPopup = true // Triggers the global popup
-    next(false) // Stops them from entering the protected page
-    return
+  // If the route requires auth AND the user is NOT authenticated
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    authStore.triggerLoginPopup("Sign in to access your personalized skin routine.")
+    return false // Stops navigation gracefully
   }
 
-  // Otherwise, let them proceed normally
-  next()
+  return true // Allow navigation
 })
 
 export default router
