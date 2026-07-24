@@ -1,6 +1,11 @@
 export interface ChatMessage {
   role: 'user' | 'bot'
   text: string
+  // Rich message support for the in-chat routine proposal (UC-15).
+  // Extra fields are ignored by the backend /chat/ask history parser.
+  kind?: 'text' | 'routine'
+  routine?: any[] // proposed steps when kind === 'routine'
+  applied?: boolean // whether this proposal has been applied
 }
 
 export interface ChatResponse {
