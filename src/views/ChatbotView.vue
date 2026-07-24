@@ -1,15 +1,24 @@
 <script setup lang="ts">
 import { askSkinBuddy } from '@/api/chat'
+import { generateRoutine, applyRoutine } from '@/api/routineApi'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chatStore'
-import { nextTick, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import RoutineProposalCard from '@/components/Routine/RoutineProposalCard.vue'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 const userInput = ref('')
 const isLoading = ref(false)
 const chatContainer = ref<HTMLElement | null>(null)
+
+// Routine generation sub-flow (UC-15). 'awaiting-concerns' = the bot asked the
+// follow-up question and is waiting for the user's next message to generate.
+const routineStage = ref<'idle' | 'awaiting-concerns' | 'generating'>('idle')
 
 const scrollToBottom = async () => {
     await nextTick()
@@ -20,12 +29,99 @@ const scrollToBottom = async () => {
 
 const startNewChat = () => {
     chatStore.resetChat()
+    routineStage.value = 'idle'
+}
+
+// UC-15 step 1-3: opened from the routine page -> auto-send + ask follow-up.
+const startRoutineFlow = () => {
+    chatStore.messages.push({ role: 'user', text: 'Make me a skincare routine' })
+    chatStore.messages.push({
+        role: 'bot',
+        text: 'I\'d love to build one from the products in your storage! 🌿 Any specific concerns you\'d like to focus on — like acne, dryness, sensitivity, or anti-aging? Or just say "no" for a balanced routine.',
+    })
+    routineStage.value = 'awaiting-concerns'
+    scrollToBottom()
+}
+
+onMounted(() => {
+    if (route.query.intent === 'generate-routine') {
+        // Clear the query so a reload/HMR doesn't re-trigger the flow.
+        router.replace({ query: {} })
+        startRoutineFlow()
+    }
+})
+
+// UC-15 step 4-6: retrieve context + propose a routine card from the shelf.
+const runRoutineGeneration = async (concerns: string) => {
+    routineStage.value = 'generating'
+    isLoading.value = true
+    scrollToBottom()
+    try {
+        const answers = /^\s*(no|none|nope|n\/?a|nothing)\s*$/i.test(concerns) ? '' : concerns
+        const data = await generateRoutine(answers)
+        if (data.steps?.length) {
+            const names = data.steps.map((s: any) => s.product_name).join(', ')
+            chatStore.messages.push({
+                role: 'bot',
+                text: `Here's a routine I put together using your products: ${names}.`,
+                kind: 'routine',
+                routine: data.steps,
+            })
+        } else {
+            chatStore.messages.push({ role: 'bot', text: "I couldn't build a routine from your current products." })
+        }
+    } catch (err: any) {
+        // 422 => no products in storage; otherwise generic/LLM failure.
+        const detail = err?.response?.data?.detail
+        chatStore.messages.push({ role: 'bot', text: detail || 'Something went wrong generating your routine. Please try again.' })
+    } finally {
+        isLoading.value = false
+        routineStage.value = 'idle'
+        scrollToBottom()
+    }
+}
+
+// UC-15 step 7-8: apply the proposed routine as the active routine.
+const applyProposedRoutine = async (msg: any) => {
+    try {
+        await applyRoutine(
+            msg.routine.map((s: any, i: number) => ({
+                product_id: s.product_id,
+                step_order: i + 1,
+                time_of_day: s.time_of_day || 'both',
+                frequency: s.frequency || 'daily',
+            }))
+        )
+        msg.applied = true
+        chatStore.messages.push({ role: 'bot', text: '✅ Done! Your new routine is active. You can view and tweak it on the Routine page.' })
+    } catch {
+        chatStore.messages.push({ role: 'bot', text: 'Sorry, I could not apply that routine. Please try again.' })
+    } finally {
+        scrollToBottom()
+    }
+}
+
+// UC-15 A2: user asks to adjust -> loop back to the follow-up question.
+const adjustProposedRoutine = () => {
+    chatStore.messages.push({ role: 'bot', text: 'No problem — what would you like to change or focus on?' })
+    routineStage.value = 'awaiting-concerns'
+    scrollToBottom()
 }
 
 const sendMessage = async () => {
     if (!userInput.value.trim() || isLoading.value) return
 
     const currentMessage = userInput.value.trim()
+
+    // If we're gathering routine concerns, the next message drives generation.
+    if (routineStage.value === 'awaiting-concerns') {
+        chatStore.messages.push({ role: 'user', text: currentMessage })
+        userInput.value = ''
+        scrollToBottom()
+        await runRoutineGeneration(currentMessage)
+        return
+    }
+
     const historyToSend = [...chatStore.messages]
 
     chatStore.messages.push({ role: 'user', text: currentMessage })
@@ -85,8 +181,19 @@ const sendMessage = async () => {
                     <img src="/images/jelly.png" alt="SkinBuddy" class="w-full h-full object-cover" />
                 </div>
 
+                <!-- Routine proposal card (UC-15) -->
+                <div v-if="msg.role === 'bot' && msg.kind === 'routine'" class="max-w-[85%] w-full">
+                    <RoutineProposalCard
+                        :steps="msg.routine || []"
+                        :applied="msg.applied"
+                        @use="applyProposedRoutine(msg)"
+                        @adjust="adjustProposedRoutine"
+                        @view="router.push('/routine')"
+                    />
+                </div>
+
                 <!-- Bubble -->
-                <div :class="[
+                <div v-else :class="[
                     'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm',
                     msg.role === 'user'
                         ? 'bg-brand-primary text-white rounded-br-sm'
