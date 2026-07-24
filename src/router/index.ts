@@ -13,6 +13,8 @@ import SkinTypeLanding from '../views/SkinTypeLanding.vue'
 import SkinProfileView from '../views/SkinProfileView.vue'
 import ProductDetailView from '../views/ProductDetailView.vue'
 import CompareView from '../views/CompareView.vue'
+import WeeklyCheckInView from '../views/WeeklyCheckInView.vue'
+import SkinAnalysisView from '../views/SkinAnalysisView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -89,6 +91,18 @@ const router = createRouter({
       path: '/compare',
       name: 'Compare',
       component: CompareView,
+    },
+    {
+      path: '/checkin',
+      name: 'weekly-checkin',
+      component: WeeklyCheckInView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/analysis',
+      name: 'skin-analysis',
+      component: SkinAnalysisView,
+      meta: { requiresAuth: true },
     },
 
     {
