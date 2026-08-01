@@ -173,7 +173,7 @@ watch(
         Explore Skincare Catalog
       </h1>
       <p class="text-xs sm:text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium max-w-2xl">
-        Discover curated formulations with complete active ingredient breakdowns, sensitivity risk factors, and custom Baumann skin compatibility scores.
+        Discover curated formulations with complete active ingredient breakdowns, sensitivity risk factors, and personalized Baumann skin compatibility scores.
       </p>
     </div>
 
