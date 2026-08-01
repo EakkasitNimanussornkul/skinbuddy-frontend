@@ -157,7 +157,7 @@ const executeDelete = async () => {
         </div>
 
         <!-- Grid Container -->
-        <div v-if="filteredProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
+        <div v-if="filteredProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
           <ShelfCard
             v-for="item in filteredProducts"
             :key="item.id"
