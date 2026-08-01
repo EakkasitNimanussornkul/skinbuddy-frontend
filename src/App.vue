@@ -2,11 +2,12 @@
 import { onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import BottomNav from './components/Shared/BottomNav.vue'
+import TopNav from './components/Shared/TopNav.vue'
+import MobileTopBar from './components/Shared/MobileTopBar.vue'
 import ToastProvider from './components/Shared/ToastProvider.vue'
-import { useThemeStore } from './stores/themeStore'
 import LoginPopup from './components/Auth/LoginPopup.vue'
 import LogoutModal from './components/Auth/LogoutModal.vue'
-import TopNav from './components/Shared/TopNav.vue'
+import { useThemeStore } from './stores/themeStore'
 
 const themeStore = useThemeStore()
 const route = useRoute()
@@ -21,10 +22,18 @@ onMounted(() => {
     <LoginPopup />
     <LogoutModal />
 
+    <!-- Desktop Top Navigation (Hidden on Mobile) -->
     <TopNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
+
+    <!-- Mobile Header Top Bar (Hidden on Desktop) -->
+    <MobileTopBar v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
+
+    <!-- Main View Canvas -->
     <RouterView />
 
+    <!-- Mobile Bottom Navigation (5-Tab Layout) -->
     <BottomNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
+
     <ToastProvider />
   </div>
 </template>
