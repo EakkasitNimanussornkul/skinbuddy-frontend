@@ -8,6 +8,7 @@ import ToastProvider from './components/Shared/ToastProvider.vue'
 import LoginPopup from './components/Auth/LoginPopup.vue'
 import LogoutModal from './components/Auth/LogoutModal.vue'
 import { useThemeStore } from './stores/themeStore'
+import ScrollToTopButton from './components/Shared/ScrollToTopButton.vue'
 
 const themeStore = useThemeStore()
 const route = useRoute()
@@ -30,7 +31,7 @@ onMounted(() => {
 
     <!-- Main View Canvas -->
     <RouterView />
-
+      <ScrollToTopButton />
     <!-- Mobile Bottom Navigation (5-Tab Layout) -->
     <BottomNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
 
