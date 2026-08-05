@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
@@ -15,6 +15,21 @@ const emit = defineEmits(['open-compare-selector', 'shelf-updated', 'close'])
 const { addToast } = useToast()
 const authStore = useAuthStore()
 
+// 🌟 Smart description with ingredient fallback
+const productDescription = computed(() => {
+  if (props.product?.description && props.product.description.trim().length > 0) {
+    return props.product.description
+  }
+  const ingredients = props.product?.product_ingredients || []
+  if (ingredients.length > 0) {
+    const list = ingredients.map((pi: any) => pi.ingredients?.name).filter(Boolean).slice(0, 4)
+    if (list.length > 0) {
+      return `Targeted formulation featuring ${list.join(', ')}${ingredients.length > 4 ? ', and key barrier support actives' : ''}.`
+    }
+  }
+  return 'Active daily skincare formulation.'
+})
+
 const isConfiguringAdd = ref(false)
 const isSaving = ref(false)
 const isOpened = ref(true)
@@ -22,7 +37,6 @@ const selectedPao = ref('12M')
 const paoOptions = ['3M', '6M', '12M', '18M', '24M', '36M']
 const customDate = ref(new Date().toISOString().split('T')[0])
 
-// --- Unified Safety Pipeline States ---
 const isSafetyModalOpen = ref(false)
 const showWarningModal = ref(false)
 const isAnalyzing = ref(false)
@@ -46,7 +60,6 @@ const runBackendAnalysis = async () => {
   }
 }
 
-// Flow A: Safety Check Dashboard Button Click
 const handleTriggerSafetyCheck = async () => {
   if (!authStore.isAuthenticated) {
     authStore.triggerLoginPopup('Sign in to perform routine safety checks on your skin barrier.')
@@ -58,7 +71,6 @@ const handleTriggerSafetyCheck = async () => {
   hasCheckedSafety.value = true
 }
 
-// Flow B: Save to Shelf Interception Flow Gateway
 const handleOpenConfigurator = async () => {
   if (!authStore.isAuthenticated) {
     authStore.triggerLoginPopup('Sign in to save this product to your digital skincare shelf.')
@@ -123,51 +135,82 @@ const handleCommitToShelf = async () => {
     </div>
 
     <!-- Right Specification Panel -->
-    <div class="lg:col-span-7 p-6 sm:p-10 space-y-6 flex flex-col justify-between">
-      <div>
+    <div class="lg:col-span-7 p-6 sm:p-10 space-y-5 flex flex-col justify-between">
+      <div class="space-y-3">
         <span class="text-xs font-bold text-brand-primary uppercase tracking-widest">{{ product.brand }}</span>
         <h1 class="text-2xl sm:text-4xl font-serif font-bold text-brand-text dark:text-white mt-1">{{ product.name }}</h1>
 
-        <div class="mt-3 inline-flex items-center gap-2 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 px-4 py-2 rounded-2xl font-mono font-bold text-sm">
+        <div class="inline-flex items-center gap-2 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 px-4 py-2 rounded-2xl font-mono font-bold text-sm">
           <span class="text-brand-primary">฿{{ product.price_thb || 450 }}</span>
           <span class="text-brand-surface-border dark:text-stone-700">|</span>
           <span class="text-brand-text-muted dark:text-stone-400">${{ product.price_usd || '14.00' }}</span>
         </div>
+
+        <!-- Description Paragraph -->
+        <p class="text-xs sm:text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium pt-1">
+          {{ productDescription }}
+        </p>
       </div>
 
       <!-- Match Card: Authenticated User -->
       <div v-if="authStore.isAuthenticated" class="bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-800/40 rounded-3xl p-6 space-y-4 shadow-2xs">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-4">
           <div>
-            <h4 class="text-base font-black text-emerald-900 dark:text-emerald-200">Great match</h4>
-            <p class="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Strong compatibility for your skin profile</p>
+            <h4 class="text-base font-black text-emerald-900 dark:text-emerald-200">
+              {{ product.skin_match_score !== null && product.skin_match_score !== undefined ? 'Skin Match Compatibility' : 'Compatibility Status' }}
+            </h4>
+            <p class="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+              {{ product.skin_match_score !== null && product.skin_match_score !== undefined ? 'Compatibility evaluation for your active Baumann skin profile.' : 'Unable to determine personalized compatibility for this item.' }}
+            </p>
           </div>
-          <div class="w-14 h-14 rounded-full border-4 border-emerald-500 flex items-center justify-center font-mono font-black text-lg text-emerald-800 dark:text-emerald-200 bg-white dark:bg-stone-900 shadow-sm">
-            {{ product.skin_match_score || 89 }}%
+
+          <!-- Dynamic Score vs Failure Circle -->
+          <div class="flex-shrink-0">
+            <div
+              v-if="product.skin_match_score !== null && product.skin_match_score !== undefined"
+              class="w-14 h-14 rounded-full border-4 border-emerald-500 flex items-center justify-center font-mono font-black text-lg text-emerald-800 dark:text-emerald-200 bg-white dark:bg-stone-900 shadow-sm"
+            >
+              {{ Math.round(product.skin_match_score) }}%
+            </div>
+
+            <div
+              v-else
+              class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-brand-surface-light dark:bg-stone-800 text-[10px] font-bold font-mono text-brand-text-muted uppercase tracking-wider text-center"
+            >
+              Failed to calculate score
+            </div>
           </div>
         </div>
 
-        <div class="space-y-3 pt-3 border-t border-emerald-500/20 dark:border-emerald-800/40 text-xs">
-          <div v-for="(reason, i) in (product.match_reasons || ['Formulated to optimize hydration and soothe redness.'])" :key="i" class="flex items-start gap-2.5 text-emerald-900 dark:text-emerald-200">
-            <span class="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1 flex-shrink-0"></span>
-            <span class="leading-relaxed">{{ reason }}</span>
+        <!-- Match Reasons or Failure Explanation -->
+        <div class="space-y-2 pt-3 border-t border-emerald-500/20 dark:border-emerald-800/40 text-xs">
+          <template v-if="product.skin_match_score !== null && product.skin_match_score !== undefined">
+            <div v-for="(reason, i) in (product.match_reasons || [])" :key="i" class="flex items-start gap-2.5 text-emerald-900 dark:text-emerald-200">
+              <span class="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1 flex-shrink-0"></span>
+              <span class="leading-relaxed">{{ reason }}</span>
+            </div>
+          </template>
+
+          <div v-else class="text-brand-text-muted dark:text-stone-400 italic text-[11px]">
+            Failed to calculate matching score. This product may have incomplete ingredient metadata in the catalog.
           </div>
         </div>
       </div>
 
       <!-- Match Card: Unregistered Visitor Preview -->
-        <div v-else class="bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 rounded-3xl p-6 flex items-center justify-between gap-4">
-          <div>
-            <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Skin Compatibility Score</h4>
-            <p class="text-xs text-brand-text-muted mt-0.5">Log in to analyze this formula against your Baumann skin profile.</p>
-          </div>
-          <button
-            @click="authStore.triggerLoginPopup('Sign in to view your personalized skin compatibility score.')"
-            class="px-4 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer whitespace-nowrap transition-all active:scale-95"
-          >
-            Check Match
-          </button>
+      <div v-else class="bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 rounded-3xl p-6 flex items-center justify-between gap-4">
+        <div>
+          <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Skin Compatibility Score</h4>
+          <p class="text-xs text-brand-text-muted mt-0.5">Log in to analyze this formula against your Baumann skin profile.</p>
         </div>
+        <button
+          @click="authStore.triggerLoginPopup('Sign in to view your personalized skin compatibility score.')"
+          class="px-4 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer whitespace-nowrap transition-all active:scale-95"
+        >
+          Check Match
+        </button>
+      </div>
+
       <!-- Action Controllers -->
       <div class="pt-2">
         <div v-if="!isConfiguringAdd" class="flex flex-col sm:flex-row items-center gap-3">
@@ -220,7 +263,7 @@ const handleCommitToShelf = async () => {
       </div>
     </div>
 
-    <!-- Live Unified Safety Checker Modal Portal -->
+    <!-- Modals -->
     <SafetyCheckModal
       :is-open="isSafetyModalOpen"
       :product="product"
@@ -230,7 +273,6 @@ const handleCommitToShelf = async () => {
       @close="isSafetyModalOpen = false"
     />
 
-    <!-- Overlay Gate Interceptor Modal Portal Injection -->
     <Teleport to="body">
       <SafetyWarningModal
         v-if="showWarningModal"

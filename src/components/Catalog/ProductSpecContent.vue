@@ -16,14 +16,18 @@ const authStore = useAuthStore()
 const showAllIngredients = ref(false)
 const showAllBenefits = ref(false)
 
-const safetyChecks = [
-  { label: 'Alcohol-free', status: true },
-  { label: 'Fragrance-free', status: true },
-  { label: 'Paraben-free', status: true },
-  { label: 'Silicone-free', status: true },
-  { label: 'Sulfate-free', status: true },
-  { label: 'Fungal-acne safe', status: true },
-]
+// 🌟 Dynamically compute flags from product payload
+const safetyChecks = computed(() => {
+  const flags = props.product?.safety_flags || {}
+  return [
+    { label: 'Alcohol-free', status: flags.alcohol_free ?? true },
+    { label: 'Fragrance-free', status: flags.fragrance_free ?? true },
+    { label: 'Paraben-free', status: flags.paraben_free ?? true },
+    { label: 'Silicone-free', status: flags.silicone_free ?? true },
+    { label: 'Sulfate-free', status: flags.sulfate_free ?? true },
+    { label: 'Vegan', status: flags.vegan ?? true },
+  ]
+})
 
 const tierWeight: Record<string, number> = { high: 1, medium: 2, low: 3 }
 
@@ -122,7 +126,7 @@ const handleGuestTrigger = () => {
 <template>
   <div class="space-y-10 animate-fade-in relative">
 
-    <!-- SECTION 1: HERO CONTAINER (Always 100% Crisp & Unblurred for Everyone) -->
+    <!-- SECTION 1: HERO CONTAINER -->
     <ProductHeroSection
       :product="product"
       :mode="mode"
@@ -131,13 +135,19 @@ const handleGuestTrigger = () => {
       @close="emit('close')"
     />
 
-    <!-- SECTION 2: SAFETY EXCLUSION CHECKLIST (Always Visible Basic Info) -->
+    <!-- SECTION 2: DYNAMIC SAFETY EXCLUSION CHECKLIST -->
     <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 p-6 sm:p-10 space-y-6 shadow-sm transition-colors duration-300">
       <h3 class="text-lg font-serif font-bold text-brand-text dark:text-white">What's inside</h3>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div v-for="chk in safetyChecks" :key="chk.label" class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-brand-text dark:text-stone-200">
-          <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">✓</span>
-          <span>{{ chk.label }}</span>
+        <div v-for="chk in safetyChecks" :key="chk.label" class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+          <!-- Green Tick if True -->
+          <span v-if="chk.status" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-xs flex-shrink-0 border border-emerald-500/20 shadow-2xs">✓</span>
+          <!-- Red Cross if False -->
+          <span v-else class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error flex items-center justify-center font-bold text-xs flex-shrink-0 border border-rose-500/20 shadow-2xs">✕</span>
+
+          <span :class="chk.status ? 'text-brand-text dark:text-stone-200' : 'text-semantic-error line-through'">
+            {{ chk.label }}
+          </span>
         </div>
       </div>
     </div>
