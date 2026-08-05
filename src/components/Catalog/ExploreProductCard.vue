@@ -9,17 +9,23 @@ const emit = defineEmits(['inspect'])
 
 // Semantic match info using your color palette
 const matchInfo = computed(() => {
-  const score = props.product.skin_match_score || 88
+  const score = props.product?.skin_match_score
+  if (score === null || score === undefined) {
+    return {
+      label: 'Score Unavailable',
+      class: 'bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-brand-surface-border dark:border-stone-700'
+    }
+  }
   if (score >= 85) return {
-    label: `${score}% Match`,
+    label: `${Math.round(score)}% Match`,
     class: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
   }
   if (score >= 60) return {
-    label: `${score}% Match`,
+    label: `${Math.round(score)}% Match`,
     class: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
   }
   return {
-    label: `${score}% Caution`,
+    label: `${Math.round(score)}% Caution`,
     class: 'bg-semantic-error/5 text-semantic-error dark:bg-semantic-error/10 border-semantic-error/20'
   }
 })

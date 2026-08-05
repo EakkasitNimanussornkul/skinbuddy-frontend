@@ -17,6 +17,7 @@ const isLoading = ref(true)
 const baseProductForCompare = ref<any | null>(null)
 
 const loadPage = async (slug: string) => {
+  if (!slug) return
   isLoading.value = true
   try {
     product.value = await getProductBySlug(slug)
@@ -32,13 +33,20 @@ onMounted(() => {
   loadPage((route.params.slug as string) || '')
 })
 
-watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as string) })
+watch(() => route.params.slug, (newSlug) => {
+  if (newSlug) loadPage(newSlug as string)
+})
+
+// 🌟 Event Handler for opening Compare Modal
+const handleOpenCompare = (targetProduct: any) => {
+  baseProductForCompare.value = targetProduct || product.value
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 pb-36">
 
-    <!-- Sticky Header -->
+    <!-- Sticky Navigation Header -->
     <div class="sticky top-0 z-40 bg-brand-surface-light/80 dark:bg-brand-surface-dark/80 backdrop-blur-md pt-4 pb-4 px-4 sm:px-6 flex items-center gap-4 border-b border-brand-surface-border dark:border-stone-800 transition-colors">
       <button
         @click="router.back()"
@@ -60,33 +68,36 @@ watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as s
         Loading Formula Specification...
       </div>
 
-      <!-- Valid Content State -->
-      <div v-else-if="product" class="max-w-6xl mx-auto px-4 sm:px-6 space-y-12 animate-fade-in">
+      <!-- Valid Product Content View -->
+      <div v-else-if="product" class="max-w-6xl mx-auto px-4 sm:px-6 space-y-10 animate-fade-in">
 
-        <!-- Breadcrumb Nav -->
+        <!-- Breadcrumb Bar -->
         <nav class="flex items-center gap-2 text-xs font-semibold text-brand-text-muted">
           <router-link to="/explore" class="hover:text-brand-primary transition-colors">Explore</router-link>
           <span>/</span>
           <span class="text-brand-text dark:text-stone-200 font-bold truncate">{{ product.brand }}</span>
+          <span>/</span>
+          <span class="text-brand-primary font-bold truncate">{{ product.name }}</span>
         </nav>
 
-        <!-- Main Product Specification Component -->
+        <!-- Main Product Specification Content -->
         <ProductSpecContent
           :product="product"
           mode="detail"
-          @open-compare-selector="baseProductForCompare = $event"
+          @open-compare-selector="handleOpenCompare"
+          @shelf-updated="loadPage(route.params.slug as string)"
         />
 
-        <!-- Similar Products Widget (Visible for authenticated users) -->
+        <!-- Similar Products Widget -->
         <SimilarProductsWidget
-          v-if="authStore.isAuthenticated"
+          v-if="authStore.isAuthenticated && product.similar_products?.length"
           :similar-products="product.similar_products"
           :base-product-slug="product.slug"
         />
 
       </div>
 
-      <!-- Empty State -->
+      <!-- Empty / Fallback State -->
       <div v-else class="py-24 px-4 flex justify-center items-center">
         <EmptyState
           title="Product Not Found"
@@ -103,8 +114,13 @@ watch(() => route.params.slug, (newSlug) => { if (newSlug) loadPage(newSlug as s
       </div>
     </div>
 
+    <!-- Teleported Compare Selector Modal -->
     <Teleport to="body">
-      <CompareSelectorModal v-if="baseProductForCompare" :base-product="baseProductForCompare" @close="baseProductForCompare = null" />
+      <CompareSelectorModal
+        v-if="baseProductForCompare"
+        :base-product="baseProductForCompare"
+        @close="baseProductForCompare = null"
+      />
     </Teleport>
   </div>
 </template>

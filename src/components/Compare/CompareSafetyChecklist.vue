@@ -3,27 +3,19 @@ defineProps<{ data: any }>()
 
 const propertiesList = [
   { label: 'Alcohol-free', key: 'alcohol_free' },
-  { label: 'EU-Allergen-free', key: 'eu_allergen_free' },
   { label: 'Fragrance-free', key: 'fragrance_free' },
-  { label: 'Oil-free', key: 'oil_free' },
   { label: 'Paraben-free', key: 'paraben_free' },
   { label: 'Silicone-free', key: 'silicone_free' },
   { label: 'Sulfate-free', key: 'sulfate_free' },
-  { label: 'Cruelty-free', key: 'cruelty_free' },
-  { label: 'Fungal-acne safe', key: 'fungal_safe' },
-  { label: 'Reef-safe', key: 'reef_safe' },
   { label: 'Vegan', key: 'vegan' },
+  { label: 'Fungal-acne safe', key: 'fungal_safe' },
 ]
 
-// Evaluation function reading your real ingredient records to flag items
 const verifyFlagState = (product: any, propertyKey: string): boolean => {
-  if (!product || !product.product_ingredients) return true
-  const listNames = product.product_ingredients.map((pi: any) => (pi.ingredients?.name || '').toLowerCase())
-
-  if (propertyKey === 'alcohol_free') return !listNames.some((n: string) => n.includes('alcohol denat') || n.includes('isopropyl alcohol'))
-  if (propertyKey === 'fragrance_free') return !listNames.some((n: string) => n.includes('parfum') || n.includes('fragrance'))
-  if (propertyKey === 'paraben_free') return !listNames.some((n: string) => n.includes('paraben'))
-  if (propertyKey === 'silicone_free') return !listNames.some((n: string) => n.includes('dimethicone') || n.includes('silicone'))
+  if (!product) return true
+  if (product.safety_flags && product.safety_flags[propertyKey] !== undefined) {
+    return product.safety_flags[propertyKey]
+  }
   return true
 }
 </script>
