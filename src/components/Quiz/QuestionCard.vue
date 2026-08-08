@@ -5,8 +5,11 @@ const props = defineProps<{
   question: {
     id: number
     text: string
+    subtext?: string
+    insight?: string
     category: 'hydration' | 'sensitivity' | 'pigmentation' | 'aging'
     options: Array<{ text: string; points: number }>
+    showNotSure?: boolean
   }
   currentStep: number
   totalSteps: number
@@ -54,6 +57,28 @@ const categoryDetails = computed(() => {
   }
   return details[props.question.category]
 })
+
+// The quiz is 4 fixed categories of 4 questions each, in this order.
+const CATEGORY_ORDER = ['hydration', 'sensitivity', 'pigmentation', 'aging'] as const
+const CATEGORY_SHORT_LABEL: Record<(typeof CATEGORY_ORDER)[number], string> = {
+  hydration: 'Hydration',
+  sensitivity: 'Sensitivity',
+  pigmentation: 'Pigment',
+  aging: 'Aging'
+}
+
+const segmentFill = computed(() => {
+  const perCategory = props.totalSteps / CATEGORY_ORDER.length
+  const activeIndex = CATEGORY_ORDER.indexOf(props.question.category)
+  return CATEGORY_ORDER.map((_, i) => {
+    if (i < activeIndex) return 100
+    if (i > activeIndex) return 0
+    const positionInCategory = props.currentStep - i * perCategory
+    return Math.min(100, Math.max(0, (positionInCategory / perCategory) * 100))
+  })
+})
+
+const showNotSure = computed(() => props.question.showNotSure !== false)
 </script>
 
 <template>
@@ -68,14 +93,30 @@ const categoryDetails = computed(() => {
         </button>
 
         <div class="flex-grow mx-6 relative">
-          <div class="h-1.5 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
-            <!-- Progress Bar using Brand Primary -->
+          <!-- Segmented Progress Bar: one chunk per quiz category -->
+          <div class="flex gap-1.5">
             <div
-              class="h-full bg-brand-primary transition-all duration-500 ease-out"
-              :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
-            ></div>
+              v-for="cat in CATEGORY_ORDER"
+              :key="cat"
+              class="flex-1 h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden"
+            >
+              <div
+                class="h-full bg-brand-primary transition-all duration-500 ease-out"
+                :style="{ width: `${segmentFill[CATEGORY_ORDER.indexOf(cat)]}%` }"
+              ></div>
+            </div>
           </div>
-          <div class="text-center text-xs font-bold text-brand-text-muted mt-2 tracking-widest uppercase">
+          <div class="flex justify-between mt-2">
+            <span
+              v-for="cat in CATEGORY_ORDER"
+              :key="cat"
+              class="text-[8px] sm:text-[9px] font-bold uppercase tracking-wide"
+              :class="cat === question.category ? 'text-brand-primary' : 'text-brand-text-muted dark:text-stone-600'"
+            >
+              {{ CATEGORY_SHORT_LABEL[cat] }}
+            </span>
+          </div>
+          <div class="text-center text-[10px] font-bold text-brand-text-muted mt-1 tracking-widest uppercase">
             Step {{ currentStep }} of {{ totalSteps }}
           </div>
         </div>
@@ -103,9 +144,19 @@ const categoryDetails = computed(() => {
             </p>
           </div>
 
-          <h1 class="text-2xl sm:text-3xl font-bold mb-8 text-brand-text dark:text-white leading-tight font-serif">
+          <h1 class="text-2xl sm:text-3xl font-bold mb-3 text-brand-text dark:text-white leading-tight font-serif">
             {{ question.text }}
           </h1>
+          <p v-if="question.subtext" class="text-xs text-brand-text-muted dark:text-stone-500 font-medium mb-5 leading-relaxed">
+            {{ question.subtext }}
+          </p>
+
+          <div v-if="question.insight" class="flex gap-3 items-start bg-brand-primary-light/60 dark:bg-brand-primary/10 border border-brand-primary/20 rounded-2xl px-4 py-3 mb-5">
+            <svg class="w-4 h-4 text-brand-primary flex-shrink-0 mt-0.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.989-2.386l-.548-.547z" /></svg>
+            <p class="text-xs text-brand-text dark:text-stone-300 leading-relaxed"><span class="font-bold text-brand-primary">Why we ask &mdash; </span>{{ question.insight }}</p>
+          </div>
+
+          <div v-if="!question.subtext && !question.insight" class="mb-5"></div>
 
           <!-- Options Container -->
           <div class="flex flex-col mb-auto">
@@ -114,22 +165,28 @@ const categoryDetails = computed(() => {
                 v-for="(option, index) in question.options"
                 :key="index"
                 @click="selectedOptionIndex = index"
-                class="relative px-3 py-4 sm:p-6 rounded-2xl border-2 text-center transition-all duration-200 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] h-full"
+                class="relative px-3 py-4 sm:p-6 rounded-2xl border-2 text-center transition-all duration-200 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] h-full active:scale-[0.97]"
                 :class="[
                   selectedOptionIndex === index
-                    ? 'bg-brand-primary-light border-brand-primary text-brand-primary dark:bg-brand-primary/20 dark:border-brand-primary dark:text-brand-primary shadow-sm'
+                    ? 'bg-brand-primary-light border-brand-primary text-brand-primary dark:bg-brand-primary/20 dark:border-brand-primary dark:text-brand-primary shadow-sm scale-[0.98]'
                     : 'bg-white border-stone-200 text-stone-700 hover:border-brand-primary/40 dark:bg-brand-surface-dark dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500',
                   index === 4 ? 'col-span-2' : ''
                 ]"
               >
+                <span
+                  v-if="selectedOptionIndex === index"
+                  class="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center shadow-sm"
+                >
+                  <svg class="w-3 h-3 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </span>
                 <span class="text-sm sm:text-base font-bold leading-snug break-words w-full">{{ option.text }}</span>
               </button>
             </div>
 
-            <div v-if="question.options.length <= 4" class="mt-4 w-full">
+            <div v-if="showNotSure" class="mt-4 w-full">
               <button
                 @click="selectedOptionIndex = 'not_sure'"
-                class="w-full py-4 rounded-2xl border-2 border-dashed transition-all duration-200 text-sm font-bold"
+                class="w-full py-4 rounded-2xl border-2 border-dashed transition-all duration-200 text-sm font-bold active:scale-[0.98]"
                 :class="
                   selectedOptionIndex === 'not_sure'
                     ? 'bg-brand-primary-light border-brand-primary text-brand-primary dark:bg-brand-primary/20 dark:border-brand-primary dark:text-brand-primary'

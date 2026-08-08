@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { skinProfiles } from '../data/skinprofiles'
-import { typologyDetails } from '../data/typologydata'
+import { typologyDetails, type TraitDetail } from '../data/typologydata'
 import TypologyComparisonModal from '../components/Quiz/TypologyComparisonModal.vue'
 import SkinTypeRecommendationsWidget from '../components/Quiz/SkinTypeRecommendationsWidget.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isLoading = ref(true)
 const userSkinType = computed(() => authStore.user?.skin_type || 'ORNT')
 const profileData = computed(() => (skinProfiles[userSkinType.value] || skinProfiles['OSPW'])!)
 
@@ -47,20 +46,14 @@ const axes = computed(() => {
 })
 
 const isModalOpen = ref(false)
-const selectedActiveTrait = ref<any>(null)
-const selectedOppositeTrait = ref<any>(null)
+const selectedActiveTrait = ref<TraitDetail | null>(null)
+const selectedOppositeTrait = ref<TraitDetail | null>(null)
 
 const openTypologyModal = (axis: any) => {
-  selectedActiveTrait.value = typologyDetails[axis.letter]
-  selectedOppositeTrait.value = typologyDetails[axis.oppositeLetter]
+  selectedActiveTrait.value = typologyDetails[axis.letter] ?? null
+  selectedOppositeTrait.value = typologyDetails[axis.oppositeLetter] ?? null
   isModalOpen.value = true
 }
-
-onMounted(() => {
-  setTimeout(() => {
-    isLoading.value = false
-  }, 400)
-})
 </script>
 
 <template>
@@ -81,27 +74,18 @@ onMounted(() => {
           </div>
         </div>
 
-        <button v-if="!isLoading" @click="router.push('/chat')" class="hidden sm:flex items-center gap-2 px-4 py-2 bg-brand-primary-light/50 dark:bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-brand-primary rounded-xl text-xs font-bold transition-all border border-brand-primary/20 shadow-sm active:scale-95">
-          <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-          <span>Result Inaccurate? Consult AI</span>
+        <button @click="router.push('/chat')" class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-brand-primary-light/50 dark:bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-brand-primary rounded-xl text-[10px] sm:text-xs font-bold transition-all border border-brand-primary/20 shadow-sm active:scale-95">
+          <svg class="w-4 h-4 stroke-[2] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          <span class="hidden sm:inline">Result Inaccurate? Consult AI</span>
+          <span class="inline sm:hidden">Consult AI</span>
         </button>
       </div>
 
-      <!-- 🌟 LOADING SKELETON STATE 🌟 -->
-      <div v-if="isLoading" class="flex flex-col gap-6 lg:gap-8 animate-pulse">
-        <div class="h-40 sm:h-48 rounded-[2.5rem] bg-brand-surface-border/50 dark:bg-stone-800/50"></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
-          <div class="lg:col-span-4 h-96 rounded-[2.5rem] bg-brand-surface-border/50 dark:bg-stone-800/50"></div>
-          <div class="lg:col-span-4 h-96 rounded-[2.5rem] bg-brand-surface-border/50 dark:bg-stone-800/50"></div>
-          <div class="lg:col-span-4 h-96 rounded-[2.5rem] bg-brand-surface-border/50 dark:bg-stone-800/50"></div>
-        </div>
-      </div>
-
-      <!-- 🌟 RENDERED CONTENT STATE 🌟 -->
-      <div v-else class="flex flex-col gap-6 lg:gap-8 animate-staggered-in">
+      <!-- Profile content -->
+      <div class="flex flex-col gap-6 lg:gap-8 animate-staggered-in">
 
         <!-- Hero Banner Panel -->
-        <div class="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-brand-primary via-cyan-400 to-blue-500 dark:from-brand-primary dark:via-cyan-700 dark:to-cyan-900 shadow-lg p-6 sm:p-8 flex flex-col justify-center min-h-[160px] border border-white/20 dark:border-white/5">
+        <div class="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-brand-primary via-brand-primary-hover to-brand-primary-accent shadow-lg p-6 sm:p-8 flex flex-col justify-center min-h-[160px] border border-white/20 dark:border-white/5">
           <div class="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/20 blur-3xl pointer-events-none" />
           <div class="relative z-10 w-full flex flex-col gap-2">
             <div class="flex flex-wrap gap-2">
