@@ -29,6 +29,7 @@ const startEditingExpiration = () => {
 const formatDate = (dateString: string | null) => {
   if (!dateString) return ''
   const [year, month, day] = dateString.split('-')
+  if (!year || !month || !day) return ''
   return `${day}/${month}/${year.slice(2)}`
 }
 
@@ -37,7 +38,7 @@ const setEditPAO = (months: number) => {
   activeEditPao.value = months
   const d = new Date(props.item.opened_date)
   d.setMonth(d.getMonth() + months)
-  editExpirationDate.value = d.toISOString().split('T')[0]
+  editExpirationDate.value = d.toISOString().split('T')[0] ?? ''
 }
 
 const handleHorizontalWheel = (event: WheelEvent) => {
@@ -79,7 +80,7 @@ const handleUpdateExpiration = async () => {
 
 const handleStartPAO = async () => {
   const today = new Date()
-  const openedDateStr = today.toISOString().split('T')[0]
+  const openedDateStr = today.toISOString().split('T')[0] ?? ''
   let expDateStr = null
   const currentPao = props.item.pao ? parseInt(String(props.item.pao)) : null
 

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{ data: any }>()
+import type { CompareResponse } from '../../api/products'
+
+defineProps<{ data: CompareResponse }>()
 
 const propertiesList = [
   { label: 'Alcohol-free', key: 'alcohol_free' },
@@ -11,12 +13,12 @@ const propertiesList = [
   { label: 'Fungal-acne safe', key: 'fungal_safe' },
 ]
 
-const verifyFlagState = (product: any, propertyKey: string): boolean => {
-  if (!product) return true
+const verifyFlagState = (product: any, propertyKey: string): boolean | null => {
+  if (!product) return null
   if (product.safety_flags && product.safety_flags[propertyKey] !== undefined) {
     return product.safety_flags[propertyKey]
   }
-  return true
+  return null
 }
 </script>
 
@@ -29,12 +31,13 @@ const verifyFlagState = (product: any, propertyKey: string): boolean => {
 
         <!-- Product A Composition Check Status Indicator (Left) -->
         <div class="col-span-3 flex justify-start">
-          <span v-if="verifyFlagState(data.product_a, item.key)" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shadow-2xs">
+          <span v-if="verifyFlagState(data.product_a, item.key) === true" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shadow-2xs">
             <svg class="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
           </span>
-          <span v-else class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error border border-rose-500/20 flex items-center justify-center shadow-2xs">
+          <span v-else-if="verifyFlagState(data.product_a, item.key) === false" class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error border border-rose-500/20 flex items-center justify-center shadow-2xs">
             <svg class="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </span>
+          <span v-else class="w-6 h-6 rounded-full bg-stone-400/10 text-stone-400 dark:text-stone-500 border border-stone-400/20 flex items-center justify-center shadow-2xs font-bold text-xs">?</span>
         </div>
 
         <!-- Central Structural Descriptor Key Label -->
@@ -42,12 +45,13 @@ const verifyFlagState = (product: any, propertyKey: string): boolean => {
 
         <!-- Product B Composition Check Status Indicator (Right) -->
         <div class="col-span-3 flex justify-end">
-          <span v-if="verifyFlagState(data.product_b, item.key)" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shadow-2xs">
+          <span v-if="verifyFlagState(data.product_b, item.key) === true" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shadow-2xs">
             <svg class="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
           </span>
-          <span v-else class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error border border-rose-500/20 flex items-center justify-center shadow-2xs">
+          <span v-else-if="verifyFlagState(data.product_b, item.key) === false" class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error border border-rose-500/20 flex items-center justify-center shadow-2xs">
             <svg class="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </span>
+          <span v-else class="w-6 h-6 rounded-full bg-stone-400/10 text-stone-400 dark:text-stone-500 border border-stone-400/20 flex items-center justify-center shadow-2xs font-bold text-xs">?</span>
         </div>
 
       </div>

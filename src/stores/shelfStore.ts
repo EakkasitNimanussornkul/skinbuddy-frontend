@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchUserShelf, addProductToBackend } from '../api/shelfapi'
+import { getMyShelf, addToShelf } from '../api/shelfapi'
 
 // 1. Export the interface so other files can use it
 export interface ShelfItem {
@@ -36,7 +36,7 @@ export const useShelfStore = defineStore('shelf', () => {
   const loadShelf = async () => {
     isLoading.value = true
     try {
-      const data = await fetchUserShelf()
+      const data = await getMyShelf()
       items.value = data
     } catch (err) {
       error.value = "Could not load shelf"
@@ -45,9 +45,9 @@ export const useShelfStore = defineStore('shelf', () => {
     }
   }
 
-  const addProduct = async (newProduct: Omit<ShelfItem, 'id'>) => {
+  const addProduct = async (newProduct: Parameters<typeof addToShelf>[0]) => {
     try {
-      const savedProduct = await addProductToBackend(newProduct)
+      const savedProduct = await addToShelf(newProduct)
       items.value.unshift(savedProduct)
     } catch (err) {
       console.error("Failed to save product")

@@ -140,10 +140,13 @@ const handleCommitToShelf = async () => {
         <span class="text-xs font-bold text-brand-primary uppercase tracking-widest">{{ product.brand }}</span>
         <h1 class="text-2xl sm:text-4xl font-serif font-bold text-brand-text dark:text-white mt-1">{{ product.name }}</h1>
 
-        <div class="inline-flex items-center gap-2 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 px-4 py-2 rounded-2xl font-mono font-bold text-sm">
-          <span class="text-brand-primary">฿{{ product.price_thb || 450 }}</span>
-          <span class="text-brand-surface-border dark:text-stone-700">|</span>
-          <span class="text-brand-text-muted dark:text-stone-400">${{ product.price_usd || '14.00' }}</span>
+        <div v-if="product.price_thb || product.price_usd" class="inline-flex items-center gap-2 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 px-4 py-2 rounded-2xl font-mono font-bold text-sm">
+          <span v-if="product.price_thb" class="text-brand-primary">฿{{ product.price_thb }}</span>
+          <span v-if="product.price_thb && product.price_usd" class="text-brand-surface-border dark:text-stone-700">|</span>
+          <span v-if="product.price_usd" class="text-brand-text-muted dark:text-stone-400">${{ product.price_usd }}</span>
+        </div>
+        <div v-else class="inline-flex items-center gap-2 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 px-4 py-2 rounded-2xl font-mono font-bold text-sm text-brand-text-muted opacity-70">
+          Price unavailable
         </div>
 
         <!-- Description Paragraph -->

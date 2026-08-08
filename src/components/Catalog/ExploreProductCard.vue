@@ -78,10 +78,13 @@ const ingredientsSummary = computed(() => {
           <span class="px-2.5 py-0.5 rounded-md bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 font-medium text-[11px]">
             {{ product.category || 'Active Formula' }}
           </span>
-          <div class="flex items-center gap-1 font-mono font-bold text-brand-text dark:text-stone-200">
-            <span class="text-brand-primary">฿{{ product.price_thb || 350 }}</span>
-            <span class="text-brand-surface-border dark:text-stone-700 font-normal">/</span>
-            <span class="opacity-70">${{ product.price_usd || '11.00' }}</span>
+          <div v-if="product.price_thb || product.price_usd" class="flex items-center gap-1 font-mono font-bold text-brand-text dark:text-stone-200">
+            <span v-if="product.price_thb" class="text-brand-primary">฿{{ product.price_thb }}</span>
+            <span v-if="product.price_thb && product.price_usd" class="text-brand-surface-border dark:text-stone-700 font-normal">/</span>
+            <span v-if="product.price_usd" class="opacity-70">${{ product.price_usd }}</span>
+          </div>
+          <div v-else class="font-mono font-bold text-brand-text-muted opacity-70">
+            Price unavailable
           </div>
         </div>
 

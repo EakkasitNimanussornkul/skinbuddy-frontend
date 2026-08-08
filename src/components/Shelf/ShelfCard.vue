@@ -9,7 +9,8 @@ const props = defineProps<{
 const emit = defineEmits(['open-details', 'delete'])
 
 // Smart Expiration & Countdown Engine
-const expirationInfo = computed(() => {
+type BadgeType = 'routine' | 'warning' | 'error' | 'unopened' | 'archived' | 'good'
+const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText: string }>(() => {
   const state = props.item.usage_state || 'unopened'
   if (state === 'archived') {
     return { label: 'Archived', badgeType: 'archived', dateText: 'Archived Item' }

@@ -20,19 +20,19 @@ const showAllBenefits = ref(false)
 const safetyChecks = computed(() => {
   const flags = props.product?.safety_flags || {}
   return [
-    { label: 'Alcohol-free', status: flags.alcohol_free ?? true },
-    { label: 'Fragrance-free', status: flags.fragrance_free ?? true },
-    { label: 'Paraben-free', status: flags.paraben_free ?? true },
-    { label: 'Silicone-free', status: flags.silicone_free ?? true },
-    { label: 'Sulfate-free', status: flags.sulfate_free ?? true },
-    { label: 'Vegan', status: flags.vegan ?? true },
+    { label: 'Alcohol-free', status: flags.alcohol_free ?? null },
+    { label: 'Fragrance-free', status: flags.fragrance_free ?? null },
+    { label: 'Paraben-free', status: flags.paraben_free ?? null },
+    { label: 'Silicone-free', status: flags.silicone_free ?? null },
+    { label: 'Sulfate-free', status: flags.sulfate_free ?? null },
+    { label: 'Vegan', status: flags.vegan ?? null },
   ]
 })
 
 const tierWeight: Record<string, number> = { high: 1, medium: 2, low: 3 }
 
 // --- Extract Real Ingredients ---
-const rawIngredients = computed(() => props.product?.product_ingredients || [])
+const rawIngredients = computed<any[]>(() => props.product?.product_ingredients || [])
 
 // --- Extract Relational Concerns ---
 const productConcerns = computed(() => {
@@ -140,13 +140,15 @@ const handleGuestTrigger = () => {
       <h3 class="text-lg font-serif font-bold text-brand-text dark:text-white">What's inside</h3>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div v-for="chk in safetyChecks" :key="chk.label" class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
-          <!-- Green Tick if True -->
-          <span v-if="chk.status" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-xs flex-shrink-0 border border-emerald-500/20 shadow-2xs">✓</span>
-          <!-- Red Cross if False -->
-          <span v-else class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error flex items-center justify-center font-bold text-xs flex-shrink-0 border border-rose-500/20 shadow-2xs">✕</span>
+          <!-- Green Tick if confirmed true -->
+          <span v-if="chk.status === true" class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-xs flex-shrink-0 border border-emerald-500/20 shadow-2xs">✓</span>
+          <!-- Red Cross if confirmed false -->
+          <span v-else-if="chk.status === false" class="w-6 h-6 rounded-full bg-rose-500/10 text-semantic-error flex items-center justify-center font-bold text-xs flex-shrink-0 border border-rose-500/20 shadow-2xs">✕</span>
+          <!-- Neutral marker if not verified by the backend -->
+          <span v-else class="w-6 h-6 rounded-full bg-stone-400/10 text-stone-400 dark:text-stone-500 flex items-center justify-center font-bold text-xs flex-shrink-0 border border-stone-400/20 shadow-2xs">?</span>
 
-          <span :class="chk.status ? 'text-brand-text dark:text-stone-200' : 'text-semantic-error line-through'">
-            {{ chk.label }}
+          <span :class="chk.status === true ? 'text-brand-text dark:text-stone-200' : chk.status === false ? 'text-semantic-error line-through' : 'text-brand-text-muted italic'">
+            {{ chk.label }}{{ chk.status === null ? ' (not verified)' : '' }}
           </span>
         </div>
       </div>

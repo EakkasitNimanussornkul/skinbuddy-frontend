@@ -12,7 +12,7 @@ const authStore = useAuthStore()
 
 const isLoading = ref(true)
 const userSkinType = computed(() => authStore.user?.skin_type || 'ORNT')
-const profileData = computed(() => skinProfiles[userSkinType.value] || skinProfiles['OSPW'])
+const profileData = computed(() => (skinProfiles[userSkinType.value] || skinProfiles['OSPW'])!)
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const activeMobileIndex = ref(0)
