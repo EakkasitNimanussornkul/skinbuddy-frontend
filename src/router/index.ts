@@ -2,20 +2,29 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 import ChatbotView from '../views/ChatbotView.vue'
+import CompareView from '../views/CompareView.vue'
 import ErrorView from '../views/ErrorView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import HomeView from '../views/HomeView.vue'
+import ProductDetailView from '../views/ProductDetailView.vue'
 import RoutineView from '../views/RoutineView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ShelfView from '../views/ShelfView.vue'
+import SkinAnalysisView from '../views/SkinAnalysisView.vue'
+import SkinProfileView from '../views/SkinProfileView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
 import SkinTypeLanding from '../views/SkinTypeLanding.vue'
-import SkinProfileView from '../views/SkinProfileView.vue'
-import ProductDetailView from '../views/ProductDetailView.vue'
-import CompareView from '../views/CompareView.vue'
+import WeeklyCheckInView from '../views/WeeklyCheckInView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0, behavior: 'smooth' }
+    }
+  },
   routes: [
     {
       path: '/',
@@ -89,6 +98,19 @@ const router = createRouter({
       name: 'Compare',
       component: CompareView,
     },
+    {
+      path: '/checkin',
+      name: 'weekly-checkin',
+      component: WeeklyCheckInView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/analysis',
+      name: 'skin-analysis',
+      component: SkinAnalysisView,
+      meta: { requiresAuth: true },
+    },
+
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
