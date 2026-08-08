@@ -27,7 +27,7 @@ const handleContinue = () => {
     emit('answer', { points: 2.5, optionIndex: 'not_sure' })
   } else if (selectedOptionIndex.value !== null) {
     emit('answer', {
-      points: props.question.options[selectedOptionIndex.value].points,
+      points: props.question.options[selectedOptionIndex.value]!.points,
       optionIndex: selectedOptionIndex.value
     })
   }

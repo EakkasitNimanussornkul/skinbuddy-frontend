@@ -37,16 +37,16 @@ const handleWheel = (e: WheelEvent) => {
 
 const startDrag = (e: MouseEvent | TouchEvent) => {
   isDragging.value = true
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+  const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX
+  const clientY = 'touches' in e ? e.touches[0]!.clientY : e.clientY
   dragStart.x = clientX - position.x
   dragStart.y = clientY - position.y
 }
 
 const onDrag = (e: MouseEvent | TouchEvent) => {
   if (!isDragging.value || scale.value === 1) return
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+  const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX
+  const clientY = 'touches' in e ? e.touches[0]!.clientY : e.clientY
   position.x = clientX - dragStart.x
   position.y = clientY - dragStart.y
 }

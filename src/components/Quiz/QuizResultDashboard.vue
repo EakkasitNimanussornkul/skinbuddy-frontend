@@ -25,7 +25,7 @@ const traits = computed(() => {
 })
 
 const currentProfile = computed(() => {
-  return skinProfiles[props.skinType] || skinProfiles['OSPW']
+  return (skinProfiles[props.skinType] || skinProfiles['OSPW'])!
 })
 </script>
 

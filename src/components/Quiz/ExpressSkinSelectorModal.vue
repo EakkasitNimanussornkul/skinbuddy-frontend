@@ -20,7 +20,7 @@ const filteredTypes = computed(() => {
   if (!query) return baumannTypes
   return baumannTypes.filter(type =>
     type.includes(query) ||
-    skinProfiles[type].subtitle.toUpperCase().includes(query)
+    skinProfiles[type]!.subtitle.toUpperCase().includes(query)
   )
 })
 
@@ -85,7 +85,7 @@ const handleConfirm = () => {
               class="px-4 py-3 hover:bg-brand-primary/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 flex justify-between items-center transition-colors"
             >
               <span class="font-bold text-brand-text dark:text-white">{{ type }}</span>
-              <span class="text-xs text-slate-500">{{ skinProfiles[type].subtitle }}</span>
+              <span class="text-xs text-slate-500">{{ skinProfiles[type]!.subtitle }}</span>
             </li>
           </ul>
         </div>

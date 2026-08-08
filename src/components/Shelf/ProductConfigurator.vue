@@ -22,7 +22,7 @@ const setPAO = (months: number) => {
   selectedPao.value = months
   const d = new Date()
   d.setMonth(d.getMonth() + months)
-  expirationDate.value = d.toISOString().split('T')[0]
+  expirationDate.value = d.toISOString().split('T')[0] ?? ''
 }
 
 const handleSave = () => {
