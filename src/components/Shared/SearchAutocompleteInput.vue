@@ -160,8 +160,16 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
     </h5>
 
     <div class="flex items-center gap-2.5 pt-0.5">
-      <span class="text-xs sm:text-sm font-mono font-bold text-brand-text dark:text-stone-200 bg-brand-bg-light dark:bg-stone-800 px-2.5 py-1 rounded-lg border border-brand-surface-border dark:border-stone-700">
-        ฿{{ product.price_thb || 450 }}
+      <!-- Only ever show a price the catalog actually has. The chip is narrow, so
+           prefer THB and fall back to USD rather than showing both. -->
+      <span v-if="product.price_thb" class="text-xs sm:text-sm font-mono font-bold text-brand-text dark:text-stone-200 bg-brand-bg-light dark:bg-stone-800 px-2.5 py-1 rounded-lg border border-brand-surface-border dark:border-stone-700">
+        ฿{{ product.price_thb }}
+      </span>
+      <span v-else-if="product.price_usd" class="text-xs sm:text-sm font-mono font-bold text-brand-text dark:text-stone-200 bg-brand-bg-light dark:bg-stone-800 px-2.5 py-1 rounded-lg border border-brand-surface-border dark:border-stone-700">
+        ${{ product.price_usd }}
+      </span>
+      <span v-else class="text-xs sm:text-sm font-mono font-bold text-brand-text-muted opacity-70 bg-brand-bg-light dark:bg-stone-800 px-2.5 py-1 rounded-lg border border-brand-surface-border dark:border-stone-700">
+        Price unavailable
       </span>
       <span class="text-xs font-medium text-brand-text-muted truncate">
         {{ product.category || 'Skincare' }}
