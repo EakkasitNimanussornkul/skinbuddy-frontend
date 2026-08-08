@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{ data: any }>()
+import type { CompareResponse } from '../../api/products'
+
+defineProps<{ data: CompareResponse }>()
 </script>
 
 <template>

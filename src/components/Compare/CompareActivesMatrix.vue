@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import KeyActivesGrid from '../Shelf/KeyActivesGrid.vue'
+import type { CompareResponse } from '../../api/products'
 
-const props = defineProps<{ data: any }>()
+const props = defineProps<{ data: CompareResponse }>()
 
 const cleanProductAActives = computed(() => props.data?.product_a?.product_ingredients || [])
 const cleanProductBActives = computed(() => props.data?.product_b?.product_ingredients || [])

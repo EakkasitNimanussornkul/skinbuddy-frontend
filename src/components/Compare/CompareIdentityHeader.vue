@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{ data: any }>()
+import type { CompareResponse } from '../../api/products'
+
+defineProps<{ data: CompareResponse }>()
 
 // 🌟 Updated Badge Styles helper to handle null/undefined scores
 const getMatchBadgeStyles = (product: any) => {

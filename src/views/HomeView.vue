@@ -18,7 +18,7 @@ const isSaving = ref(false)
 const handleExpressConfirm = async (selectedType: string) => {
   isSaving.value = true
   try {
-    if (!authStore.isAuthenticated() || !authStore.user) {
+    if (!authStore.isAuthenticated || !authStore.user) {
       throw new Error("No user logged in locally.")
     }
 
