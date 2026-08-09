@@ -85,3 +85,9 @@ playwright-report/
 .Spotlight-V100
 .Trashes
 Thumbs.db
+
+# Generated Test Record output. Regenerate with `npm run test:record`.
+# Only the generated file is ignored, not all of docs/ - hand-written docs in
+# that directory are still tracked.
+docs/FRONTEND_TEST_RECORD.md
+.tmp-test-record.json
