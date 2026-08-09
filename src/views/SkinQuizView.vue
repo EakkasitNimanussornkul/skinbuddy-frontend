@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '../stores/quizStore'
 import { saveSkinType } from '../api/quizapi'
@@ -19,16 +19,13 @@ const { addToast } = useToast()
 const totalQuestions = baumannQuiz.length
 
 const showCancelModal = ref(false)
-const isLoading = ref(true)
+const isCalculating = ref(false)
+const showResults = ref(false)
 
 onMounted(() => {
   if (quizStore.currentQuestionIndex >= totalQuestions) {
     quizStore.resetQuiz()
   }
-
-  setTimeout(() => {
-    isLoading.value = false
-  }, 1800)
 })
 
 const isFirstTimeUser = computed(() => !authStore.user?.skin_type)
@@ -39,6 +36,20 @@ const currentQuestionData = computed(() => {
 
 const isQuizFinished = computed(() => {
   return quizStore.currentQuestionIndex >= totalQuestions
+})
+
+// A purposeful "calculating" beat between the last question and the results
+// reveal, instead of an instant page-swap.
+watch(isQuizFinished, (finished) => {
+  if (!finished) {
+    showResults.value = false
+    return
+  }
+  isCalculating.value = true
+  setTimeout(() => {
+    isCalculating.value = false
+    showResults.value = true
+  }, 1400)
 })
 
 const handleAnswer = (payload: { points: number, optionIndex: number | 'not_sure' }) => {
@@ -92,10 +103,10 @@ const saveAndContinue = async () => {
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark font-sans text-brand-text dark:text-stone-100 relative flex flex-col">
 
     <Transition name="fade">
-      <LoadingScreen v-if="isLoading" message="Preparing Quiz..." />
+      <LoadingScreen v-if="isCalculating" message="Calculating your profile..." />
     </Transition>
 
-    <div v-if="!isLoading" class="flex-grow flex flex-col">
+    <div class="flex-grow flex flex-col">
 
       <div v-if="!isQuizFinished">
         <QuestionCard
@@ -111,25 +122,27 @@ const saveAndContinue = async () => {
         />
       </div>
 
-      <div v-else class="pb-32">
-        <QuizResultDashboard
-          :skin-type="quizStore.finalSkinType"
-          :scores="quizStore.scores"
-        />
+      <Transition name="reveal">
+        <div v-if="isQuizFinished && showResults" class="pb-32">
+          <QuizResultDashboard
+            :skin-type="quizStore.finalSkinType"
+            :scores="quizStore.scores"
+          />
 
-        <!-- Sticky Footer for saving -->
-        <div class="fixed bottom-0 left-0 w-full bg-brand-surface-light dark:bg-brand-surface-dark border-t border-brand-surface-border dark:border-stone-800 p-4 sm:p-6 z-20">
-          <div class="max-w-md mx-auto">
-            <button
-              @click="saveAndContinue"
-              class="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
-            >
-              Save Skin Profile
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            </button>
+          <!-- Sticky Footer for saving -->
+          <div class="fixed bottom-0 left-0 w-full bg-brand-surface-light dark:bg-brand-surface-dark border-t border-brand-surface-border dark:border-stone-800 p-4 sm:p-6 z-20">
+            <div class="max-w-md mx-auto">
+              <button
+                @click="saveAndContinue"
+                class="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
+              >
+                Save Skin Profile
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
 
     </div>
 
@@ -150,5 +163,13 @@ const saveAndContinue = async () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.reveal-enter-active {
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
 }
 </style>

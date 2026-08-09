@@ -11,6 +11,10 @@ export interface QuizQuestion {
   subtext?: string;
   insight?: string;
   options: QuizOption[];
+  // Set to false when one of the options already serves as an explicit
+  // escape hatch (e.g. "I don't wear jewelry") so the generic "I'm not
+  // sure" button underneath would just be redundant.
+  showNotSure?: boolean;
 }
 
 export const baumannQuiz: QuizQuestion[] = [
@@ -47,7 +51,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "Shiny", points: 3 },
       { text: "Streaked and shiny", points: 4 },
       { text: "I do not wear facial makeup", points: 2.5 }
-    ]
+    ],
+    showNotSure: false
   },
   {
     id: 4,
@@ -59,7 +64,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "Feels normal", points: 3 },
       { text: "Looks shiny, or I never feel the need for moisturizer", points: 4 },
       { text: "I don't know", points: 2.5 }
-    ]
+    ],
+    showNotSure: false
   },
 
   // --- PART 2: SENSITIVE VS RESISTANT (Sensitivity) ---
@@ -84,7 +90,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "Often", points: 3 },
       { text: "Always", points: 4 },
       { text: "I don't use products on my face", points: 2.5 }
-    ]
+    ],
+    showNotSure: false
   },
   {
     id: 7,
@@ -96,7 +103,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "Yes", points: 4 }, // Note the heavy weight for professional diagnosis!
       { text: "Yes, a severe case", points: 5 },
       { text: "Unsure", points: 2.5 }
-    ]
+    ],
+    showNotSure: false
   },
   {
     id: 8,
@@ -108,7 +116,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "Often", points: 3 },
       { text: "Always", points: 4 },
       { text: "I don't wear jewelry", points: 2.5 }
-    ]
+    ],
+    showNotSure: false
   },
 
   // --- PART 3: PIGMENTED VS NON-PIGMENTED (Pigmentation) ---
@@ -122,7 +131,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "Frequently", points: 3 },
       { text: "Always", points: 4 },
       { text: "I never get pimples or ingrown hairs", points: 2.5 }
-    ]
+    ],
+    showNotSure: false
   },
   {
     id: 10,
@@ -145,7 +155,8 @@ export const baumannQuiz: QuizQuestion[] = [
       { text: "A few", points: 3 },
       { text: "A lot", points: 4 },
       { text: "This question does not apply to me", points: 1 }
-    ]
+    ],
+    showNotSure: false
   },
   {
     id: 12,
