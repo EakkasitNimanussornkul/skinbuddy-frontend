@@ -39,11 +39,16 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 
-    /* Only on CI systems run the tests headless */
-    headless: !!process.env.CI,
+    /* Always headless. Nothing here needs a visible browser, and a local run
+       previously opened real windows because this was gated on CI. */
+    headless: true,
   },
 
-  /* Configure projects for major browsers */
+  /* Chromium only, deliberately: `npx playwright install chromium` is a ~130MB
+     download against 400MB+ for all three engines, and these are smoke tests -
+     they check routing and mount, not rendering differences between engines.
+     Re-enable firefox/webkit below if cross-browser coverage is ever needed
+     (each also needs its binary installed via `npx playwright install`). */
   projects: [
     {
       name: 'chromium',
@@ -51,44 +56,16 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
     },
-    {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-      },
-    },
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-      },
-    },
-
-    /* Test against mobile viewports. */
     // {
-    //   name: 'Mobile Chrome',
+    //   name: 'firefox',
     //   use: {
-    //     ...devices['Pixel 5'],
+    //     ...devices['Desktop Firefox'],
     //   },
     // },
     // {
-    //   name: 'Mobile Safari',
+    //   name: 'webkit',
     //   use: {
-    //     ...devices['iPhone 12'],
-    //   },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: {
-    //     channel: 'msedge',
-    //   },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: {
-    //     channel: 'chrome',
+    //     ...devices['Desktop Safari'],
     //   },
     // },
   ],
