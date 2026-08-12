@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
-  item: any
+  item: ShelfItem
   usageLifespan: number | null
 }>()
 
@@ -28,7 +29,7 @@ const archiveOutcomeDetails = computed(() => {
       icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
     }
   }
-  return details[activeOutcome.value as 'empty' | 'discarded' | 'expired'] || details.empty
+  return details[activeOutcome.value] || details.empty
 })
 </script>
 

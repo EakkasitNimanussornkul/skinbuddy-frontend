@@ -2,9 +2,10 @@
 import { ref } from 'vue'
 import { updateShelfStatus } from '../../api/shelfapi'
 import { useToast } from '../../composables/useToast'
+import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
-  item: any
+  item: ShelfItem
   usageLifespan: number | null
 }>()
 

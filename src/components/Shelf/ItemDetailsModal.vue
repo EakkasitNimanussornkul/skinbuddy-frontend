@@ -9,9 +9,10 @@ import ArchiveLogForm from './ArchiveLogForm.vue'
 import ArchiveLogSummary from './ArchiveLogSummary.vue'
 import SafetyInspectionCard, { type WarningAlert } from './SafetyInspectionCard.vue'
 import TargetedConcernsSection from './TargetedConcernsSection.vue'
+import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
-  item: any
+  item: ShelfItem
 }>()
 
 const emit = defineEmits(['close', 'refresh'])
@@ -65,11 +66,13 @@ watch(
 const currentView = ref<'details' | 'archive_form'>('details')
 const isConfirmingDelete = ref(false)
 
-const brand = computed(() => localItem.value.products?.brand || localItem.value.brand || 'Unknown Brand')
-const name = computed(() => localItem.value.products?.name || localItem.value.name || 'Unknown Product')
-const category = computed(() => localItem.value.category || localItem.value.products?.category || 'Formulation')
-const imageUrl = computed(() => localItem.value.image_url || localItem.value.products?.image_url || null)
-const description = computed(() => localItem.value.products?.description || localItem.value.description || '')
+// Brand/name/category/image/description live on the joined catalog product,
+// never on the shelf row itself.
+const brand = computed(() => localItem.value.products?.brand || 'Unknown Brand')
+const name = computed(() => localItem.value.products?.name || 'Unknown Product')
+const category = computed(() => localItem.value.products?.category || 'Formulation')
+const imageUrl = computed(() => localItem.value.products?.image_url || null)
+const description = computed(() => localItem.value.products?.description || '')
 
 const paoDisplay = computed(() => {
   const pao = localItem.value.pao || localItem.value.products?.pao
@@ -87,7 +90,7 @@ const usageLifespan = computed(() => {
   return diff > 0 ? Math.ceil(diff / (1000 * 3600 * 24)) : 0
 })
 
-const handleChildUpdate = (updatedItem?: any) => {
+const handleChildUpdate = (updatedItem?: Partial<ShelfItem>) => {
   if (updatedItem) {
     localItem.value = { ...localItem.value, ...updatedItem }
   }

@@ -22,12 +22,25 @@ describe('src/api/shelfapi.ts', () => {
 
   describe('getMyShelf()', () => {
     it('returns the shelf items from the response body', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ id: 'item-1' }] })
+      const row = {
+        id: 'item-1',
+        user_id: 'user-1',
+        product_id: 'p-1',
+        usage_state: 'active',
+        opened_date: '2026-08-01',
+        expiration_date: '2026-11-01',
+        pao: 3,
+        archive_outcome: null,
+        archive_notes: null,
+        archived_at: null,
+        products: { id: 'p-1', brand: 'CeraVe', name: 'Cleanser' },
+      }
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [row] })
 
       const result = await getMyShelf()
 
       expect(apiClient.get).toHaveBeenCalledWith('/shelf/')
-      expect(result).toEqual([{ id: 'item-1' }])
+      expect(result).toEqual([row])
     })
 
     it('returns an empty array when the response body is empty, so callers can always iterate', async () => {
@@ -36,6 +49,33 @@ describe('src/api/shelfapi.ts', () => {
       const result = await getMyShelf()
 
       expect(result).toEqual([])
+    })
+
+    it('fills in the nullable columns a partial row omits, so templates never read undefined', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ id: 'item-1', usage_state: 'active' }] })
+
+      const result = await getMyShelf()
+
+      expect(result[0]).toMatchObject({
+        opened_date: null,
+        expiration_date: null,
+        pao: null,
+        archived_at: null,
+        products: null,
+      })
+    })
+
+    it('falls back to unopened when the backend sends a usage_state the UI does not know', async () => {
+      // Guards the exact drift this normaliser exists for: an unrecognised
+      // state must not reach the components as-is.
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ id: 'item-1', usage_state: 'wishlist' }] })
+
+      const result = await getMyShelf()
+
+      expect(result[0]!.usage_state).toBe('unopened')
+      expect(warn).toHaveBeenCalled()
+      warn.mockRestore()
     })
   })
 

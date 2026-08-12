@@ -31,7 +31,7 @@ describe('src/api/authApi.ts', () => {
 
       await exchangeLineCode('auth-code-123')
 
-      const [url, init] = fetchMock.mock.calls[0]
+      const [url, init] = fetchMock.mock.calls[0]!
       expect(url).toContain('/auth/line')
       expect(init.method).toBe('POST')
       expect(init.headers['Content-Type']).toBe('application/json')

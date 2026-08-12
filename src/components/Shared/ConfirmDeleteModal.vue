@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
-  item: any
+  item: ShelfItem | null
 }>()
 
 const emit = defineEmits(['cancel', 'confirm'])
@@ -10,7 +11,7 @@ const emit = defineEmits(['cancel', 'confirm'])
 // Safely extract the data just like we do in the ShelfCard!
 const name = computed(() => props.item?.products?.name || 'this product')
 const brand = computed(() => props.item?.products?.brand || '')
-const imageUrl = computed(() => props.item?.image_url || props.item?.products?.image_url || null)
+const imageUrl = computed(() => props.item?.products?.image_url || null)
 </script>
 
 <template>

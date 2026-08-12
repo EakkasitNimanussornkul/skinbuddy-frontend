@@ -11,13 +11,14 @@ import ItemDetailsModal from '../components/Shelf/ItemDetailsModal.vue'
 import ConfirmDeleteModal from '../components/Shared/ConfirmDeleteModal.vue'
 import EmptyState from '../components/Shared/EmptyState.vue'
 import FilterPills from '../components/Catalog/FilterPills.vue'
+import type { ShelfItem } from '../stores/shelfStore'
 
 const router = useRouter()
-const myShelf = ref<any[]>([])
+const myShelf = ref<ShelfItem[]>([])
 const isLoading = ref(true)
 const isAddModalOpen = ref(false)
-const viewingItem = ref<any>(null)
-const itemToDelete = ref<any>(null)
+const viewingItem = ref<ShelfItem | null>(null)
+const itemToDelete = ref<ShelfItem | null>(null)
 const { addToast } = useToast()
 
 const searchQuery = ref('')
@@ -29,7 +30,7 @@ const statuses = ['All', 'Unopened', 'In Routine', 'Expiring Soon', 'Expired', '
 const dynamicCategories = computed(() => {
   const uniqueCats = new Set<string>()
   myShelf.value.forEach(item => {
-    const cat = item.category || item.products?.category
+    const cat = item.products?.category
     if (cat) uniqueCats.add(cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase())
   })
   return ['All', ...Array.from(uniqueCats).sort()]
@@ -52,8 +53,9 @@ const handleModalRefresh = async () => {
   try {
     const freshData = await getMyShelf()
     myShelf.value = freshData
-    if (viewingItem.value) {
-      const updatedMatch = freshData.find((item: any) => item.id === viewingItem.value.id)
+    const viewingId = viewingItem.value?.id
+    if (viewingId) {
+      const updatedMatch = freshData.find((item) => item.id === viewingId)
       if (updatedMatch) {
         viewingItem.value = updatedMatch
       }
@@ -69,7 +71,7 @@ const filteredProducts = computed(() => {
   return myShelf.value.filter(item => {
     const name = (item.products?.name || '').toLowerCase()
     const brand = (item.products?.brand || '').toLowerCase()
-    const itemCategory = (item.category || item.products?.category || '').toLowerCase()
+    const itemCategory = (item.products?.category || '').toLowerCase()
 
     let computedStatus = 'Unopened'
     const state = item.usage_state || 'unopened'
@@ -100,10 +102,11 @@ const filteredProducts = computed(() => {
 
 const executeDelete = async () => {
   if (!itemToDelete.value) return
+  const deletedId = itemToDelete.value.id
   try {
-    await removeFromShelf(itemToDelete.value.id)
-    myShelf.value = myShelf.value.filter(item => item.id !== itemToDelete.value.id)
-    if (viewingItem.value?.id === itemToDelete.value.id) viewingItem.value = null
+    await removeFromShelf(deletedId)
+    myShelf.value = myShelf.value.filter(item => item.id !== deletedId)
+    if (viewingItem.value?.id === deletedId) viewingItem.value = null
     itemToDelete.value = null
     addToast('Product removed from active check', 'info')
   } catch (error) {
