@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ItemBadge from '../Shelf/ItemBadge.vue'
+import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
-  item: any
+  item: ShelfItem
 }>()
 
 const emit = defineEmits(['open-details', 'delete'])
@@ -16,7 +17,7 @@ const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText:
     return { label: 'Archived', badgeType: 'archived', dateText: 'Archived Item' }
   }
 
-  const safePao = props.item.pao ? (typeof props.item.pao === 'string' ? props.item.pao.replace('M', '') : String(props.item.pao)) : null
+  const safePao = props.item.pao ? String(props.item.pao) : null
 
   let targetDate: Date | null = null
 

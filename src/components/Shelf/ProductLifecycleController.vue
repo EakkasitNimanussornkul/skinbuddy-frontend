@@ -3,9 +3,10 @@ import { ref, computed } from 'vue'
 import { markItemOpened, updateShelfStatus } from '../../api/shelfapi.ts'
 import { useToast } from '../../composables/useToast.ts'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
+import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
-  item: any
+  item: ShelfItem
 }>()
 
 const emit = defineEmits(['updated'])
@@ -49,6 +50,10 @@ const handleHorizontalWheel = (event: WheelEvent) => {
 
 // 🌟 PERSIST PAO TO BACKEND
 const handleUpdateExpiration = async () => {
+  // The edit button only renders once the item has been opened, so this is a
+  // guard for the type rather than a reachable branch.
+  if (!props.item.opened_date) return
+
   try {
     const finalPao = activeEditPao.value || props.item.pao
 

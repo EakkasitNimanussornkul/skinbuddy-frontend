@@ -8,16 +8,36 @@ vi.mock('../../api/shelfapi', () => ({
   addToShelf: vi.fn(),
 }))
 
-import { useShelfStore } from '../../stores/shelfStore'
+import { useShelfStore, type ShelfItem } from '../../stores/shelfStore'
 import { getMyShelf, addToShelf } from '../../api/shelfapi'
 
-const shelfItem = (overrides = {}) => ({
+// Mirrors a row from GET /shelf/: shelf_items columns with the catalog product
+// nested under `products`. Annotated as ShelfItem on purpose — if the API shape
+// drifts again, this fixture stops compiling.
+const shelfItem = (overrides: Partial<ShelfItem> = {}): ShelfItem => ({
   id: 'item-1',
-  brand: 'CeraVe',
-  name: 'Hydrating Facial Cleanser',
-  category: 'Cleanser',
-  status: 'active' as const,
+  user_id: 'user-1',
+  product_id: 'p-1',
+  usage_state: 'active',
   opened_date: null,
+  expiration_date: null,
+  pao: null,
+  archive_outcome: null,
+  archive_notes: null,
+  archived_at: null,
+  products: {
+    id: 'p-1',
+    brand: 'CeraVe',
+    name: 'Hydrating Facial Cleanser',
+    category: 'Cleanser',
+    slug: 'cerave-hydrating-facial-cleanser',
+    ingredients: null,
+    image_url: null,
+    description: null,
+    pao: null,
+    price_thb: null,
+    price_usd: null,
+  },
   ...overrides,
 })
 
