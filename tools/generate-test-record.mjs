@@ -72,6 +72,14 @@ const SPEC_MAP = [
       'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage cleared per test so the token branch is controlled. No network access.',
   },
   {
+    file: 'src/__tests__/router/guard.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'router/guard',
+    prerequisite:
+      'No router instance and no components - resolveNavigation is a pure function over the target route and the auth state, called directly with plain objects.',
+    note: 'Guards the skin profile page. Without it the page renders a substitute skin type\'s real routine and actives for a user who has never been classified.',
+  },
+  {
     file: 'src/__tests__/stores/auth.spec.ts',
     feature: '#1 Authentication (supplementary)',
     module: 'stores/auth',

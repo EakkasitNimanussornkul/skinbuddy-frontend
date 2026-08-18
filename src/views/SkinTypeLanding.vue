@@ -1,17 +1,26 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '../composables/useToast'
 import { updateUserSkinType } from '../api/authApi'
 import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const { addToast } = useToast()
 const authStore = useAuthStore()
 
 const showSelector = ref(false)
 const isSaving = ref(false)
+
+// Carry the redirect through to the quiz, otherwise a user sent here from
+// /profile completes the quiz and lands on home instead of the page they asked
+// for. The express-selector path below honours the same param.
+const goToQuiz = () => {
+  const redirect = route.query.redirect as string | undefined
+  router.push(redirect ? { path: '/quiz', query: { redirect } } : '/quiz')
+}
 
 const handleExpressConfirm = async (selectedType: string) => {
   isSaving.value = true
@@ -24,7 +33,11 @@ const handleExpressConfirm = async (selectedType: string) => {
 
     addToast(`Welcome to SkinBuddy! Profile set to ${selectedType}.`, 'success')
     showSelector.value = false
-    router.push('/shelf')
+
+    // Return the user wherever the guard pulled them away from. Defaults to
+    // /shelf so the first-login flow from AuthCallbackView, which sends no
+    // redirect, keeps its original destination.
+    router.push((route.query.redirect as string) || '/shelf')
   } catch (error) {
     console.error("Express Confirm Error:", error)
     addToast('Failed to save your skin profile. Please try again.', 'error')
@@ -64,7 +77,7 @@ const handleExpressConfirm = async (selectedType: string) => {
           </div>
 
           <button
-            @click="router.push('/quiz')"
+            @click="goToQuiz"
             class="w-full text-left bg-white dark:bg-brand-surface-dark border-2 border-brand-primary/30 dark:border-brand-primary/40 rounded-[2rem] p-6 sm:p-8 pt-8 sm:pt-10 shadow-lg hover:shadow-2xl hover:border-brand-primary dark:hover:border-brand-primary transition-all duration-300 relative overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-primary/20 active:scale-[0.98]"
           >
             <div class="absolute top-0 right-0 w-32 h-32 bg-brand-primary-light/50 dark:bg-brand-primary/10 rounded-bl-[100px] -z-0 transition-transform group-hover:scale-110"></div>

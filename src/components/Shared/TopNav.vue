@@ -158,7 +158,9 @@ onUnmounted(() => {
               {{ authStore.user?.name || 'Account' }}
             </span>
             <span class="text-[10px] text-brand-text-muted font-medium block mt-0.5">
-              {{ authStore.isAuthenticated ? (authStore.user?.skin_type || 'Profile Active') : 'Log in / Register' }}
+              <!-- 'Profile Active' here told a user with no skin type that their
+                   profile was active. Wording matches MobileTopBar's 'SET TYPE'. -->
+              {{ authStore.isAuthenticated ? (authStore.user?.skin_type || 'Set Type') : 'Log in / Register' }}
             </span>
           </div>
 

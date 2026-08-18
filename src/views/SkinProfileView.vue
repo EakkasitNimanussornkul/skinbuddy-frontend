@@ -11,7 +11,16 @@ import SkinTypeRecommendationsWidget from '../components/Quiz/SkinTypeRecommenda
 const router = useRouter()
 const authStore = useAuthStore()
 
-const userSkinType = computed(() => authStore.user?.skin_type || 'ORNT')
+// No 'ORNT' fallback: the requiresSkinType route guard means this view can only
+// mount for a user who has a type. Substituting another type's real routine,
+// actives and avoid-list would hand the user skincare guidance derived from a
+// classification they never received.
+const userSkinType = computed(() => authStore.user!.skin_type)
+
+// This fallback guards a different failure and stays: a skin_type that exists
+// but is not one of the 16 valid keys - bad data, a truncated string, a code
+// added server-side before the frontend knows it. The guard does not cover
+// that, and without this the view would crash on render.
 const profileData = computed(() => (skinProfiles[userSkinType.value] || skinProfiles['OSPW'])!)
 
 const scrollContainer = ref<HTMLElement | null>(null)

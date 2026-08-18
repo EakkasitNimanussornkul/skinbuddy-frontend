@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuizStore } from '../stores/quizStore'
 import { saveSkinType } from '../api/quizapi'
 import { baumannQuiz } from '../data/baumannQuiz'
@@ -14,6 +14,7 @@ import LoadingScreen from '../components/Shared/LoadingScreen.vue'
 
 const quizStore = useQuizStore()
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { addToast } = useToast()
 const totalQuestions = baumannQuiz.length
@@ -89,7 +90,9 @@ const saveAndContinue = async () => {
     if (typeof window !== 'undefined' && win.liff) {
       win.liff.closeWindow()
     } else {
-      router.push('/')
+      // Honour the guard's redirect now that a skin type exists. Defaults to
+      // home, which is where the quiz has always sent people.
+      router.push((route.query.redirect as string) || '/')
     }
   } catch (error) {
     console.error(error)

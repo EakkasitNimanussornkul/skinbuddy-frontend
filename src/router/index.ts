@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { resolveNavigation } from './guard'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 import ChatbotView from '../views/ChatbotView.vue'
 import CompareView from '../views/CompareView.vue'
@@ -69,7 +70,7 @@ const router = createRouter({
       path: '/profile',
       name: 'skin-profile',
       component: SkinProfileView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresSkinType: true }
     },
     {
       path: '/explore',
@@ -126,22 +127,9 @@ const router = createRouter({
   ],
 })
 
-// Route Guard: Check if the user is allowed to view the page
-router.beforeEach((to) => {
-  const authStore = useAuthStore()
-
-  // Always allow callback, error, and wildcard 404 pages without checking
-  if (to.name === 'authCallback' || to.name === 'error' || to.name === 'not-found') {
-    return true
-  }
-
-  // If the route requires auth AND the user is NOT authenticated
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    authStore.triggerLoginPopup("Sign in to access your personalized skin routine.")
-    return false // Stops navigation gracefully
-  }
-
-  return true // Allow navigation
-})
+// Route Guard: Check if the user is allowed to view the page.
+// The decision itself lives in ./guard so it can be unit tested without
+// pulling every view into the test's tsconfig project.
+router.beforeEach((to) => resolveNavigation(to, useAuthStore()))
 
 export default router
