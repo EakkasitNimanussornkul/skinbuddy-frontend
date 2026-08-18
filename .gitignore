@@ -87,8 +87,13 @@ playwright-report/
 Thumbs.db
 .claude/launch.json
 
-# Generated Test Record output. Regenerate with `npm run test:record`.
-# Only the generated file is ignored, not all of docs/ - hand-written docs in
-# that directory are still tracked.
-docs/FRONTEND_TEST_RECORD.md
+# Local-only working documents. Two kinds live here and neither belongs in a
+# public repo: FRONTEND_TEST_RECORD.md is generated from a real test run
+# (`npm run test:record`, regenerate rather than commit), and the PLAN_* files
+# are internal handoff notes between agents.
+#
+# Nothing under docs/ is tracked. If a document ever needs to be shared, put it
+# somewhere else or un-ignore it deliberately - do not remove this line, or the
+# next `git add .` publishes all of it.
+docs/
 .tmp-test-record.json
