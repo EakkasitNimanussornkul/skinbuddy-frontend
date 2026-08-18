@@ -14,6 +14,7 @@ import axios from 'axios'
 import { apiClient } from '../../api/index'
 import {
   searchProducts,
+  pickTopRecommendations,
   getProductBySlug,
   getProductById,
   getProductComparison,
@@ -87,6 +88,72 @@ describe('src/api/products.ts', () => {
 
       await expect(searchProducts('ceramide')).rejects.toEqual({ response: { status: 500 } })
       expect(axios.get).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('pickTopRecommendations()', () => {
+    const scored = (id: string, skin_match_score: number) => ({ id, skin_match_score })
+
+    it('orders products by skin match score from highest to lowest', () => {
+      const result = pickTopRecommendations([scored('low', 20), scored('high', 90), scored('mid', 55)])
+
+      expect(result.map((p) => p.id)).toEqual(['high', 'mid', 'low'])
+    })
+
+    it('returns at most four products, matching the four-column layout', () => {
+      const result = pickTopRecommendations([
+        scored('a', 10),
+        scored('b', 20),
+        scored('c', 30),
+        scored('d', 40),
+        scored('e', 50),
+        scored('f', 60),
+      ])
+
+      expect(result).toHaveLength(4)
+      expect(result.map((p) => p.id)).toEqual(['f', 'e', 'd', 'c'])
+    })
+
+    it('honours an explicit limit when one is given', () => {
+      const result = pickTopRecommendations([scored('a', 10), scored('b', 20), scored('c', 30)], 2)
+
+      expect(result.map((p) => p.id)).toEqual(['c', 'b'])
+    })
+
+    it('drops products with no skin match score rather than ranking them last', () => {
+      // An unscored product is one the backend could not match against the
+      // user's skin type - anonymous browsing returns these. Showing it under
+      // "recommended for you" would be presenting a match that was never made.
+      const result = pickTopRecommendations([
+        { id: 'unscored' },
+        { id: 'null-score', skin_match_score: null },
+        scored('scored', 40),
+      ])
+
+      expect(result.map((p) => p.id)).toEqual(['scored'])
+    })
+
+    it('drops a NaN score instead of letting it corrupt the ordering', () => {
+      const result = pickTopRecommendations([scored('nan', NaN), scored('real', 30)])
+
+      expect(result.map((p) => p.id)).toEqual(['real'])
+    })
+
+    it('returns an empty array when the catalog response is empty', () => {
+      expect(pickTopRecommendations([])).toEqual([])
+    })
+
+    it('returns an empty array when the response is not a list, so a bad payload cannot throw', () => {
+      expect(pickTopRecommendations(null as any)).toEqual([])
+      expect(pickTopRecommendations(undefined as any)).toEqual([])
+    })
+
+    it('leaves the caller\'s array unmodified rather than sorting it in place', () => {
+      const input = [scored('a', 10), scored('b', 90)]
+
+      pickTopRecommendations(input)
+
+      expect(input.map((p) => p.id)).toEqual(['a', 'b'])
     })
   })
 

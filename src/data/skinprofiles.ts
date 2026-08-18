@@ -17,7 +17,6 @@ export interface SkinProfileData {
     am: string[];
     pm: string[];
   };
-  recommendedProducts?: any[];
 }
 
 export const skinProfiles: Record<string, SkinProfileData> = {

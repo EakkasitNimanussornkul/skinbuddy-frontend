@@ -2,10 +2,16 @@
 import { useRouter } from 'vue-router'
 import EmptyState from '../Shared/EmptyState.vue'
 
+// loading and failed are optional so the existing prop contract still holds for
+// any caller that only passes userSkinType and products.
 defineProps<{
   userSkinType: string
   products: any[]
+  loading?: boolean
+  failed?: boolean
 }>()
+
+const emit = defineEmits(['retry'])
 
 const router = useRouter()
 </script>
@@ -21,8 +27,36 @@ const router = useRouter()
       </p>
     </div>
 
+    <!-- Loading State: a real pending request, not a decorative delay. Without
+         this the empty state renders for the duration of the fetch and reads as
+         "we found nothing for you", which is the exact bug this widget had. -->
+    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+      <div
+        v-for="n in 4"
+        :key="n"
+        class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl p-4 sm:p-5 border border-brand-surface-border dark:border-stone-800 animate-pulse"
+      >
+        <div class="w-full h-36 sm:h-44 bg-brand-bg-light dark:bg-stone-900 rounded-2xl"></div>
+        <div class="h-2.5 bg-brand-bg-light dark:bg-stone-900 rounded-full mt-4 w-1/2"></div>
+        <div class="h-3 bg-brand-bg-light dark:bg-stone-900 rounded-full mt-2.5 w-4/5"></div>
+        <div class="h-9 bg-brand-bg-light dark:bg-stone-900 rounded-xl mt-4"></div>
+      </div>
+    </div>
+
+    <!-- Failure State: deliberately distinct from the empty state below. A
+         failed request is not the same fact as "no products matched you", and
+         showing the latter for the former tells the user something untrue. -->
+    <div v-else-if="failed" class="py-8 flex justify-center items-center w-full">
+      <EmptyState
+        title="Couldn't Load Recommendations"
+        message="We couldn't reach the catalog just now, so we can't say what suits your profile yet. This is a connection problem, not an empty result."
+        action-label="Try Again"
+        @action="emit('retry')"
+      />
+    </div>
+
     <!-- Active Grid Render State -->
-    <div v-if="products && products.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 animate-fade-in">
+    <div v-else-if="products && products.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 animate-fade-in">
       <div
         v-for="prod in products"
         :key="prod.id"

@@ -54,6 +54,44 @@ export const searchProducts = async (query: string = '', minPrice?: number, maxP
 }
 
 /**
+ * Rank a /products/search result set by Baumann skin-match score and keep the
+ * best few.
+ *
+ * Pure and exported deliberately: the caller is a lifecycle hook, and logic
+ * left inline in a hook cannot be unit tested in isolation.
+ *
+ * Products without a numeric score are dropped rather than sorted to the
+ * bottom. An unscored product is one the backend could not match against the
+ * user's skin type - usually because the request was anonymous - so showing it
+ * under "recommended for you" would be inventing a recommendation.
+ */
+export interface ScoredProduct {
+  id: string
+  slug: string
+  name: string
+  brand?: string
+  image_url?: string | null
+  skin_match_score?: number | null
+}
+
+export const pickTopRecommendations = <T extends { skin_match_score?: number | null }>(
+  products: T[],
+  limit: number = 4,
+): T[] => {
+  // Runtime guard as well as the type: the search response is untyped JSON, so
+  // a malformed payload must not throw inside a lifecycle hook.
+  if (!Array.isArray(products)) return []
+
+  return products
+    .filter(
+      (p): p is T & { skin_match_score: number } =>
+        !!p && typeof p.skin_match_score === 'number' && !Number.isNaN(p.skin_match_score),
+    )
+    .sort((a, b) => b.skin_match_score - a.skin_match_score)
+    .slice(0, limit)
+}
+
+/**
  * Fetch full product specification and Baumann compatibility matrix by URL Slug or UUID
  */
 export const getProductBySlug = async (slug: string) => {

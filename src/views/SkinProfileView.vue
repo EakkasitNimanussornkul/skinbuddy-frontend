@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { searchProducts, pickTopRecommendations, type ScoredProduct } from '../api/products'
 import { skinProfiles } from '../data/skinprofiles'
 import { typologyDetails, type TraitDetail } from '../data/typologydata'
 import TypologyComparisonModal from '../components/Quiz/TypologyComparisonModal.vue'
@@ -54,6 +55,32 @@ const openTypologyModal = (axis: any) => {
   selectedOppositeTrait.value = typologyDetails[axis.oppositeLetter] ?? null
   isModalOpen.value = true
 }
+
+// Recommendations come from the live catalog, scored per user by the backend.
+// They used to be read from the static skinProfiles dictionary, which never
+// assigned the field - so the widget received [] for every user on every load
+// and the empty state was the only state it could ever reach.
+const recommendedProducts = ref<ScoredProduct[]>([])
+const recommendationsLoading = ref(true)
+const recommendationsFailed = ref(false)
+
+const loadRecommendations = async () => {
+  recommendationsLoading.value = true
+  recommendationsFailed.value = false
+
+  try {
+    const results = await searchProducts()
+    recommendedProducts.value = pickTopRecommendations(results)
+  } catch (error) {
+    console.error('Failed to load recommended products:', error)
+    recommendedProducts.value = []
+    recommendationsFailed.value = true
+  } finally {
+    recommendationsLoading.value = false
+  }
+}
+
+onMounted(loadRecommendations)
 </script>
 
 <template>
@@ -226,7 +253,10 @@ const openTypologyModal = (axis: any) => {
         <div>
           <SkinTypeRecommendationsWidget
             :user-skin-type="userSkinType"
-            :products="profileData.recommendedProducts || []"
+            :products="recommendedProducts"
+            :loading="recommendationsLoading"
+            :failed="recommendationsFailed"
+            @retry="loadRecommendations"
           />
         </div>
 
