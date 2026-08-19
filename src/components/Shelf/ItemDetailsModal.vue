@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { removeFromShelf, analyzeProduct } from '../../api/shelfapi'
+import { resolveSafety } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 
 import KeyActivesGrid from './KeyActivesGrid.vue'
@@ -21,6 +22,7 @@ const { addToast } = useToast()
 const isVisible = ref(false)
 const isAnalyzing = ref(false)
 const warningAlerts = ref<WarningAlert[]>([])
+const scanFailed = ref(false)
 
 const localItem = ref({ ...props.item })
 
@@ -30,16 +32,14 @@ const runAutomaticSafetyCheck = async () => {
   if (!productId) return
 
   isAnalyzing.value = true
-  try {
-    const data = await analyzeProduct(productId)
-    if (data && Array.isArray(data.warnings)) {
-      warningAlerts.value = data.warnings
-    }
-  } catch (error) {
-    console.warn('Analysis execution fallback:', error)
-  } finally {
-    isAnalyzing.value = false
-  }
+  const outcome = await resolveSafety(() => analyzeProduct(productId))
+  isAnalyzing.value = false
+
+  warningAlerts.value = outcome.warnings
+  // Tracked separately from the payload. An empty warnings array previously
+  // rendered identically whether the scan passed or never ran, so a failed
+  // scan read as a clean safety verdict.
+  scanFailed.value = outcome.status === 'unavailable'
 }
 
 onMounted(() => {
@@ -162,7 +162,7 @@ const handleExecuteDelete = async () => {
             <div class="space-y-6">
 
               <!-- 🌟 1. Safety Inspection Box (With Scanner HUD animation) -->
-              <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" />
+              <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-failed="scanFailed" />
 
               <!-- 🌟 2. Description -->
               <div v-if="description">

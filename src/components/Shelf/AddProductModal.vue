@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { searchProducts } from '../../api/products'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
+import { resolveSafety, blocksAction } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 
 import CatalogSearchView from '../Catalog/CatalogSearchView.vue'
@@ -35,19 +36,23 @@ onMounted(async () => {
 const handleSave = async (configPayload: any, forceSave = false) => {
   if (!forceSave) {
     isAnalyzing.value = true
-    try {
-      const analysis = await analyzeProduct(selectedProduct.value.id)
-      if (!analysis.is_safe) {
-        analysisWarnings.value = analysis.warnings
-        pendingPayload.value = configPayload
-        showWarningModal.value = true
-        isAnalyzing.value = false
+    const outcome = await resolveSafety(() => analyzeProduct(selectedProduct.value.id))
+    isAnalyzing.value = false
+
+    if (blocksAction(outcome)) {
+      // A check that could not run must not save. Previously the catch here
+      // only logged, so control fell through to addToShelf and the product was
+      // committed unchecked while the user was told it succeeded.
+      if (outcome.status === 'unavailable') {
+        addToast('Failed to analyze product. Please try again.', 'error')
         return
       }
-    } catch (error) {
-      console.error("Analysis failed", error)
+
+      analysisWarnings.value = outcome.warnings
+      pendingPayload.value = configPayload
+      showWarningModal.value = true
+      return
     }
-    isAnalyzing.value = false
   }
 
   const payloadToSave = forceSave ? pendingPayload.value : configPayload

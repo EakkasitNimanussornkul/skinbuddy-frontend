@@ -72,6 +72,14 @@ const SPEC_MAP = [
       'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage cleared per test so the token branch is controlled. No network access.',
   },
   {
+    file: 'src/__tests__/api/safety.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'api/safety',
+    prerequisite:
+      'Pure decision logic called directly with plain objects. No component mounting and no network access.',
+    note: 'Pins FE-DEF-01, FE-DEF-02 and FE-DEF-03 from FRONTEND_DEFECTS.md: three call sites each treated a failed compatibility check as a passed one. blocksAction() must never return false for an unavailable outcome.',
+  },
+  {
     file: 'src/__tests__/router/guard.spec.ts',
     feature: '#2 Take skinquiz',
     module: 'router/guard',

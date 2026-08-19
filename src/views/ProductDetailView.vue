@@ -14,16 +14,24 @@ const authStore = useAuthStore()
 
 const product = ref<any>(null)
 const isLoading = ref(true)
+const loadFailed = ref(false)
 const baseProductForCompare = ref<any | null>(null)
 
 const loadPage = async (slug: string) => {
   if (!slug) return
   isLoading.value = true
+  loadFailed.value = false
   try {
     product.value = await getProductBySlug(slug)
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Product fetch error:", error)
     product.value = null
+
+    // A 404 means the catalogue answered and the product is genuinely absent.
+    // Anything else means we never got an answer, and telling the user the
+    // product "does not exist" would be stating a fact we do not have.
+    const status = (error as { response?: { status?: number } })?.response?.status
+    loadFailed.value = status !== 404
   } finally {
     isLoading.value = false
   }
@@ -95,6 +103,22 @@ const handleOpenCompare = (targetProduct: any) => {
           :base-product-slug="product.slug"
         />
 
+      </div>
+
+      <!-- Request never completed: we cannot claim the product is absent. -->
+      <div v-else-if="loadFailed" class="py-24 px-4 flex justify-center items-center">
+        <EmptyState
+          title="Couldn't Load This Product"
+          message="We couldn't reach the catalog, so we can't show this product right now. It may still exist - this is a connection problem, not a missing item."
+          action-label="Try Again"
+          @action="loadPage((route.params.slug as string) || '')"
+        >
+          <template #icon>
+            <svg class="w-10 h-10 text-amber-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </template>
+        </EmptyState>
       </div>
 
       <!-- Empty / Fallback State -->

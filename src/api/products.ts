@@ -92,6 +92,34 @@ export const pickTopRecommendations = <T extends { skin_match_score?: number | n
 }
 
 /**
+ * Comparison is a two-product operation. GET /products/compare takes exactly
+ * product_a_id and product_b_id, and compare_two_products resolves exactly two.
+ * Any selection UI must cap at this number rather than offer a capability the
+ * engine does not have.
+ */
+export const MAX_COMPARE_PRODUCTS = 2
+
+/**
+ * Build the comparison address from selected slugs.
+ *
+ * Pure and exported so the contract between a selection screen and CompareView
+ * can be asserted without mounting either. CompareView reads `a` and `b`; a
+ * caller inventing its own parameter names produces a page that silently shows
+ * its "select two products" prompt instead.
+ *
+ * Returns null when there are not two slugs, so callers surface that rather
+ * than navigating to a page that cannot act.
+ */
+export const buildComparePath = (slugs: string[]): string | null => {
+  if (!Array.isArray(slugs)) return null
+
+  const [a, b] = slugs.filter((s) => typeof s === 'string' && s.length > 0)
+  if (!a || !b) return null
+
+  return `/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`
+}
+
+/**
  * Fetch full product specification and Baumann compatibility matrix by URL Slug or UUID
  */
 export const getProductBySlug = async (slug: string) => {

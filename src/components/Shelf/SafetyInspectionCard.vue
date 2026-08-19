@@ -10,6 +10,9 @@ export interface WarningAlert {
 defineProps<{
   warnings: WarningAlert[]
   isLoading?: boolean
+  // Distinct from `warnings: []`. An empty list means the scan ran and found
+  // nothing; this means it never produced a verdict at all.
+  scanFailed?: boolean
 }>()
 
 const expandedIndices = ref<Record<number, boolean>>({})
@@ -40,6 +43,23 @@ const toggleExpand = (idx: number) => {
           <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping"></span>
         </div>
         <p class="text-[11px] font-medium text-brand-text-muted">Analyzing formula interactions against your active shelf...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scan Unavailable: must not look like a clean result -->
+  <div v-else-if="scanFailed" class="p-5 rounded-3xl bg-amber-500/5 border border-amber-500/30 space-y-2">
+    <div class="flex items-center gap-3.5">
+      <div class="flex items-center justify-center w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 shrink-0">
+        <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div class="space-y-1">
+        <span class="text-xs font-bold text-brand-text dark:text-stone-200 tracking-wide block">Safety Scan Unavailable</span>
+        <p class="text-[11px] font-medium text-brand-text-muted">
+          We couldn't complete the compatibility check, so this product has not been assessed. This is not a clean result.
+        </p>
       </div>
     </div>
   </div>

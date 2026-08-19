@@ -7,13 +7,18 @@ const props = defineProps<{
   isLoading: boolean
   warnings: Array<{ alert_type: string; severity: string; message: string }>
   hasChecked: boolean
+  // The check did not produce a verdict. Without this, an empty warnings array
+  // from a failed request rendered as a pass.
+  scanFailed?: boolean
 }>()
 
 const emit = defineEmits(['close'])
 
 const skinConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Skin Type Conflict'))
 const chemicalConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Chemical Interaction Warning' || w.alert_type === 'Active Routine Clash'))
-const isSafe = computed(() => props.hasChecked && props.warnings.length === 0)
+const isSafe = computed(
+  () => props.hasChecked && !props.scanFailed && props.warnings.length === 0,
+)
 </script>
 
 <template>
@@ -42,8 +47,22 @@ const isSafe = computed(() => props.hasChecked && props.warnings.length === 0)
           </div>
 
           <template v-else-if="hasChecked">
+            <!-- Case 0: the evaluation did not complete. Reported before the
+                 clean and conflict cases, because neither of those is known. -->
+            <div v-if="scanFailed" class="text-center py-6 space-y-3">
+              <div class="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto border border-amber-500/30">
+                <svg class="w-7 h-7 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h4 class="text-base font-serif font-bold text-brand-text dark:text-white">Evaluation Unavailable</h4>
+              <p class="text-xs text-brand-text-muted max-w-xs mx-auto leading-relaxed">
+                We couldn't reach the compatibility engine, so this formula has not been evaluated against your shelf. Please try again shortly.
+              </p>
+            </div>
+
             <!-- Case A: Clean Record, completely safe formulation -->
-            <div v-if="isSafe" class="text-center py-6 space-y-3">
+            <div v-else-if="isSafe" class="text-center py-6 space-y-3">
               <div class="w-14 h-14 bg-brand-primary-light/40 dark:bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent rounded-full flex items-center justify-center mx-auto border border-brand-primary/20 shadow-xs">
                 <svg class="w-7 h-7 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />

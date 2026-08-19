@@ -15,6 +15,8 @@ import { apiClient } from '../../api/index'
 import {
   searchProducts,
   pickTopRecommendations,
+  buildComparePath,
+  MAX_COMPARE_PRODUCTS,
   getProductBySlug,
   getProductById,
   getProductComparison,
@@ -154,6 +156,42 @@ describe('src/api/products.ts', () => {
       pickTopRecommendations(input)
 
       expect(input.map((p) => p.id)).toEqual(['a', 'b'])
+    })
+  })
+
+  describe('buildComparePath()', () => {
+    it('produces an address using the a and b parameters CompareView actually reads', () => {
+      // FE-DEF-07: Explore sent /compare?slugs=a,b,c, which CompareView reads
+      // nowhere, so the comparison rendered its "select two products" prompt.
+      expect(buildComparePath(['cerave-cleanser', 'cosrx-sun'])).toBe(
+        '/compare?a=cerave-cleanser&b=cosrx-sun',
+      )
+    })
+
+    it('uses only the first two slugs, since the engine compares exactly two products', () => {
+      expect(buildComparePath(['one', 'two', 'three'])).toBe('/compare?a=one&b=two')
+    })
+
+    it('returns null when fewer than two products are selected, so the caller can say so', () => {
+      expect(buildComparePath([])).toBeNull()
+      expect(buildComparePath(['only-one'])).toBeNull()
+    })
+
+    it('ignores empty slug entries rather than building an address with a blank product', () => {
+      expect(buildComparePath(['', 'real-one'])).toBeNull()
+      expect(buildComparePath(['a-slug', '', 'b-slug'])).toBe('/compare?a=a-slug&b=b-slug')
+    })
+
+    it('escapes slugs so an unexpected character cannot alter the query string', () => {
+      expect(buildComparePath(['a&b=x', 'plain'])).toBe('/compare?a=a%26b%3Dx&b=plain')
+    })
+
+    it('returns null when handed something that is not a list, so a bad caller cannot throw', () => {
+      expect(buildComparePath(null as never)).toBeNull()
+    })
+
+    it('caps comparison at two products, matching the product_a_id and product_b_id the endpoint takes', () => {
+      expect(MAX_COMPARE_PRODUCTS).toBe(2)
     })
   })
 

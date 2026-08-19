@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { searchProducts } from '../api/products.ts'
+import { searchProducts, buildComparePath, MAX_COMPARE_PRODUCTS } from '../api/products.ts'
 import { useAuthStore } from '../stores/auth.ts'
 import { useToast } from '../composables/useToast.ts'
 import SearchAutocompleteInput from '../components/Shared/SearchAutocompleteInput.vue'
@@ -40,6 +40,10 @@ const cleanString = (str: string) => {
 }
 
 const syncFiltersFromURL = () => {
+  // `q` is what the global search bar in TopNav sends. It was read nowhere, so
+  // the primary search affordance navigated here and silently dropped the term.
+  searchQuery.value = (route.query.q as string) || ''
+
   if (route.query.category) {
     selectedCategory.value = route.query.category as string
   } else {
@@ -64,8 +68,10 @@ const handleCompareToggle = (product: any) => {
   if (index > -1) {
     comparisonSlugs.value.splice(index, 1)
   } else {
-    if (comparisonSlugs.value.length >= 3) {
-      addToast('You can compare a maximum of 3 skin formulas at once.', 'warning')
+    // The engine compares exactly two. Offering three here promised a
+    // capability GET /products/compare does not have.
+    if (comparisonSlugs.value.length >= MAX_COMPARE_PRODUCTS) {
+      addToast(`You can compare ${MAX_COMPARE_PRODUCTS} skin formulas at a time.`, 'warning')
       return
     }
     comparisonSlugs.value.push(product.slug)
@@ -77,7 +83,15 @@ const handleInitializeCompare = () => {
     authStore.triggerLoginPopup('Sign in to run side-by-side formula comparisons.')
     return
   }
-  router.push(`/compare?slugs=${comparisonSlugs.value.join(',')}`)
+  // CompareView reads `a` and `b`. This used to send `slugs=a,b,c`, which it
+  // reads nowhere, so the comparison landed on its own "select two products"
+  // prompt - telling the user to do what they had just done.
+  const path = buildComparePath(comparisonSlugs.value)
+  if (!path) {
+    addToast(`Select ${MAX_COMPARE_PRODUCTS} formulas to compare.`, 'warning')
+    return
+  }
+  router.push(path)
 }
 
 const fetchCatalog = async () => {
@@ -240,7 +254,7 @@ watch(
       <div class="w-full block lg:hidden">
         <SearchAutocompleteInput
           :initial-query="searchQuery"
-          @search-submit="searchQuery = $event; fetchCatalog()"
+          @search-submit="searchQuery = $event"
         />
       </div>
 

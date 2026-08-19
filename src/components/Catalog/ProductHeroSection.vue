@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
+import { resolveSafety, type SafetyOutcome } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
@@ -42,22 +43,27 @@ const showWarningModal = ref(false)
 const isAnalyzing = ref(false)
 const hasCheckedSafety = ref(false)
 const backendWarnings = ref<any[]>([])
+const safetyUnavailable = ref(false)
 
+// Returns the outcome rather than only setting warnings. Callers previously
+// branched on backendWarnings.length, which is empty both when the product is
+// clear and when the check never ran - so a failure opened the add flow as if
+// the product had been cleared.
 const runBackendAnalysis = async () => {
-  if (!props.product?.id) return
+  if (!props.product?.id) return { status: 'unavailable', warnings: [] } as SafetyOutcome
+
   isAnalyzing.value = true
-  backendWarnings.value = []
-  try {
-    const analysis = await analyzeProduct(props.product.id)
-    if (analysis && analysis.warnings) {
-      backendWarnings.value = analysis.warnings
-    }
-  } catch (error) {
-    console.error('Safety evaluation client request failed:', error)
+  const outcome = await resolveSafety(() => analyzeProduct(props.product.id))
+  isAnalyzing.value = false
+
+  backendWarnings.value = outcome.warnings
+  safetyUnavailable.value = outcome.status === 'unavailable'
+
+  if (outcome.status === 'unavailable') {
     addToast('Could not complete safety diagnostic verification.', 'error')
-  } finally {
-    isAnalyzing.value = false
   }
+
+  return outcome
 }
 
 const handleTriggerSafetyCheck = async () => {
@@ -76,11 +82,13 @@ const handleOpenConfigurator = async () => {
     authStore.triggerLoginPopup('Sign in to save this product to your digital skincare shelf.')
     return
   }
-  await runBackendAnalysis()
+  const outcome = await runBackendAnalysis()
 
-  if (backendWarnings.value.length > 0) {
+  // Only an explicit pass opens the configurator. An unavailable check stops
+  // here - the toast above has already told the user why.
+  if (outcome.status === 'warned') {
     showWarningModal.value = true
-  } else {
+  } else if (outcome.status === 'cleared') {
     isConfiguringAdd.value = true
   }
 }
@@ -273,6 +281,7 @@ const handleCommitToShelf = async () => {
       :is-loading="isAnalyzing"
       :warnings="backendWarnings"
       :has-checked="hasCheckedSafety"
+      :scan-failed="safetyUnavailable"
       @close="isSafetyModalOpen = false"
     />
 
