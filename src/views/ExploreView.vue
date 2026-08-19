@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { searchProducts, buildComparePath, MAX_COMPARE_PRODUCTS } from '../api/products.ts'
+import {
+  searchProducts,
+  pickTopRecommendations,
+  buildComparePath,
+  MAX_COMPARE_PRODUCTS,
+  type ScoredProduct,
+} from '../api/products.ts'
 import { useAuthStore } from '../stores/auth.ts'
 import { useToast } from '../composables/useToast.ts'
 import SearchAutocompleteInput from '../components/Shared/SearchAutocompleteInput.vue'
+import SkinTypeRecommendationsWidget from '../components/Shared/SkinTypeRecommendationsWidget.vue'
 import ExploreProductCard from '../components/Catalog/ExploreProductCard.vue'
 import ExploreCategoryBar from '../components/Catalog/ExploreCategoryBar.vue'
 import UniversalProductModal from '../components/Catalog/UniversalProductModal.vue'
@@ -125,9 +132,46 @@ const handlePriceClear = () => {
   fetchCatalog()
 }
 
+// --- Recommended products for you ---
+//
+// Fetched separately from the catalogue rather than derived from it. fetchCatalog
+// passes the active search term and price bounds to the backend, so deriving
+// recommendations from its result would make them shift as the user filters.
+// "Recommended for you" should not depend on what is currently on screen.
+//
+// The skin type comes from the signed-in user's record, not from the address.
+// A guest sees the plain catalogue with no recommendations section at all -
+// anonymous responses carry no match score, so there is nothing to rank.
+const recommendedProducts = ref<ScoredProduct[]>([])
+const recommendationsLoading = ref(false)
+const recommendationsFailed = ref(false)
+
+const showRecommendations = computed(
+  () => authStore.isAuthenticated && !!authStore.user?.skin_type,
+)
+
+const loadRecommendations = async () => {
+  if (!showRecommendations.value) return
+
+  recommendationsLoading.value = true
+  recommendationsFailed.value = false
+
+  try {
+    const results = await searchProducts()
+    recommendedProducts.value = pickTopRecommendations(results)
+  } catch (error) {
+    console.error('Failed to load recommended products:', error)
+    recommendedProducts.value = []
+    recommendationsFailed.value = true
+  } finally {
+    recommendationsLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchCatalog()
   syncFiltersFromURL()
+  loadRecommendations()
 })
 
 const uniqueCategories = computed(() => {
@@ -304,6 +348,37 @@ watch(
 
       </div>
 
+      <!-- 2. Recommended products for you.
+           Hidden entirely for guests and for users with no skin type: an
+           anonymous catalogue response carries no match score, so there would
+           be nothing to rank and an empty state would say nothing useful. -->
+      <div
+        v-if="showRecommendations"
+        class="bg-brand-surface-light dark:bg-brand-surface-dark p-6 sm:p-8 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm"
+      >
+        <SkinTypeRecommendationsWidget
+          :user-skin-type="authStore.user?.skin_type || ''"
+          :products="recommendedProducts"
+          :loading="recommendationsLoading"
+          :failed="recommendationsFailed"
+          hide-catalog-link
+          subheading="Ranked against your Baumann profile. Browse the full registry below."
+          @retry="loadRecommendations"
+        />
+      </div>
+
+      <!-- 3. The full catalogue -->
+      <div class="space-y-6">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-widest text-brand-primary">Complete Registry</span>
+          <h3 class="text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white mt-1">
+            All Formulations
+          </h3>
+          <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
+            Every product in the catalog, filtered by your selections above.
+          </p>
+        </div>
+
       <!-- Loading Tracker -->
       <div v-if="isLoading" class="py-32 text-center animate-pulse text-xs font-bold uppercase tracking-widest text-brand-text-muted">
         Refining Formula Matrix Viewport...
@@ -328,6 +403,7 @@ watch(
           action-label="Reset Filter Criteria"
           @action="handlePriceClear(); selectedCategory = 'All'; selectedBrand = 'All'; router.push('/explore')"
         />
+      </div>
       </div>
 
     </div>

@@ -9,6 +9,12 @@ defineProps<{
   products: any[]
   loading?: boolean
   failed?: boolean
+  // Suppresses the per-card catalog link. On the Explore page that link would
+  // navigate back to the page the user is already on.
+  hideCatalogLink?: boolean
+  // Optional override so each host can title its own section.
+  heading?: string
+  subheading?: string
 }>()
 
 const emit = defineEmits(['retry'])
@@ -20,10 +26,10 @@ const router = useRouter()
   <div class="space-y-6 pt-8 border-t border-brand-surface-border dark:border-stone-800 w-full">
     <div>
       <h3 class="text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white">
-        Recommended products for you
+        {{ heading || 'Recommended products for you' }}
       </h3>
       <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
-        Biocompatible skincare curation optimized to reinforce your current barrier profile metrics.
+        {{ subheading || 'Biocompatible skincare curation optimized to reinforce your current barrier profile metrics.' }}
       </p>
     </div>
 
@@ -78,7 +84,8 @@ const router = useRouter()
         </router-link>
 
         <button
-          @click="router.push(`/explore?type=${userSkinType}`)"
+          v-if="!hideCatalogLink"
+          @click="router.push('/explore')"
           class="w-full mt-4 py-2.5 bg-brand-bg-light dark:bg-stone-800 hover:bg-brand-primary hover:text-white dark:hover:bg-brand-primary text-brand-text dark:text-stone-200 font-bold text-xs rounded-xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
         >
           View Skin Sorting Specs

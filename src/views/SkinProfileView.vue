@@ -6,7 +6,7 @@ import { searchProducts, pickTopRecommendations, type ScoredProduct } from '../a
 import { skinProfiles } from '../data/skinprofiles'
 import { typologyDetails, type TraitDetail } from '../data/typologydata'
 import TypologyComparisonModal from '../components/Quiz/TypologyComparisonModal.vue'
-import SkinTypeRecommendationsWidget from '../components/Quiz/SkinTypeRecommendationsWidget.vue'
+import SkinTypeRecommendationsWidget from '../components/Shared/SkinTypeRecommendationsWidget.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
