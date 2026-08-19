@@ -98,6 +98,7 @@ const router = createRouter({
       path: '/compare',
       name: 'Compare',
       component: CompareView,
+      meta: { requiresAuth: true },
     },
     {
       path: '/checkin',
