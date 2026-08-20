@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import ImageZoomModal from '@/components/Shared/ImageZoomModal.vue'
+import type { TraitDetail } from '@/data/typologydata'
 
+// Nullable, and typed rather than `any`, because SkinProfileView.openTypologyModal
+// assigns `typologyDetails[axis.letter] ?? null` - a stored skin_type that is not
+// one of the sixteen Baumann codes produces a lookup miss. Declaring these `any`
+// is what let a guard be applied to nine reads and omitted from two: the compiler
+// had no way to point at the gap. FE-DEF-08.
 defineProps<{
-  activeTrait: any
-  oppositeTrait: any
+  activeTrait: TraitDetail | null
+  oppositeTrait: TraitDetail | null
   isOpen: boolean
 }>()
 
@@ -53,15 +59,23 @@ const triggerZoom = (url: string, alt: string) => {
               <h4 class="text-sm font-bold text-brand-text-muted uppercase tracking-widest">Your Skin Type</h4>
 
               <!-- Clickable Image Trigger -->
+              <!-- The zoom affordance is conditional on there being an image.
+                   The tile is a sized container, not an <img>, so it stayed
+                   clickable when the trait was missing and threw on
+                   activeTrait.image - FE-DEF-08. -->
               <div
-                @click="triggerZoom(activeTrait.image, activeTrait.name)"
-                class="w-full aspect-[4/3] bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-primary/20 flex items-center justify-center overflow-hidden cursor-zoom-in relative group"
+                @click="activeTrait?.image && triggerZoom(activeTrait.image, activeTrait.name)"
+                :class="[
+                  'w-full aspect-[4/3] bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-primary/20 flex items-center justify-center overflow-hidden relative',
+                  activeTrait?.image ? 'cursor-zoom-in group' : '',
+                ]"
               >
-                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10 text-white font-bold text-xs gap-1.5 backdrop-blur-xs">
+                <div v-if="activeTrait?.image" class="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10 text-white font-bold text-xs gap-1.5 backdrop-blur-xs">
                   <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                   Inspect Macro Texture
                 </div>
                 <img v-if="activeTrait?.image" :src="activeTrait.image" :alt="activeTrait.name" class="w-full h-full object-cover" />
+                <span v-else class="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted">Reference image unavailable</span>
               </div>
 
               <div>
@@ -83,14 +97,18 @@ const triggerZoom = (url: string, alt: string) => {
 
               <!-- Clickable Image Trigger -->
               <div
-                @click="triggerZoom(oppositeTrait.image, oppositeTrait.name)"
-                class="w-full aspect-[4/3] bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-surface-border dark:border-stone-800 flex items-center justify-center overflow-hidden cursor-zoom-in relative group"
+                @click="oppositeTrait?.image && triggerZoom(oppositeTrait.image, oppositeTrait.name)"
+                :class="[
+                  'w-full aspect-[4/3] bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-surface-border dark:border-stone-800 flex items-center justify-center overflow-hidden relative',
+                  oppositeTrait?.image ? 'cursor-zoom-in group' : '',
+                ]"
               >
-                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10 text-white font-bold text-xs gap-1.5 backdrop-blur-xs">
+                <div v-if="oppositeTrait?.image" class="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10 text-white font-bold text-xs gap-1.5 backdrop-blur-xs">
                   <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                   Inspect Macro Texture
                 </div>
                 <img v-if="oppositeTrait?.image" :src="oppositeTrait.image" :alt="oppositeTrait.name" class="w-full h-full object-cover" />
+                <span v-else class="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted">Reference image unavailable</span>
               </div>
 
               <div>
