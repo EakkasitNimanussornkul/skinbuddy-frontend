@@ -120,6 +120,39 @@ export const buildComparePath = (slugs: string[]): string | null => {
 }
 
 /**
+ * `loading`  the request is in flight
+ * `failed`   the request did not complete
+ * `empty`    the catalogue arrived and nothing matched the active filters
+ * `results`  the catalogue arrived and something matched
+ */
+export type CatalogViewState = 'loading' | 'failed' | 'empty' | 'results'
+
+/**
+ * Choose which of the four catalogue screens to show.
+ *
+ * Pure and exported for the same reason as buildComparePath: this project has
+ * no component-mount layer, so the decision is testable only outside the
+ * template.
+ *
+ * FE-DEF-09 was the absence of the `failed` state. With only three, a request
+ * that never completed left the catalogue at its initial [] and fell through to
+ * `empty`, telling the user as a fact that their filters excluded everything -
+ * and offering a "reset filters" action that reruns the same failing request.
+ *
+ * Order matters: `failed` is decided before `empty`, because a failure tells us
+ * nothing about how many products match. Reversing the two restores the defect.
+ */
+export const resolveCatalogState = (
+  isLoading: boolean,
+  failed: boolean,
+  matchCount: number,
+): CatalogViewState => {
+  if (isLoading) return 'loading'
+  if (failed) return 'failed'
+  return matchCount > 0 ? 'results' : 'empty'
+}
+
+/**
  * Fetch full product specification and Baumann compatibility matrix by URL Slug or UUID
  */
 export const getProductBySlug = async (slug: string) => {

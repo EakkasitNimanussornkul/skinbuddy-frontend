@@ -5,6 +5,7 @@ import {
   searchProducts,
   pickTopRecommendations,
   buildComparePath,
+  resolveCatalogState,
   MAX_COMPARE_PRODUCTS,
   type ScoredProduct,
 } from '../api/products.ts'
@@ -27,6 +28,9 @@ const { addToast } = useToast()
 
 const catalog = ref<any[]>([])
 const isLoading = ref(true)
+// Tracked separately from `catalog` because the array alone cannot say whether
+// it is empty by result or empty by failure - FE-DEF-09.
+const catalogFailed = ref(false)
 const searchQuery = ref('')
 const selectedCategory = ref('All')
 const selectedBrand = ref('All')
@@ -103,10 +107,17 @@ const handleInitializeCompare = () => {
 
 const fetchCatalog = async () => {
   isLoading.value = true
+  catalogFailed.value = false
   try {
     const data = await searchProducts(searchQuery.value, activeMinPrice.value, activeMaxPrice.value)
     catalog.value = data || []
   } catch {
+    // Clear rather than keep. A failed re-request from the price controls would
+    // otherwise leave the previous bounds' results on screen while the controls
+    // show the new ones, presenting stale data as current with only a
+    // self-dismissing toast to say otherwise.
+    catalog.value = []
+    catalogFailed.value = true
     addToast('Failed to load product catalog.', 'error')
   } finally {
     isLoading.value = false
@@ -202,6 +213,10 @@ const filteredCatalog = computed(() => {
     return matchesSearch && matchesCategory && matchesBrand
   })
 })
+
+const catalogState = computed(() =>
+  resolveCatalogState(isLoading.value, catalogFailed.value, filteredCatalog.value.length),
+)
 
 watch(
   () => route.query,
@@ -380,12 +395,36 @@ watch(
         </div>
 
       <!-- Loading Tracker -->
-      <div v-if="isLoading" class="py-32 text-center animate-pulse text-xs font-bold uppercase tracking-widest text-brand-text-muted">
+      <div v-if="catalogState === 'loading'" class="py-32 text-center animate-pulse text-xs font-bold uppercase tracking-widest text-brand-text-muted">
         Refining Formula Matrix Viewport...
       </div>
 
+      <!-- Retrieval failure. Reported before the empty state below, because a
+           request that never completed says nothing about how many products
+           match - and the empty state's "reset filters" action would only rerun
+           the same failing request. -->
+      <div v-else-if="catalogState === 'failed'" class="py-16 flex flex-col items-center text-center gap-4 w-full">
+        <div class="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center border border-amber-500/30">
+          <svg class="w-7 h-7 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="space-y-1 max-w-sm">
+          <h4 class="text-lg font-serif font-bold text-brand-text dark:text-white">Catalog Unavailable</h4>
+          <p class="text-xs text-brand-text-muted leading-relaxed">
+            We couldn't reach the formulation registry, so nothing here reflects your current filters. Your selections have been kept &mdash; try again in a moment.
+          </p>
+        </div>
+        <button
+          @click="fetchCatalog()"
+          class="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer transition-all active:scale-95"
+        >
+          Retry Retrieval
+        </button>
+      </div>
+
       <!-- Product Grid -->
-      <div v-else-if="filteredCatalog.length > 0" class="grid grid-cols-1 xl:grid-cols-2 gap-5 w-full items-start">
+      <div v-else-if="catalogState === 'results'" class="grid grid-cols-1 xl:grid-cols-2 gap-5 w-full items-start">
         <ExploreProductCard
           v-for="product in filteredCatalog"
           :key="product.id"

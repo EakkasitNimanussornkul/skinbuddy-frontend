@@ -16,6 +16,7 @@ import {
   searchProducts,
   pickTopRecommendations,
   buildComparePath,
+  resolveCatalogState,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
   getProductById,
@@ -192,6 +193,34 @@ describe('src/api/products.ts', () => {
 
     it('caps comparison at two products, matching the product_a_id and product_b_id the endpoint takes', () => {
       expect(MAX_COMPARE_PRODUCTS).toBe(2)
+    })
+  })
+
+  describe('resolveCatalogState()', () => {
+    it('shows the product grid when the catalogue arrived and products match the filters', () => {
+      expect(resolveCatalogState(false, false, 12)).toBe('results')
+    })
+
+    it('shows the empty state when the catalogue arrived and no product matches the filters', () => {
+      expect(resolveCatalogState(false, false, 0)).toBe('empty')
+    })
+
+    it('shows the failure state, not the empty state, when the catalogue never arrived', () => {
+      // FE-DEF-09: on first load the catalogue is still [], so without a
+      // separate failure flag this case reported the user's filters as having
+      // excluded everything - a conclusion drawn from a request that never ran.
+      expect(resolveCatalogState(false, true, 0)).toBe('failed')
+    })
+
+    it('shows the failure state rather than the products left over from the previous request', () => {
+      // The re-request symptom: price controls display the new bounds while the
+      // grid still holds results fetched under the old ones.
+      expect(resolveCatalogState(false, true, 12)).toBe('failed')
+    })
+
+    it('reports loading while the request is in flight, whatever the previous outcome was', () => {
+      expect(resolveCatalogState(true, false, 0)).toBe('loading')
+      expect(resolveCatalogState(true, true, 12)).toBe('loading')
     })
   })
 
