@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { describeDuplicateOverlap, type DuplicateMatch } from '../../api/safety'
 
-const props = defineProps<{
-  isOpen: boolean
-  product: any
-  isLoading: boolean
-  warnings: Array<{ alert_type: string; severity: string; message: string }>
-  hasChecked: boolean
-  // The check did not produce a verdict. Without this, an empty warnings array
-  // from a failed request rendered as a pass.
-  scanFailed?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    isOpen: boolean
+    product: any
+    isLoading: boolean
+    warnings: Array<{ alert_type: string; severity: string; message: string }>
+    hasChecked: boolean
+    // The check did not produce a verdict. Without this, an empty warnings array
+    // from a failed request rendered as a pass.
+    scanFailed?: boolean
+    // Shelf products with substantially overlapping actives. The caller has
+    // already run showsDuplicates() over these, so an empty list here means the
+    // check ran and found nothing - never that it failed. Do not add a second
+    // failure branch on this length; that is what FE-DEF-03 was.
+    duplicates?: DuplicateMatch[]
+  }>(),
+  { scanFailed: false, duplicates: () => [] },
+)
 
 const emit = defineEmits(['close'])
 
@@ -106,6 +115,46 @@ const isSafe = computed(
                   <span class="text-[10px] font-bold text-semantic-warning tracking-wide">Severity: High &bull; Skin Type Conflict</span>
                   <p>{{ warn.message }}</p>
                 </div>
+              </div>
+            </div>
+
+            <!-- Shelf overlap. Deliberately outside the clear/conflict chain
+                 above: it is advisory, it appears alongside either verdict, and
+                 it must never change one. Neutral styling for the same reason -
+                 no red, no alert icon, no severity. -->
+            <div
+              v-if="duplicates.length"
+              class="bg-brand-bg-light dark:bg-stone-900/60 border border-brand-surface-border dark:border-stone-800 rounded-2xl p-4 space-y-3"
+            >
+              <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4 text-brand-text-muted shrink-0 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 7l8-4 8 4-8 4-8-4z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 12l8 4 8-4M4 17l8 4 8-4" />
+                </svg>
+                <div>
+                  <h4 class="text-xs font-bold text-brand-text dark:text-stone-100">You already own something similar</h4>
+                  <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5">Not a conflict &mdash; just so you know before buying again.</p>
+                </div>
+              </div>
+
+              <div
+                v-for="dupe in duplicates"
+                :key="dupe.product_id"
+                class="bg-brand-surface-light dark:bg-stone-900 rounded-xl border border-brand-surface-border dark:border-stone-800/80 p-3.5 space-y-1"
+              >
+                <!-- Both brand and slug are nullable server-side, so neither the
+                     prefix nor the link can be assumed. -->
+                <component
+                  :is="dupe.slug ? 'router-link' : 'span'"
+                  :to="dupe.slug ? `/product/${dupe.slug}` : undefined"
+                  class="text-xs font-bold text-brand-text dark:text-stone-100 block"
+                  :class="dupe.slug ? 'hover:text-brand-primary dark:hover:text-brand-primary-accent transition-colors cursor-pointer' : ''"
+                >
+                  <span v-if="dupe.brand" class="text-brand-text-muted font-medium">{{ dupe.brand }}&nbsp;</span>{{ dupe.name }}
+                </component>
+                <p class="text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
+                  {{ describeDuplicateOverlap(dupe) }}
+                </p>
               </div>
             </div>
           </template>

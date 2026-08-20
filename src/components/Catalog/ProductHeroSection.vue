@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
-import { resolveSafety, type SafetyOutcome } from '../../api/safety'
+import {
+  resolveSafety,
+  showsDuplicates,
+  type DuplicateMatch,
+  type SafetyOutcome,
+} from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
@@ -44,13 +49,19 @@ const isAnalyzing = ref(false)
 const hasCheckedSafety = ref(false)
 const backendWarnings = ref<any[]>([])
 const safetyUnavailable = ref(false)
+// Already filtered through showsDuplicates() below, so anything in here is
+// known to have come from a check that produced an answer. The modal can render
+// it on length alone.
+const backendDuplicates = ref<DuplicateMatch[]>([])
 
 // Returns the outcome rather than only setting warnings. Callers previously
 // branched on backendWarnings.length, which is empty both when the product is
 // clear and when the check never ran - so a failure opened the add flow as if
 // the product had been cleared.
 const runBackendAnalysis = async () => {
-  if (!props.product?.id) return { status: 'unavailable', warnings: [] } as SafetyOutcome
+  if (!props.product?.id) {
+    return { status: 'unavailable', warnings: [], duplicates: [] } as SafetyOutcome
+  }
 
   isAnalyzing.value = true
   const outcome = await resolveSafety(() => analyzeProduct(props.product.id))
@@ -58,6 +69,7 @@ const runBackendAnalysis = async () => {
 
   backendWarnings.value = outcome.warnings
   safetyUnavailable.value = outcome.status === 'unavailable'
+  backendDuplicates.value = showsDuplicates(outcome) ? outcome.duplicates : []
 
   if (outcome.status === 'unavailable') {
     addToast('Could not complete safety diagnostic verification.', 'error')
@@ -280,6 +292,7 @@ const handleCommitToShelf = async () => {
       :product="product"
       :is-loading="isAnalyzing"
       :warnings="backendWarnings"
+      :duplicates="backendDuplicates"
       :has-checked="hasCheckedSafety"
       :scan-failed="safetyUnavailable"
       @close="isSafetyModalOpen = false"
