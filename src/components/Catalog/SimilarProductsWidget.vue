@@ -1,12 +1,28 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { buildComparePath } from '../../api/products'
+import { useToast } from '../../composables/useToast'
 
-defineProps<{
+const props = defineProps<{
   similarProducts: any[]
   baseProductSlug: string
 }>()
 
 const router = useRouter()
+const { addToast } = useToast()
+
+// Built rather than interpolated. The template used to write
+// `/compare?a=${baseProductSlug}&b=${sim.slug}` inline, which applied no
+// encoding - a slug containing & or = would corrupt the query. buildComparePath
+// is the one place the /compare?a=&b= contract is expressed.
+const goToCompare = (targetSlug: string) => {
+  const path = buildComparePath([props.baseProductSlug, targetSlug])
+  if (!path) {
+    addToast('That product cannot be compared right now.', 'error')
+    return
+  }
+  router.push(path)
+}
 </script>
 
 <template>
@@ -34,7 +50,7 @@ const router = useRouter()
         </router-link>
 
         <button
-          @click="router.push(`/compare?a=${baseProductSlug}&b=${sim.slug}`)"
+          @click="goToCompare(sim.slug)"
           class="w-full mt-4 py-2.5 bg-brand-bg-light dark:bg-stone-800 hover:bg-brand-primary hover:text-white dark:hover:bg-brand-primary text-brand-text dark:text-stone-200 font-bold text-xs rounded-xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
         >
           <span>Compare</span>

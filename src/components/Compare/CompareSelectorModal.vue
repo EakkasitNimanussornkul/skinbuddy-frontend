@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { searchProducts } from '../../api/products'
+import { searchProducts, buildComparePath } from '../../api/products'
+import { useToast } from '../../composables/useToast'
 
 const props = defineProps<{
   baseProduct: any
@@ -9,6 +10,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['close'])
 const router = useRouter()
+const { addToast } = useToast()
 
 const searchQuery = ref('')
 const allProducts = ref<any[]>([])
@@ -46,11 +48,25 @@ const sortedSuggestions = computed(() => {
 
 const handleConfirmCompare = () => {
   if (!selectedTarget.value) return
+
+  // Built rather than interpolated. This used to write the query string by hand,
+  // which meant no encoding: a slug containing & or = would silently truncate
+  // or corrupt the other product. buildComparePath is the one place the
+  // /compare?a=&b= contract is expressed, and it escapes both values.
+  const path = buildComparePath([
+    props.baseProduct.slug || props.baseProduct.id,
+    selectedTarget.value.slug || selectedTarget.value.id,
+  ])
+
+  if (!path) {
+    // Both products are on screen, so this means one carries neither a slug nor
+    // an id - a catalogue data fault, not a user error.
+    addToast('That product cannot be compared right now.', 'error')
+    return
+  }
+
   emit('close')
-  // Navigate to full-page compare view with both slugs
-  const slugA = props.baseProduct.slug || props.baseProduct.id
-  const slugB = selectedTarget.value.slug || selectedTarget.value.id
-  router.push(`/compare?a=${slugA}&b=${slugB}`)
+  router.push(path)
 }
 </script>
 

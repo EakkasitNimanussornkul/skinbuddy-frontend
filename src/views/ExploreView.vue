@@ -4,9 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   searchProducts,
   pickTopRecommendations,
-  buildComparePath,
   resolveCatalogState,
-  MAX_COMPARE_PRODUCTS,
   type ScoredProduct,
 } from '../api/products.ts'
 import { useAuthStore } from '../stores/auth.ts'
@@ -40,7 +38,6 @@ const activeMaxPrice = ref(1500)
 
 const selectedForInspection = ref<any>(null)
 const baseProductForCompare = ref<any | null>(null)
-const comparisonSlugs = ref<string[]>([])
 
 const cleanString = (str: string) => {
   let res = (str || '').toLowerCase().trim()
@@ -68,42 +65,14 @@ const syncFiltersFromURL = () => {
   }
 }
 
-// Gated feature interceptor for unregistered guests
-const handleCompareToggle = (product: any) => {
-  if (!authStore.isAuthenticated) {
-    authStore.triggerLoginPopup('Sign in to compare skin formulas side-by-side.')
-    return
-  }
-
-  const index = comparisonSlugs.value.indexOf(product.slug)
-  if (index > -1) {
-    comparisonSlugs.value.splice(index, 1)
-  } else {
-    // The engine compares exactly two. Offering three here promised a
-    // capability GET /products/compare does not have.
-    if (comparisonSlugs.value.length >= MAX_COMPARE_PRODUCTS) {
-      addToast(`You can compare ${MAX_COMPARE_PRODUCTS} skin formulas at a time.`, 'warning')
-      return
-    }
-    comparisonSlugs.value.push(product.slug)
-  }
-}
-
-const handleInitializeCompare = () => {
-  if (!authStore.isAuthenticated) {
-    authStore.triggerLoginPopup('Sign in to run side-by-side formula comparisons.')
-    return
-  }
-  // CompareView reads `a` and `b`. This used to send `slugs=a,b,c`, which it
-  // reads nowhere, so the comparison landed on its own "select two products"
-  // prompt - telling the user to do what they had just done.
-  const path = buildComparePath(comparisonSlugs.value)
-  if (!path) {
-    addToast(`Select ${MAX_COMPARE_PRODUCTS} formulas to compare.`, 'warning')
-    return
-  }
-  router.push(path)
-}
+// The multi-select comparison flow that lived here has been removed - FE-DEF-11.
+// ExploreProductCard lost its compare control in 769a4ba, so nothing could emit
+// toggle-compare and nothing could populate the selection. The handler, the
+// selection array and the "Initialize Compare" button were all unreachable.
+//
+// Comparison is still available from the product card's own modal
+// (CompareSelectorModal) and from the similar-products widget, both of which
+// pick exactly two products and route through buildComparePath.
 
 const fetchCatalog = async () => {
   isLoading.value = true
@@ -252,17 +221,6 @@ watch(
 
     <!-- Right Column: Sliding Marquee (5 cols) -->
     <div class="lg:col-span-5 flex flex-col items-end justify-center w-full min-w-0">
-      <button
-        v-if="comparisonSlugs.length > 0"
-        @click="handleInitializeCompare"
-        class="mb-3 flex items-center gap-2.5 px-4 py-2 bg-brand-primary text-white rounded-xl text-xs font-bold transition-all shadow-md hover:bg-brand-primary-hover active:scale-95 cursor-pointer"
-      >
-        <span>Initialize Compare</span>
-        <span class="bg-white/20 px-2 py-0.5 rounded-lg text-[10px] font-mono">
-          {{ comparisonSlugs.length }}
-        </span>
-      </button>
-
       <ProductShowcaseMarquee :products="catalog" />
     </div>
 
@@ -429,9 +387,7 @@ watch(
           v-for="product in filteredCatalog"
           :key="product.id"
           :product="product"
-          :is-selected-for-compare="comparisonSlugs.includes(product.slug)"
           @inspect="selectedForInspection = product"
-          @toggle-compare="handleCompareToggle(product)"
         />
       </div>
 
