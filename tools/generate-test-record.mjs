@@ -57,6 +57,7 @@ const SPEC_MAP = [
     feature: '#3 Skincare storage',
     module: 'stores/shelfStore',
     prerequisite: 'Fresh Pinia instance per test. src/api/shelfapi.ts replaced with a mock. No network access.',
+    note: 'useShelfStore() is not called anywhere in src/ - ShelfView.vue imports only the ShelfItem type from this module and calls getMyShelf() directly into a local ref. These cards therefore document the store module in isolation, not the shelf screen: they are not evidence that loading, adding or removing a shelf item works for a user. The path the application actually takes is covered by the api/shelfapi cards below. The store is correct and its types are used; it simply has no caller.',
   },
   {
     file: 'src/__tests__/api/shelfapi.spec.ts',
