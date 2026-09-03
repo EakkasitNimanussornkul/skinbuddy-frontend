@@ -191,7 +191,13 @@ describe('src/api/products.ts', () => {
       expect(buildComparePath(null as never)).toBeNull()
     })
 
-    it('caps comparison at two products, matching the product_a_id and product_b_id the endpoint takes', () => {
+    it('documents the two-product limit that GET /products/compare imposes', () => {
+      // Documentation, not enforcement. Nothing in the application reads this
+      // constant since FE-DEF-11 removed Explore's multi-select; the limit is
+      // actually imposed by buildComparePath, which emits only `a` and `b`, and
+      // by both remaining callers picking exactly two products. Phrased as what
+      // it verifies rather than "caps comparison at two", which would claim an
+      // enforcement that no longer exists.
       expect(MAX_COMPARE_PRODUCTS).toBe(2)
     })
   })

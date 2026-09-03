@@ -94,8 +94,13 @@ export const pickTopRecommendations = <T extends { skin_match_score?: number | n
 /**
  * Comparison is a two-product operation. GET /products/compare takes exactly
  * product_a_id and product_b_id, and compare_two_products resolves exactly two.
- * Any selection UI must cap at this number rather than offer a capability the
- * engine does not have.
+ *
+ * Nothing reads this today. It was the cap on Explore's multi-select, which
+ * FE-DEF-11 removed as unreachable; the limit is now imposed by
+ * buildComparePath emitting only `a` and `b`, and by both remaining callers
+ * choosing exactly two products. Kept as the written statement of why the
+ * feature is two-product at all - a future selection UI must cap here rather
+ * than offer a capability the engine does not have.
  */
 export const MAX_COMPARE_PRODUCTS = 2
 
