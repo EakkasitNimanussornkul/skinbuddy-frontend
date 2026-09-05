@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyShelf, removeFromShelf } from '../api/shelfapi'
+import { getMyShelf, removeFromShelf, resolveShelfItemStatus } from '../api/shelfapi'
 import { resolveCatalogState } from '../api/products'
 import { useToast } from '../composables/useToast'
 
@@ -92,23 +92,13 @@ const filteredProducts = computed(() => {
     const brand = (item.products?.brand || '').toLowerCase()
     const itemCategory = (item.products?.category || '').toLowerCase()
 
-    let computedStatus = 'Unopened'
-    const state = item.usage_state || 'unopened'
-    const expDate = item.expiration_date
-
-    if (state === 'archived') {
-      computedStatus = 'Archived'
-    } else if (expDate) {
-      const today = new Date()
-      const expiration = new Date(expDate)
-      const daysLeft = Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 3600 * 24))
-
-      if (daysLeft < 0) computedStatus = 'Expired'
-      else if (daysLeft <= 30) computedStatus = 'Expiring Soon'
-      else computedStatus = state === 'active' ? 'In Routine' : 'Unopened'
-    } else {
-      computedStatus = state === 'active' ? 'In Routine' : 'Unopened'
-    }
+    // FE-DEF-16: this used to derive the status inline, consulting only the
+    // stored expiration date. ShelfCard additionally fell back to the opened
+    // date plus the period after opening, so an item holding one but no stored
+    // date showed "Expired" on the card while this filter called it "In
+    // Routine" - the Expired pill hid the item it is named after. One shared
+    // derivation now, so the two cannot disagree again.
+    const computedStatus = resolveShelfItemStatus(item)
 
     const query = searchQuery.value.toLowerCase()
     const matchesSearch = !query || name.includes(query) || brand.includes(query) || itemCategory.includes(query)
@@ -139,7 +129,11 @@ const executeDelete = async () => {
     myShelf.value = myShelf.value.filter(item => item.id !== deletedId)
     if (viewingItem.value?.id === deletedId) viewingItem.value = null
     itemToDelete.value = null
-    addToast('Product removed from active check', 'info')
+    // Matches ItemDetailsModal's wording for the same action. The two differed
+    // ("active check" vs "active routine check.") and UC-07 and UC-35 both
+    // quote the latter - the documents quote interface strings verbatim, so a
+    // difference here becomes a difference in the SRS. FE-DEF-17.
+    addToast('Product removed from active routine check.', 'info')
   } catch (error) {
     console.error(error)
     addToast('Failed to remove product', 'error')

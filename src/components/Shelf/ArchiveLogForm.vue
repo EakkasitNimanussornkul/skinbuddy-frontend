@@ -30,7 +30,10 @@ const executeArchive = async () => {
     emit('success')
   } catch (error) {
     console.error("Archive Failed:", error)
-    addToast('Failed to save archive entry. Check backend logs.', 'error')
+    // FE-DEF-17. "Check backend logs" was an instruction to a developer that
+    // reached production, at the end of the one flow where the user has just
+    // typed something. The diagnostic detail stays in the console.error above.
+    addToast("Couldn't save this archive entry. Please try again.", 'error')
   } finally {
     isSubmitting.value = false
   }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { markItemOpened, updateShelfStatus } from '../../api/shelfapi.ts'
+import { ref } from 'vue'
+import { markItemOpened } from '../../api/shelfapi.ts'
 import { useToast } from '../../composables/useToast.ts'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
 import type { ShelfItem } from '../../stores/shelfStore'
@@ -19,7 +19,8 @@ const activeEditPao = ref<number | null>(null)
 const optionsScrollFrame = ref<HTMLElement | null>(null)
 
 const paoOptions = [1, 3, 6, 9, 12, 18, 24, 36]
-const todayString = computed(() => new Date().toISOString().split('T')[0])
+// `todayString` lived here to feed the expiry picker's :min-date. Removed with
+// that binding - see the note beside the CustomDatePicker below (FE-DEF-19).
 
 const startEditingExpiration = () => {
   editExpirationDate.value = props.item.expiration_date || ''
@@ -34,6 +35,12 @@ const formatDate = (dateString: string | null) => {
   return `${day}/${month}/${year.slice(2)}`
 }
 
+// Counts from the item's OPENED date, deliberately - a period after opening is
+// defined from when the product was opened, so a product opened eight months
+// ago with a 3M period really did expire five months ago and the stored date
+// should say so. ProductConfigurator.setPAO counts from today instead, which is
+// right for its own context: at add time there is no opened date yet. The two
+// differ on purpose; FE-DEF-19 recorded that nothing said so.
 const setEditPAO = (months: number) => {
   if (!props.item?.opened_date) return
   activeEditPao.value = months
@@ -103,7 +110,13 @@ const handleStartPAO = async () => {
       'active',
       currentPao
     )
-    await updateShelfStatus(props.item.id, 'active')
+    // FE-DEF-20: a second `updateShelfStatus(id, 'active')` used to run here.
+    // PATCH /shelf/{item_id}/open already writes usage_state 'active'
+    // unconditionally (app/api/shelf.py:122), so it set the same column to the
+    // same value - and it opened a window where the first write could succeed
+    // and the second fail, leaving the item opened in the database while the
+    // screen still showed the unopened panel. Pressing "Start Product Life"
+    // again then reset the opened date to today, discarding the real one.
 
     // 🌟 Emit clone without direct prop mutation
     const updatedItem = {
@@ -167,7 +180,15 @@ const handleStartPAO = async () => {
           </button>
         </div>
 
-        <CustomDatePicker v-model="editExpirationDate" :min-date="todayString" />
+        <!-- No min-date here, unlike ProductConfigurator. FE-DEF-19: the period
+             buttons beside this picker count from the item's opened date and
+             can legitimately produce a past expiry for a product opened long
+             ago. Refusing past dates in the calendar while the buttons write
+             them is the divergence; the buttons are the correct half, so the
+             calendar allows what they can produce. Adding a product is
+             different - there is no opened date yet, so that picker keeps its
+             min-date. -->
+        <CustomDatePicker v-model="editExpirationDate" />
         <button @click="handleUpdateExpiration" class="w-full py-3 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-sm cursor-pointer">Save Date</button>
       </div>
     </div>

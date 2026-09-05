@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ItemBadge from '../Shelf/ItemBadge.vue'
+import { resolveExpiryDate } from '../../api/shelfapi'
 import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
@@ -19,17 +20,9 @@ const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText:
 
   const safePao = props.item.pao ? String(props.item.pao) : null
 
-  let targetDate: Date | null = null
-
-  if (props.item.expiration_date) {
-    targetDate = new Date(props.item.expiration_date)
-  } else if (props.item.opened_date && safePao) {
-    const months = parseInt(safePao)
-    if (!isNaN(months)) {
-      targetDate = new Date(props.item.opened_date)
-      targetDate.setMonth(targetDate.getMonth() + months)
-    }
-  }
+  // FE-DEF-16: shared with ShelfView's status filter, which used to derive this
+  // separately and without the opened-date fallback below.
+  const targetDate = resolveExpiryDate(props.item)
 
   const isOpened = Boolean(props.item.opened_date) || state === 'active'
 

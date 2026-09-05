@@ -83,11 +83,20 @@ const handleDateSelect = (date: Date) => {
 <template>
   <div class="relative w-full">
     <div class="relative flex items-center">
+      <!-- FE-DEF-18: readonly. This field accepted keystrokes and displayed
+           them, but nothing emitted update:modelValue from it - the only emit
+           is handleDateSelect, reached from the calendar grid. A user could
+           type a date, see it, save, and have the previously selected value
+           written instead. Readonly rather than parsing typed input, because a
+           typed date would also bypass isPastDate and the min-date rule the
+           calendar enforces. -->
       <input
         type="text"
+        readonly
         v-model="manualInput"
-        :placeholder="placeholder || 'YYYY-MM-DD'"
-        class="w-full bg-white dark:bg-brand-surface-dark border-2 border-stone-200 dark:border-stone-800 text-brand-text dark:text-stone-200 px-3 py-3 rounded-xl focus:outline-none focus:border-brand-primary dark:focus:border-brand-primary text-sm shadow-sm transition-all"
+        :placeholder="placeholder || 'Select a date'"
+        @click="isCalendarOpen = !isCalendarOpen"
+        class="w-full bg-white dark:bg-brand-surface-dark border-2 border-stone-200 dark:border-stone-800 text-brand-text dark:text-stone-200 px-3 py-3 rounded-xl focus:outline-none focus:border-brand-primary dark:focus:border-brand-primary text-sm shadow-sm transition-all cursor-pointer"
       />
       <button
         @click="isCalendarOpen = !isCalendarOpen"

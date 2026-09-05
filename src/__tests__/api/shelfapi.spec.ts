@@ -13,6 +13,9 @@ import {
   markItemOpened,
   updateShelfStatus,
   removeFromShelf,
+  resolveExpiryDate,
+  daysUntilExpiry,
+  resolveShelfItemStatus,
 } from '../../api/shelfapi'
 
 describe('src/api/shelfapi.ts', () => {
@@ -241,6 +244,92 @@ describe('src/api/shelfapi.ts', () => {
       await removeFromShelf('item-9')
 
       expect(apiClient.delete).toHaveBeenCalledWith('/shelf/item-9')
+    })
+  })
+
+  describe('resolveExpiryDate()', () => {
+    it('uses the stored expiration date when the item has one', () => {
+      const d = resolveExpiryDate({ expiration_date: '2027-03-01', opened_date: '2020-01-01', pao: 3 })
+
+      expect(d?.toISOString().slice(0, 10)).toBe('2027-03-01')
+    })
+
+    it('falls back to the opened date plus the period after opening when no date is stored', () => {
+      // FE-DEF-16: this branch existed in ShelfCard and was missing from
+      // ShelfView's status filter, so the two disagreed about the same item.
+      const d = resolveExpiryDate({ opened_date: '2026-01-15', pao: 3 })
+
+      expect(d?.toISOString().slice(0, 10)).toBe('2026-04-15')
+    })
+
+    it('accepts a period after opening given as a string such as "6"', () => {
+      const d = resolveExpiryDate({ opened_date: '2026-01-15', pao: '6' })
+
+      expect(d?.toISOString().slice(0, 10)).toBe('2026-07-15')
+    })
+
+    it('returns null when there is neither a stored date nor an opened date', () => {
+      expect(resolveExpiryDate({ pao: 6 })).toBeNull()
+    })
+
+    it('returns null when an opened date has no period after opening to add', () => {
+      expect(resolveExpiryDate({ opened_date: '2026-01-15', pao: null })).toBeNull()
+    })
+
+    it('returns null rather than an Invalid Date when a stored date cannot be parsed', () => {
+      expect(resolveExpiryDate({ expiration_date: 'not-a-date' })).toBeNull()
+    })
+  })
+
+  describe('daysUntilExpiry()', () => {
+    it('counts forward to an expiry still in the future', () => {
+      const days = daysUntilExpiry({ expiration_date: '2026-01-31' }, new Date('2026-01-01T00:00:00Z'))
+
+      expect(days).toBe(30)
+    })
+
+    it('returns a negative count once the expiry has passed', () => {
+      const days = daysUntilExpiry({ expiration_date: '2026-01-01' }, new Date('2026-03-01T00:00:00Z'))
+
+      expect(days).toBeLessThan(0)
+    })
+
+    it('returns null when no expiry can be determined, rather than treating it as expired', () => {
+      expect(daysUntilExpiry({ pao: 6 }, new Date('2026-01-01T00:00:00Z'))).toBeNull()
+    })
+  })
+
+  describe('resolveShelfItemStatus()', () => {
+    const now = new Date('2026-06-01T00:00:00Z')
+
+    it('reports an archived item as Archived whatever its dates say', () => {
+      const s = resolveShelfItemStatus({ usage_state: 'archived', expiration_date: '2020-01-01' }, now)
+
+      expect(s).toBe('Archived')
+    })
+
+    it('reports an item past its expiry as Expired', () => {
+      expect(resolveShelfItemStatus({ usage_state: 'active', expiration_date: '2026-01-01' }, now)).toBe('Expired')
+    })
+
+    it('reports an item within thirty days of expiry as Expiring Soon', () => {
+      expect(resolveShelfItemStatus({ usage_state: 'active', expiration_date: '2026-06-20' }, now)).toBe('Expiring Soon')
+    })
+
+    it('classifies an item by its opened date and period when no expiry date is stored', () => {
+      // The case FE-DEF-16 was about: the card called this Expired while the
+      // filter called it In Routine, so the Expired pill hid it.
+      const s = resolveShelfItemStatus({ usage_state: 'active', opened_date: '2026-01-01', pao: 3 }, now)
+
+      expect(s).toBe('Expired')
+    })
+
+    it('reports an opened item with no determinable expiry as In Routine', () => {
+      expect(resolveShelfItemStatus({ usage_state: 'active' }, now)).toBe('In Routine')
+    })
+
+    it('reports an unopened item with no determinable expiry as Unopened', () => {
+      expect(resolveShelfItemStatus({ usage_state: 'unopened' }, now)).toBe('Unopened')
     })
   })
 })
