@@ -23,6 +23,10 @@ const loadComparison = async () => {
   const slugB = route.query.b as string
 
   if (!slugA || !slugB) {
+    // Cleared here for the same reason as the catch below: this branch sets an
+    // error without making a request, so anything already on screen belongs to
+    // a comparison the address no longer describes.
+    compareData.value = null
     errorMsg.value = "Please select two formulations from the registry to run a side-by-side diagnostic check."
     isLoading.value = false
     return
@@ -38,6 +42,13 @@ const loadComparison = async () => {
     compareData.value = res
   } catch (err: any) {
     console.error("Comparison analysis error:", err)
+    // FE-DEF-15: cleared, not kept. The error panel below already branches on
+    // errorMsg, but the page title and the breadcrumb bar do not - they read
+    // compareData directly, so a failed re-request left them naming the
+    // previous pair above a failure message. Clearing fixes both without either
+    // needing to know errorMsg exists, and matches what FE-DEF-09 and
+    // FE-DEF-13 settled on for the same trade.
+    compareData.value = null
     errorMsg.value = err.message || "Failed to execute chemical comparison matrix analytics."
     addToast("Could not load formula comparison layers.", "error")
   } finally {

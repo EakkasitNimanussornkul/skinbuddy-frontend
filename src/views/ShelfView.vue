@@ -72,6 +72,15 @@ const handleModalRefresh = async () => {
     }
   } catch (error) {
     console.error("Failed to refresh modal state:", error)
+    // FE-DEF-14. The edit itself already succeeded - this is the reload that
+    // follows it - so the two facts are reported separately. Collapsing them
+    // into "something went wrong" would be worse than the silence this
+    // replaces, because it would suggest the change had not been saved.
+    //
+    // Reopening the modal does NOT recover: getMyShelf() threw, so myShelf
+    // still holds the pre-edit rows and viewingItem is read back from it. Only
+    // a fresh load does, which is what the copy asks for.
+    addToast('Change saved, but the shelf could not be reloaded. Refresh to see it.', 'error')
   }
 }
 
