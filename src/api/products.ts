@@ -125,6 +125,39 @@ export const buildComparePath = (slugs: string[]): string | null => {
 }
 
 /**
+ * `unavailable` no score was computed - anonymous request, or the backend
+ *               could not evaluate this product
+ * `strong`      >= 85
+ * `moderate`    >= 60
+ * `weak`        below 60
+ */
+export type MatchBand = 'unavailable' | 'strong' | 'moderate' | 'weak'
+
+/** Boundaries, named so the three display components cannot drift apart. */
+export const MATCH_BAND_STRONG = 85
+export const MATCH_BAND_MODERATE = 60
+
+/**
+ * Classify a skin match score for display.
+ *
+ * Extracted because three components render this score and each carried its own
+ * copy of the thresholds. ProductHeroSection carried none at all and painted
+ * every non-null score the same confident emerald as a perfect match, which is
+ * FE-DEF-12. Components map the band to their own palette; only the boundaries
+ * live here.
+ *
+ * A non-numeric score is `unavailable`, never `weak`. "Not computed" is not a
+ * bad match - the same distinction pickTopRecommendations and evaluateSafety
+ * both turn on.
+ */
+export const resolveMatchBand = (score: number | null | undefined): MatchBand => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return 'unavailable'
+  if (score >= MATCH_BAND_STRONG) return 'strong'
+  if (score >= MATCH_BAND_MODERATE) return 'moderate'
+  return 'weak'
+}
+
+/**
  * `loading`  the request is in flight
  * `failed`   the request did not complete
  * `empty`    the catalogue arrived and nothing matched the active filters

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { resolveMatchBand } from '../../api/products'
 
 const props = defineProps<{
   product: any
@@ -7,20 +8,24 @@ const props = defineProps<{
 
 const emit = defineEmits(['inspect'])
 
-// Semantic match info using your color palette
+// Semantic match info using your color palette. Thresholds come from
+// resolveMatchBand rather than being repeated here - three components render
+// this score and each used to carry its own copy (FE-DEF-12).
 const matchInfo = computed(() => {
   const score = props.product?.skin_match_score
-  if (score === null || score === undefined) {
+  const band = resolveMatchBand(score)
+
+  if (band === 'unavailable') {
     return {
       label: 'Score Unavailable',
       class: 'bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-brand-surface-border dark:border-stone-700'
     }
   }
-  if (score >= 85) return {
+  if (band === 'strong') return {
     label: `${Math.round(score)}% Match`,
     class: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
   }
-  if (score >= 60) return {
+  if (band === 'moderate') return {
     label: `${Math.round(score)}% Match`,
     class: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
   }

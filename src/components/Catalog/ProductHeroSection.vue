@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
+import { resolveMatchBand } from '../../api/products'
 import {
   resolveSafety,
   showsDuplicates,
@@ -35,6 +36,65 @@ const productDescription = computed(() => {
   }
   return 'Active daily skincare formulation.'
 })
+
+// FE-DEF-12: this card had no banding at all - background, border, heading,
+// score ring, divider and reason text were emerald for any non-null score, so a
+// 20% match read exactly as confidently as a 95% one. Thresholds come from
+// resolveMatchBand so this cannot drift from ExploreProductCard and
+// CompareIdentityHeader again.
+const matchBand = computed(() => {
+  const band = resolveMatchBand(props.product?.skin_match_score)
+
+  if (band === 'strong') {
+    return {
+      card: 'bg-emerald-500/10 dark:bg-emerald-950/20 border-emerald-500/20 dark:border-emerald-800/40',
+      heading: 'text-emerald-900 dark:text-emerald-200',
+      body: 'text-emerald-700 dark:text-emerald-400',
+      ring: 'border-emerald-500 text-emerald-800 dark:text-emerald-200',
+      divider: 'border-emerald-500/20 dark:border-emerald-800/40',
+      reason: 'text-emerald-900 dark:text-emerald-200',
+      dot: 'bg-emerald-500',
+    }
+  }
+
+  if (band === 'moderate') {
+    return {
+      card: 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-500/20 dark:border-amber-800/40',
+      heading: 'text-amber-900 dark:text-amber-200',
+      body: 'text-amber-700 dark:text-amber-400',
+      ring: 'border-amber-500 text-amber-800 dark:text-amber-200',
+      divider: 'border-amber-500/20 dark:border-amber-800/40',
+      reason: 'text-amber-900 dark:text-amber-200',
+      dot: 'bg-amber-500',
+    }
+  }
+
+  if (band === 'weak') {
+    return {
+      card: 'bg-semantic-error/5 dark:bg-semantic-error/10 border-semantic-error/20',
+      heading: 'text-semantic-error',
+      body: 'text-semantic-error/80',
+      ring: 'border-semantic-error text-semantic-error',
+      divider: 'border-semantic-error/20',
+      reason: 'text-brand-text dark:text-stone-200',
+      dot: 'bg-semantic-error',
+    }
+  }
+
+  // Unavailable. Neutral, because a score that was never computed must not be
+  // painted as any verdict - good or bad.
+  return {
+    card: 'bg-brand-bg-light dark:bg-stone-900 border-brand-surface-border dark:border-stone-800',
+    heading: 'text-brand-text dark:text-stone-200',
+    body: 'text-brand-text-muted',
+    ring: 'border-stone-300 dark:border-stone-700 text-brand-text-muted',
+    divider: 'border-brand-surface-border dark:border-stone-800',
+    reason: 'text-brand-text-muted dark:text-stone-400',
+    dot: 'bg-brand-text-muted',
+  }
+})
+
+const hasMatchScore = computed(() => resolveMatchBand(props.product?.skin_match_score) !== 'unavailable')
 
 const isConfiguringAdd = ref(false)
 const isSaving = ref(false)
@@ -176,22 +236,22 @@ const handleCommitToShelf = async () => {
       </div>
 
       <!-- Match Card: Authenticated User -->
-      <div v-if="authStore.isAuthenticated" class="bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-800/40 rounded-3xl p-6 space-y-4 shadow-2xs">
+      <div v-if="authStore.isAuthenticated" :class="['border-2 rounded-3xl p-6 space-y-4 shadow-2xs transition-colors', matchBand.card]">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <h4 class="text-base font-black text-emerald-900 dark:text-emerald-200">
-              {{ product.skin_match_score !== null && product.skin_match_score !== undefined ? 'Skin Match Compatibility' : 'Compatibility Status' }}
+            <h4 :class="['text-base font-black', matchBand.heading]">
+              {{ hasMatchScore ? 'Skin Match Compatibility' : 'Compatibility Status' }}
             </h4>
-            <p class="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
-              {{ product.skin_match_score !== null && product.skin_match_score !== undefined ? 'Compatibility evaluation for your active Baumann skin profile.' : 'Unable to determine personalized compatibility for this item.' }}
+            <p :class="['text-xs mt-0.5', matchBand.body]">
+              {{ hasMatchScore ? 'Compatibility evaluation for your active Baumann skin profile.' : 'Unable to determine personalized compatibility for this item.' }}
             </p>
           </div>
 
           <!-- Dynamic Score vs Failure Circle -->
           <div class="flex-shrink-0">
             <div
-              v-if="product.skin_match_score !== null && product.skin_match_score !== undefined"
-              class="w-14 h-14 rounded-full border-4 border-emerald-500 flex items-center justify-center font-mono font-black text-lg text-emerald-800 dark:text-emerald-200 bg-white dark:bg-stone-900 shadow-sm"
+              v-if="hasMatchScore"
+              :class="['w-14 h-14 rounded-full border-4 flex items-center justify-center font-mono font-black text-lg bg-white dark:bg-stone-900 shadow-sm', matchBand.ring]"
             >
               {{ Math.round(product.skin_match_score) }}%
             </div>
@@ -206,10 +266,10 @@ const handleCommitToShelf = async () => {
         </div>
 
         <!-- Match Reasons or Failure Explanation -->
-        <div class="space-y-2 pt-3 border-t border-emerald-500/20 dark:border-emerald-800/40 text-xs">
-          <template v-if="product.skin_match_score !== null && product.skin_match_score !== undefined">
-            <div v-for="(reason, i) in (product.match_reasons || [])" :key="i" class="flex items-start gap-2.5 text-emerald-900 dark:text-emerald-200">
-              <span class="w-2.5 h-2.5 rounded-full bg-brand-primary mt-1 flex-shrink-0"></span>
+        <div :class="['space-y-2 pt-3 border-t text-xs', matchBand.divider]">
+          <template v-if="hasMatchScore">
+            <div v-for="(reason, i) in (product.match_reasons || [])" :key="i" :class="['flex items-start gap-2.5', matchBand.reason]">
+              <span :class="['w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0', matchBand.dot]"></span>
               <span class="leading-relaxed">{{ reason }}</span>
             </div>
           </template>

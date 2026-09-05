@@ -17,6 +17,7 @@ import {
   pickTopRecommendations,
   buildComparePath,
   resolveCatalogState,
+  resolveMatchBand,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
   getProductById,
@@ -199,6 +200,42 @@ describe('src/api/products.ts', () => {
       // it verifies rather than "caps comparison at two", which would claim an
       // enforcement that no longer exists.
       expect(MAX_COMPARE_PRODUCTS).toBe(2)
+    })
+  })
+
+  describe('resolveMatchBand()', () => {
+    it('reports a score of 85 or above as a strong match', () => {
+      expect(resolveMatchBand(92)).toBe('strong')
+      expect(resolveMatchBand(85)).toBe('strong')
+    })
+
+    it('reports a score from 60 up to but not including 85 as a moderate match', () => {
+      expect(resolveMatchBand(84.9)).toBe('moderate')
+      expect(resolveMatchBand(60)).toBe('moderate')
+    })
+
+    it('reports a score below 60 as a weak match', () => {
+      expect(resolveMatchBand(59.9)).toBe('weak')
+      expect(resolveMatchBand(20)).toBe('weak')
+    })
+
+    it('reports a missing score as unavailable rather than as a weak match', () => {
+      // FE-DEF-12's sibling rule: "not computed" is not "scored badly". An
+      // anonymous request carries no score, and painting that red would report
+      // a verdict nobody produced.
+      expect(resolveMatchBand(null)).toBe('unavailable')
+      expect(resolveMatchBand(undefined)).toBe('unavailable')
+    })
+
+    it('reports a non-numeric or non-finite score as unavailable', () => {
+      expect(resolveMatchBand(NaN)).toBe('unavailable')
+      expect(resolveMatchBand('85' as never)).toBe('unavailable')
+    })
+
+    it('places a score of zero in the weak band, since zero was computed', () => {
+      // Distinct from the case above: 0 is a real result, null is the absence
+      // of one. Treating them alike is the confusion this function exists for.
+      expect(resolveMatchBand(0)).toBe('weak')
     })
   })
 
