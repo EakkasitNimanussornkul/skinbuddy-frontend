@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyShelf, removeFromShelf } from '../api/shelfapi'
+import { resolveCatalogState } from '../api/products'
 import { useToast } from '../composables/useToast'
 
 import ShelfCard from '../components/Shelf/ShelfCard.vue'
@@ -16,6 +17,9 @@ import type { ShelfItem } from '../stores/shelfStore'
 const router = useRouter()
 const myShelf = ref<ShelfItem[]>([])
 const isLoading = ref(true)
+// Tracked separately from myShelf, because an empty array cannot say whether
+// the shelf is empty or was never received - FE-DEF-13.
+const shelfFailed = ref(false)
 const isAddModalOpen = ref(false)
 const viewingItem = ref<ShelfItem | null>(null)
 const itemToDelete = ref<ShelfItem | null>(null)
@@ -38,10 +42,16 @@ const dynamicCategories = computed(() => {
 
 const fetchShelf = async () => {
   isLoading.value = true
+  shelfFailed.value = false
   try {
     myShelf.value = await getMyShelf()
   } catch (error) {
     console.error("Failed to load inventory:", error)
+    // Cleared, not kept. A failed reload would otherwise leave the previous
+    // shelf on screen as though it were current - the same trade FE-DEF-09
+    // settled for the catalogue.
+    myShelf.value = []
+    shelfFailed.value = true
     addToast('Failed to load checked inventory', 'error')
   } finally {
     isLoading.value = false
@@ -100,6 +110,18 @@ const filteredProducts = computed(() => {
   })
 })
 
+// Same four-state decision the catalogue makes, and reused rather than
+// reimplemented so the ordering cannot drift: `failed` is resolved before
+// `empty`, because a request that never completed says nothing about how many
+// items the shelf holds. The function's name is catalogue-flavoured for
+// historical reasons; the logic is list-generic.
+// Counts the whole shelf, not filteredProducts: this decides whether the user
+// owns anything at all. "Nothing matches your filters" is a separate, inner
+// state and is unaffected.
+const shelfState = computed(() =>
+  resolveCatalogState(isLoading.value, shelfFailed.value, myShelf.value.length),
+)
+
 const executeDelete = async () => {
   if (!itemToDelete.value) return
   const deletedId = itemToDelete.value.id
@@ -135,12 +157,36 @@ const executeDelete = async () => {
       />
 
       <!-- Custom Loading Overlay -->
-      <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 text-brand-text-muted animate-pulse">
+      <div v-if="shelfState === 'loading'" class="flex flex-col items-center justify-center py-20 text-brand-text-muted animate-pulse">
         <div class="w-10 h-10 border-4 border-brand-surface-border border-t-brand-primary rounded-full animate-spin mb-3"></div>
         <p class="text-xs font-bold uppercase tracking-widest text-brand-primary">Running Safety Check...</p>
       </div>
 
-      <div v-else-if="myShelf.length > 0" class="flex flex-col gap-6 w-full">
+      <!-- Retrieval failure. Reported before the empty state, because a request
+           that never completed cannot tell us the shelf is empty - and telling
+           a user with a full shelf that it is empty invites them to add the
+           products again. FE-DEF-13. -->
+      <div v-else-if="shelfState === 'failed'" class="py-20 flex flex-col items-center text-center gap-4">
+        <div class="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center border border-amber-500/30">
+          <svg class="w-7 h-7 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="space-y-1 max-w-sm">
+          <h4 class="text-lg font-serif font-bold text-brand-text dark:text-white">Shelf Unavailable</h4>
+          <p class="text-xs text-brand-text-muted leading-relaxed">
+            We couldn't reach your storage records, so nothing is shown below. This does not mean your shelf is empty &mdash; try again in a moment.
+          </p>
+        </div>
+        <button
+          @click="fetchShelf()"
+          class="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer transition-all active:scale-95"
+        >
+          Retry Retrieval
+        </button>
+      </div>
+
+      <div v-else-if="shelfState === 'results'" class="flex flex-col gap-6 w-full">
         <!-- Interactive Search Input -->
         <div class="relative">
           <svg class="absolute inset-y-0 left-4 my-auto w-5 h-5 text-brand-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
