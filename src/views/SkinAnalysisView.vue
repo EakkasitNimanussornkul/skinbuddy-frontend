@@ -23,8 +23,14 @@ function mondayOf(d: Date): Date {
   return copy
 }
 
+// Build the key from LOCAL date parts. toISOString() converts to UTC first, so
+// east-of-UTC timezones get the previous day and the key never matches the
+// week_start the backend stored.
 function iso(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 onMounted(async () => {
@@ -77,11 +83,22 @@ function topSymptom(entry: any): string | null {
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans transition-colors duration-300 pb-28 pt-6">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 flex flex-col gap-6 w-full">
 
-      <!-- Header -->
+      <!-- Header. This page is reached from the routine page, so back returns there. -->
       <div class="flex items-center justify-between gap-3">
-        <div>
-          <h1 class="text-2xl sm:text-3xl font-serif font-bold dark:text-white">Skin Progress</h1>
-          <p class="text-xs text-brand-text-muted mt-0.5">Your week-over-week check-in history.</p>
+        <div class="flex items-center gap-3 min-w-0">
+          <button
+            @click="router.push('/routine')"
+            aria-label="Back to routine"
+            class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 text-brand-text-muted hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm active:scale-95 cursor-pointer"
+          >
+            <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div class="min-w-0">
+            <h1 class="text-2xl sm:text-3xl font-serif font-bold dark:text-white">Skin Progress</h1>
+            <p class="text-xs text-brand-text-muted mt-0.5">Your week-over-week check-in history.</p>
+          </div>
         </div>
         <button
           @click="router.push('/checkin')"
