@@ -43,9 +43,15 @@ export const removeRoutineStep = async (stepId: string) => {
   return response.data
 }
 
-// UC-19: edit a step's frequency
-export const updateStepFrequency = async (stepId: string, frequency: string) => {
-  const response = await apiClient.patch(`/routine/steps/${stepId}/frequency`, { frequency })
+// UC-19: edit a step's schedule — cadence, and optionally which session it runs in
+export const updateStepFrequency = async (
+  stepId: string,
+  frequency: string,
+  timeOfDay?: string,
+) => {
+  const payload: { frequency: string; time_of_day?: string } = { frequency }
+  if (timeOfDay) payload.time_of_day = timeOfDay
+  const response = await apiClient.patch(`/routine/steps/${stepId}/frequency`, payload)
   return response.data
 }
 
@@ -69,5 +75,29 @@ export const uncompleteStep = async (stepId: string, periodKey?: string) => {
     ? `/routine/steps/${stepId}/complete?period_key=${periodKey}`
     : `/routine/steps/${stepId}/complete`
   const response = await apiClient.delete(url)
+  return response.data
+}
+
+// UC-27: routine completion history grouped by day
+export interface AdherenceDay {
+  status: 'complete' | 'partial' | 'missed' | 'none'
+  due: number
+  done: number
+  completed: { step_id: string | null; product_name: string }[]
+  missed: { step_id: string | null; product_name: string }[]
+  also_completed: { step_id: string | null; product_name: string }[]
+}
+
+export interface AdherenceResponse {
+  range: { from: string; to: string }
+  total_steps: number
+  streak: number
+  adherence_pct: number
+  has_history: boolean
+  days: Record<string, AdherenceDay>
+}
+
+export const getAdherence = async (weeks = 26): Promise<AdherenceResponse> => {
+  const response = await apiClient.get(`/routine/adherence?weeks=${weeks}`)
   return response.data
 }
