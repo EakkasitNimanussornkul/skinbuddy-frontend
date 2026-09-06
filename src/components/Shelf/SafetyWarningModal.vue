@@ -1,24 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { watch } from 'vue'
+import { useClampedText } from '../../composables/useClampedText'
 
-defineProps<{
+const props = defineProps<{
   warnings: any[]
 }>()
 
 const emit = defineEmits(['cancel', 'proceed'])
 
-// Track which warnings are currently expanded
-const expandedWarnings = ref(new Set<number>())
+// FE-DEF-25: the toggle below was rendered only for messages longer than 90
+// characters, a stand-in for "this is more than two lines" that has no
+// relationship to how many lines the text occupies. At this modal's width an
+// 86-character warning wraps to four lines and was clamped to two with the
+// toggle hidden, so half of a safety warning could not be reached at all. The
+// same measurement the inspection card uses now decides it.
+const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
-const toggleExpand = (index: number) => {
-  const newSet = new Set(expandedWarnings.value)
-  if (newSet.has(index)) {
-    newSet.delete(index)
-  } else {
-    newSet.add(index)
-  }
-  expandedWarnings.value = newSet
-}
+watch(() => props.warnings, remeasure)
 
 // Dynamically style the badge based on the backend severity level
 const getSeverityBadge = (severity?: string) => {
@@ -59,19 +57,20 @@ const getSeverityBadge = (severity?: string) => {
 
           <div>
             <p
+              :ref="(el) => setElement(index, el)"
               class="text-sm font-medium text-brand-text dark:text-stone-300 leading-relaxed transition-all duration-300"
-              :class="{ 'line-clamp-2': !expandedWarnings.has(index) }"
+              :class="{ 'line-clamp-2': !expanded[index] }"
             >
               {{ warning.message }}
             </p>
 
             <button
-              v-if="warning.message?.length > 90"
-              @click="toggleExpand(index)"
+              v-if="overflowing[index]"
+              @click="toggle(index)"
               class="text-xs font-bold text-brand-primary hover:text-brand-primary-hover mt-2 transition-colors flex items-center gap-1"
             >
-              {{ expandedWarnings.has(index) ? 'Show less' : 'Read more' }}
-              <svg :class="['w-3 h-3 transition-transform', expandedWarnings.has(index) ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+              {{ expanded[index] ? 'Show less' : 'Read more' }}
+              <svg :class="['w-3 h-3 transition-transform', expanded[index] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
             </button>
           </div>
 

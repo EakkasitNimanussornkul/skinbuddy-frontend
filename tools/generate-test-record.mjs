@@ -75,6 +75,14 @@ const SPEC_MAP = [
     note: "Pins FE-DEF-21: every opened date, expiration date and picker floor in the shelf was computed with new Date().toISOString().split('T')[0], which reads the calendar day in UTC and so returns yesterday for the whole local morning in UTC+7. The assertions are written against the machine's own local calendar rather than fixed strings, so they hold in any zone the project is marked in.",
   },
   {
+    file: 'src/__tests__/composables/useClampedText.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'composables/useClampedText',
+    prerequisite:
+      'The overflow comparison called directly with two heights. No component mounting, no DOM measurement and no network access.',
+    note: 'Pins FE-DEF-24 and FE-DEF-25: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered. The measurement around it needs a mounted component, which this project has no layer for, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser.',
+  },
+  {
     file: 'src/__tests__/api/products.spec.ts',
     feature: '#4 Search and compare',
     module: 'api/products',

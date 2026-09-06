@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { watch } from 'vue'
+import { useClampedText } from '../../composables/useClampedText'
 
 export interface WarningAlert {
   alert_type: string
@@ -7,7 +8,7 @@ export interface WarningAlert {
   message: string
 }
 
-defineProps<{
+const props = defineProps<{
   warnings: WarningAlert[]
   isLoading?: boolean
   // Distinct from `warnings: []`. An empty list means the scan ran and found
@@ -15,15 +16,17 @@ defineProps<{
   scanFailed?: boolean
 }>()
 
-const expandedIndices = ref<Record<number, boolean>>({})
+// FE-DEF-24: the toggle below used to render for every warning. A one-line
+// message such as "Use at night." is not clamped by anything, so its "Read
+// more" opened nothing and its "Read less" closed nothing. Whether a message
+// overflows two lines depends on the font and the width it is read at, not on
+// the message, so it is measured.
+const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
-const toggleExpand = (idx: number) => {
-  expandedIndices.value[idx] = !expandedIndices.value[idx]
-}
+watch(() => props.warnings, remeasure)
 </script>
 
 <template>
-  <!-- 🌟 ENHANCED ANIMATED ANALYZING STATE 🌟 -->
   <div v-if="isLoading" class="p-5 rounded-3xl bg-stone-900/40 border border-brand-primary/20 backdrop-blur-sm shadow-sm relative overflow-hidden">
     <!-- Ambient Pulse Glow Effect -->
     <div class="absolute -inset-x-20 -top-20 h-40 bg-brand-primary/10 rounded-full blur-2xl animate-pulse"></div>
@@ -87,17 +90,21 @@ const toggleExpand = (idx: number) => {
         </div>
 
         <!-- Alert Message Body -->
-        <p :class="['text-xs sm:text-sm font-medium text-stone-200 leading-relaxed transition-all', expandedIndices[idx] ? '' : 'line-clamp-2']">
+        <p
+          :ref="(el) => setElement(idx, el)"
+          :class="['text-xs sm:text-sm font-medium text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
+        >
           {{ warning.message }}
         </p>
 
-        <!-- Read More Toggle -->
+        <!-- Read More Toggle: only when there is more to read (FE-DEF-24) -->
         <button
-          @click="toggleExpand(idx)"
+          v-if="overflowing[idx]"
+          @click="toggle(idx)"
           class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline cursor-pointer pt-0.5"
         >
-          <span>{{ expandedIndices[idx] ? 'Read less' : 'Read more' }}</span>
-          <svg :class="['w-3 h-3 transition-transform', expandedIndices[idx] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <span>{{ expanded[idx] ? 'Read less' : 'Read more' }}</span>
+          <svg :class="['w-3 h-3 transition-transform', expanded[idx] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
