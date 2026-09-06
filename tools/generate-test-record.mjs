@@ -80,7 +80,7 @@ const SPEC_MAP = [
     module: 'composables/useClampedText',
     prerequisite:
       'The overflow comparison called directly with two heights. No component mounting, no DOM measurement and no network access.',
-    note: 'Pins FE-DEF-24 and FE-DEF-25: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered. The measurement around it needs a mounted component, which this project has no layer for, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser.',
+    note: 'Pins FE-DEF-26 and FE-DEF-27: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered. The measurement around it needs a mounted component, which this project has no layer for, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser.',
   },
   {
     file: 'src/__tests__/api/products.spec.ts',

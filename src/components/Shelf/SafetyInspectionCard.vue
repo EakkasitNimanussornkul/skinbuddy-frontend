@@ -16,7 +16,7 @@ const props = defineProps<{
   scanFailed?: boolean
 }>()
 
-// FE-DEF-24: the toggle below used to render for every warning. A one-line
+// FE-DEF-26: the toggle below used to render for every warning. A one-line
 // message such as "Use at night." is not clamped by anything, so its "Read
 // more" opened nothing and its "Read less" closed nothing. Whether a message
 // overflows two lines depends on the font and the width it is read at, not on
@@ -97,7 +97,7 @@ watch(() => props.warnings, remeasure)
           {{ warning.message }}
         </p>
 
-        <!-- Read More Toggle: only when there is more to read (FE-DEF-24) -->
+        <!-- Read More Toggle: only when there is more to read (FE-DEF-26) -->
         <button
           v-if="overflowing[idx]"
           @click="toggle(idx)"

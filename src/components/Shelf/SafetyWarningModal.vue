@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['cancel', 'proceed'])
 
-// FE-DEF-25: the toggle below was rendered only for messages longer than 90
+// FE-DEF-27: the toggle below was rendered only for messages longer than 90
 // characters, a stand-in for "this is more than two lines" that has no
 // relationship to how many lines the text occupies. At this modal's width an
 // 86-character warning wraps to four lines and was clamped to two with the
