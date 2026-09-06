@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import KeyActivesGrid from './KeyActivesGrid.vue'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
+import { addMonthsAsDateString, toLocalDateString } from '../../api/dates'
 
 const props = defineProps<{
   product: any
@@ -16,13 +17,14 @@ const expirationDate = ref('')
 const showPaoTooltip = ref(false)
 
 const paoOptions = [1, 3, 6, 9, 12, 18, 24, 36]
-const todayString = computed(() => new Date().toISOString().split('T')[0])
+// Read in the local calendar, not through toISOString(). Under the old form
+// this floor sat a day early for the whole local morning east of UTC, so the
+// picker offered yesterday as a valid expiry date - see api/dates.ts.
+const todayString = computed(() => toLocalDateString())
 
 const setPAO = (months: number) => {
   selectedPao.value = months
-  const d = new Date()
-  d.setMonth(d.getMonth() + months)
-  expirationDate.value = d.toISOString().split('T')[0] ?? ''
+  expirationDate.value = addMonthsAsDateString(new Date(), months)
 }
 
 const handleSave = () => {

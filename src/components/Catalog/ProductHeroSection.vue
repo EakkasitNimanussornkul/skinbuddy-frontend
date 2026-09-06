@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import { resolveMatchBand } from '../../api/products'
+import { toLocalDateString } from '../../api/dates'
 import {
   resolveSafety,
   showsDuplicates,
@@ -101,7 +102,10 @@ const isSaving = ref(false)
 const isOpened = ref(true)
 const selectedPao = ref('12M')
 const paoOptions = ['3M', '6M', '12M', '18M', '24M', '36M']
-const customDate = ref(new Date().toISOString().split('T')[0])
+// The opened_date this screen sends. Local calendar day, not the UTC one -
+// toISOString() recorded the product as opened yesterday for the whole local
+// morning east of UTC, which then shifted every expiry derived from it.
+const customDate = ref(toLocalDateString())
 
 const isSafetyModalOpen = ref(false)
 const showWarningModal = ref(false)

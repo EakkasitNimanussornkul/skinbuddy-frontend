@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { toLocalDateString, parseLocalDate } from '../../api/dates'
 
 const props = defineProps<{
   modelValue: string | null
@@ -14,22 +15,17 @@ const manualInput = ref('')
 const selectedDate = ref<Date | null>(null)
 const currentMonthView = ref(new Date())
 
-const formatDateForInput = (date: Date) => {
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
+// Was `new Date(newVal)`, which reads "2026-09-06" as UTC midnight and so lands
+// on the previous day in any zone behind UTC - the picker would open on, and
+// highlight, a day either side of the one actually stored. parseLocalDate reads
+// it as the calendar day it is.
 watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    const d = new Date(newVal)
-    if (!isNaN(d.getTime())) {
-      selectedDate.value = d
-      manualInput.value = formatDateForInput(d)
-      currentMonthView.value = new Date(d.getFullYear(), d.getMonth(), 1)
-    }
-  } else {
+  const d = parseLocalDate(newVal)
+  if (d) {
+    selectedDate.value = d
+    manualInput.value = toLocalDateString(d)
+    currentMonthView.value = new Date(d.getFullYear(), d.getMonth(), 1)
+  } else if (!newVal) {
     selectedDate.value = null
     manualInput.value = ''
   }
@@ -59,9 +55,8 @@ const calendarGrid = computed(() => {
 })
 
 const isPastDate = (date: Date) => {
-  if (!props.minDate) return false
-  const min = new Date(props.minDate + 'T00:00:00')
-  min.setHours(0,0,0,0)
+  const min = parseLocalDate(props.minDate)
+  if (!min) return false
   return date.getTime() < min.getTime()
 }
 
@@ -75,7 +70,7 @@ const prevMonth = () => currentMonthView.value = new Date(currentMonthView.value
 
 const handleDateSelect = (date: Date) => {
   if (isPastDate(date)) return
-  emit('update:modelValue', formatDateForInput(date))
+  emit('update:modelValue', toLocalDateString(date))
   isCalendarOpen.value = false
 }
 </script>

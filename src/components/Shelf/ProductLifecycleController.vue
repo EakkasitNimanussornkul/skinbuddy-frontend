@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { markItemOpened } from '../../api/shelfapi.ts'
+import { addMonthsAsDateString, parseLocalDate, toLocalDateString } from '../../api/dates.ts'
 import { useToast } from '../../composables/useToast.ts'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
 import type { ShelfItem } from '../../stores/shelfStore'
@@ -19,8 +20,9 @@ const activeEditPao = ref<number | null>(null)
 const optionsScrollFrame = ref<HTMLElement | null>(null)
 
 const paoOptions = [1, 3, 6, 9, 12, 18, 24, 36]
-// `todayString` lived here to feed the expiry picker's :min-date. Removed with
-// that binding - see the note beside the CustomDatePicker below (FE-DEF-19).
+// Feeds the expiry picker's :min-date. Read in the local calendar, not through
+// toISOString() - see api/dates.ts.
+const todayString = computed(() => toLocalDateString())
 
 const startEditingExpiration = () => {
   editExpirationDate.value = props.item.expiration_date || ''
@@ -36,17 +38,21 @@ const formatDate = (dateString: string | null) => {
 }
 
 // Counts from the item's OPENED date, deliberately - a period after opening is
-// defined from when the product was opened, so a product opened eight months
-// ago with a 3M period really did expire five months ago and the stored date
-// should say so. ProductConfigurator.setPAO counts from today instead, which is
-// right for its own context: at add time there is no opened date yet. The two
-// differ on purpose; FE-DEF-19 recorded that nothing said so.
+// defined from when the product was opened. ProductConfigurator.setPAO counts
+// from today instead, which is right for its own context: at add time there is
+// no opened date yet. The two differ on purpose; FE-DEF-19 recorded that
+// nothing said so.
+//
+// STILL OPEN, and the remaining half of FE-DEF-19: for a product opened longer
+// ago than the period, this computes a date in the past - which the calendar
+// beside it now refuses again. The button is telling the truth (that product
+// really did expire) and the calendar is enforcing the rule the panel is meant
+// to enforce; reconciling them needs a product decision, not a code change.
 const setEditPAO = (months: number) => {
-  if (!props.item?.opened_date) return
+  const opened = parseLocalDate(props.item?.opened_date)
+  if (!opened) return
   activeEditPao.value = months
-  const d = new Date(props.item.opened_date)
-  d.setMonth(d.getMonth() + months)
-  editExpirationDate.value = d.toISOString().split('T')[0] ?? ''
+  editExpirationDate.value = addMonthsAsDateString(opened, months)
 }
 
 const handleHorizontalWheel = (event: WheelEvent) => {
@@ -92,14 +98,12 @@ const handleUpdateExpiration = async () => {
 
 const handleStartPAO = async () => {
   const today = new Date()
-  const openedDateStr = today.toISOString().split('T')[0] ?? ''
+  const openedDateStr = toLocalDateString(today)
   let expDateStr = null
   const currentPao = props.item.pao ? parseInt(String(props.item.pao)) : null
 
   if (currentPao) {
-    const expDate = new Date()
-    expDate.setMonth(expDate.getMonth() + currentPao)
-    expDateStr = expDate.toISOString().split('T')[0]
+    expDateStr = addMonthsAsDateString(today, currentPao)
   }
 
   try {
@@ -180,15 +184,15 @@ const handleStartPAO = async () => {
           </button>
         </div>
 
-        <!-- No min-date here, unlike ProductConfigurator. FE-DEF-19: the period
-             buttons beside this picker count from the item's opened date and
-             can legitimately produce a past expiry for a product opened long
-             ago. Refusing past dates in the calendar while the buttons write
-             them is the divergence; the buttons are the correct half, so the
-             calendar allows what they can produce. Adding a product is
-             different - there is no opened date yet, so that picker keeps its
-             min-date. -->
-        <CustomDatePicker v-model="editExpirationDate" />
+        <!-- FE-DEF-19, reopened 06/09/2026. This binding was dropped in
+             dbf9b82 on the reasoning that the period buttons beside it can
+             legitimately compute a past expiry, so the calendar should allow
+             what they produce. Dropping it also let the user hand-pick any past
+             date, which is what this panel exists to prevent - a date being
+             *derived* from an opened date long ago is not the same act as a
+             date being *chosen*. The guard is restored; the buttons keep their
+             own arithmetic. -->
+        <CustomDatePicker v-model="editExpirationDate" :min-date="todayString" />
         <button @click="handleUpdateExpiration" class="w-full py-3 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-sm cursor-pointer">Save Date</button>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { searchProducts } from '../../api/products'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import { resolveSafety, blocksAction } from '../../api/safety'
+import { toLocalDateString } from '../../api/dates'
 import { useToast } from '../../composables/useToast'
 
 import CatalogSearchView from '../Catalog/CatalogSearchView.vue'
@@ -58,7 +59,9 @@ const handleSave = async (configPayload: any, forceSave = false) => {
   const payloadToSave = forceSave ? pendingPayload.value : configPayload
 
   try {
-    const today = new Date().toISOString().split('T')[0]
+    // Local calendar day. Under toISOString() this recorded the product as
+    // opened yesterday for the whole local morning east of UTC.
+    const today = toLocalDateString()
     await addToShelf({
       product_id: selectedProduct.value.id,
       usage_state: payloadToSave.isOpened ? 'active' : 'unopened',
