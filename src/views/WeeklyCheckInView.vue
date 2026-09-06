@@ -49,19 +49,22 @@ const editAgain = () => {
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans transition-colors duration-300 pb-28 pt-6">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 flex flex-col gap-6 w-full">
 
-      <!-- Header -->
-      <div class="flex items-center justify-between gap-3">
-        <div>
+      <!-- Header. Skin Progress (/analysis) is this feature's home; the check-in
+           is a page you step into, so back always returns there. -->
+      <div class="flex items-center gap-3">
+        <button
+          @click="router.push('/analysis')"
+          aria-label="Back to Skin Progress"
+          class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 text-brand-text-muted hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm active:scale-95 cursor-pointer"
+        >
+          <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div class="min-w-0">
           <h1 class="text-2xl sm:text-3xl font-serif font-bold dark:text-white">Weekly Check-in</h1>
           <p class="text-xs text-brand-text-muted mt-0.5">Track how your skin responds to your routine.</p>
         </div>
-        <button
-          @click="router.push('/analysis')"
-          class="text-xs font-bold text-brand-primary hover:text-brand-primary-hover inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-primary-light/60 dark:bg-brand-primary/10 transition-colors cursor-pointer shrink-0"
-        >
-          History
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-        </button>
       </div>
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-20 text-brand-text-muted animate-pulse">
@@ -94,7 +97,7 @@ const editAgain = () => {
 
         <div class="grid grid-cols-2 gap-3">
           <button @click="editAgain" class="py-3.5 rounded-xl font-bold text-sm text-brand-text dark:text-stone-300 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 hover:bg-brand-bg-light dark:hover:bg-stone-800 transition-colors cursor-pointer">Edit check-in</button>
-          <button @click="router.push('/routine')" class="py-3.5 rounded-xl font-bold text-sm text-white bg-brand-primary hover:bg-brand-primary-hover transition-all shadow-md active:scale-[0.98] cursor-pointer">Back to routine</button>
+          <button @click="router.push('/analysis')" class="py-3.5 rounded-xl font-bold text-sm text-white bg-brand-primary hover:bg-brand-primary-hover transition-all shadow-md active:scale-[0.98] cursor-pointer">View history</button>
         </div>
       </template>
 
