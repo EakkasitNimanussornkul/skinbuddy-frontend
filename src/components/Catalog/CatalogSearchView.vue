@@ -1,13 +1,26 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import SearchResultCard from './SearchResultCard.vue'
+import { resolveCatalogState } from '../../api/products'
 
 const props = defineProps<{
   catalog: any[]
   isLoading: boolean
+  // Distinct from `catalog: []`. An empty catalogue means the request came back
+  // with nothing in it; this means it never came back (FE-DEF-24).
+  loadFailed?: boolean
 }>()
 
-const emit = defineEmits(['select-product'])
+const emit = defineEmits(['select-product', 'retry'])
+
+// The same four-state decision Explore and the shelf make, reused rather than
+// reimplemented so the ordering cannot drift: `failed` resolves before `empty`,
+// because a request that never completed says nothing about how many products
+// exist. Counted over the whole catalogue, not the filtered list - "nothing
+// matches your filters" is a separate, inner state and is unaffected.
+const catalogState = computed(() =>
+  resolveCatalogState(props.isLoading, props.loadFailed ?? false, props.catalog.length),
+)
 
 const searchQuery = ref('')
 const selectedCategory = ref('All')
@@ -81,9 +94,30 @@ const filteredProducts = computed(() => {
 
     <!-- Scrollable Results Body (min-h-0 and overscroll-contain fixes mobile bug) -->
     <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 hide-scrollbar">
-      <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 text-brand-text-muted animate-pulse">
+      <div v-if="catalogState === 'loading'" class="flex flex-col items-center justify-center py-12 text-brand-text-muted animate-pulse">
         <div class="w-8 h-8 border-4 border-brand-surface-border border-t-brand-primary rounded-full animate-spin mb-4"></div>
         <p class="text-xs font-bold uppercase tracking-widest text-brand-primary">Loading Catalog...</p>
+      </div>
+
+      <!-- FE-DEF-24: must not look like a catalogue with nothing in it -->
+      <div v-else-if="catalogState === 'failed'" class="p-8 text-center flex flex-col items-center justify-center gap-4 animate-fade-in mt-6">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-500/10 border border-amber-500/30 text-amber-500">
+          <svg class="w-6 h-6 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="space-y-1 max-w-[240px]">
+          <p class="text-sm font-bold text-brand-text dark:text-white">Catalog Unavailable</p>
+          <p class="text-xs text-brand-text-muted leading-relaxed">
+            We couldn't load the product list, so nothing is shown below. This does not mean there are no products &mdash; try again in a moment.
+          </p>
+        </div>
+        <button
+          @click="emit('retry')"
+          class="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer transition-all active:scale-95"
+        >
+          Retry
+        </button>
       </div>
 
       <ul v-else-if="filteredProducts.length > 0" class="flex flex-col gap-3 pb-12 w-full m-0 p-0">

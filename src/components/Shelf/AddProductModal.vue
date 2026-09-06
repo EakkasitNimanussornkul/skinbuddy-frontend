@@ -22,17 +22,33 @@ const showWarningModal = ref(false)
 const analysisWarnings = ref<any[]>([])
 const pendingPayload = ref<any>(null)
 
-onMounted(async () => {
+// FE-DEF-24: the catch used to log and stop there, leaving masterCatalog at its
+// initial [] with isLoading false - so a catalogue that could not be fetched
+// rendered as a catalogue with nothing in it, under an empty state offering
+// "Clear Filters" for filters that were never the problem. Same fault as
+// FE-DEF-09 on Explore and FE-DEF-13 on the shelf; the failure is tracked
+// separately now and resolved before "empty", through the same
+// resolveCatalogState both of those use.
+const catalogFailed = ref(false)
+
+const loadCatalog = async () => {
   isLoading.value = true
+  catalogFailed.value = false
   try {
     const data = await searchProducts('')
     masterCatalog.value = data || []
   } catch (error) {
     console.error("Failed to load catalog:", error)
+    // Cleared as well as flagged: a retry that fails must not leave the
+    // previous attempt's products on screen behind a failure message.
+    masterCatalog.value = []
+    catalogFailed.value = true
   } finally {
     isLoading.value = false
   }
-})
+}
+
+onMounted(loadCatalog)
 
 const handleSave = async (configPayload: any, forceSave = false) => {
   if (!forceSave) {
@@ -108,7 +124,9 @@ const handleSave = async (configPayload: any, forceSave = false) => {
           <CatalogSearchView
             :catalog="masterCatalog"
             :isLoading="isLoading"
+            :load-failed="catalogFailed"
             @select-product="selectedProduct = $event"
+            @retry="loadCatalog"
             class="flex-1 min-h-0 overflow-hidden"
           />
         </div>

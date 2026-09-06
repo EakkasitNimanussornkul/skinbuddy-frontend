@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
+import { resolveSeverityBand } from '../../api/safety'
 
 export interface WarningAlert {
   alert_type: string
@@ -24,6 +25,19 @@ const props = defineProps<{
 const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
 watch(() => props.warnings, remeasure)
+
+// FE-DEF-25: this badge was a hardcoded rose, so a Low warning was drawn in the
+// same alarm red as a High one. The band is shared with the two other
+// components that render this field; the palette is this component's own.
+const SEVERITY_BADGE: Record<string, string> = {
+  high: 'bg-rose-950/80 border-rose-800/60 text-rose-400',
+  medium: 'bg-amber-950/80 border-amber-800/60 text-amber-400',
+  low: 'bg-stone-800/80 border-stone-600/60 text-stone-300',
+  unknown: 'bg-stone-800/80 border-stone-600/60 text-stone-300',
+}
+
+const severityBadgeClass = (severity: string | null | undefined) =>
+  SEVERITY_BADGE[resolveSeverityBand(severity)] ?? SEVERITY_BADGE.unknown
 </script>
 
 <template>
@@ -82,10 +96,17 @@ watch(() => props.warnings, remeasure)
         :key="idx"
         class="p-4 rounded-2xl bg-stone-800/60 dark:bg-stone-900/80 border border-stone-700/60 space-y-2 shadow-sm"
       >
-        <!-- Alert Badge Header -->
-        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-950/80 border border-rose-800/60 text-[10px] font-black tracking-wider uppercase text-rose-400">
-          <span>{{ warning.severity || 'HIGH' }}</span>
-          <span>•</span>
+        <!-- Alert Badge Header. The severity is omitted rather than defaulted
+             when the backend did not send one - `severity || 'HIGH'` printed a
+             value nobody computed, and printed the most alarming one. -->
+        <div
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black tracking-wider uppercase"
+          :class="severityBadgeClass(warning.severity)"
+        >
+          <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">
+            <span>{{ warning.severity }}</span>
+            <span>•</span>
+          </template>
           <span>{{ warning.alert_type }}</span>
         </div>
 

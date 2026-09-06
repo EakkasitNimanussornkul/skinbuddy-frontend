@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
+import { resolveSeverityBand } from '../../api/safety'
 
 const props = defineProps<{
   warnings: any[]
@@ -18,17 +19,20 @@ const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText(
 
 watch(() => props.warnings, remeasure)
 
-// Dynamically style the badge based on the backend severity level
-const getSeverityBadge = (severity?: string) => {
-  const s = (severity || '').toLowerCase()
-  if (s === 'high') {
-    return 'bg-rose-100 text-semantic-error dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
-  }
-  if (s === 'medium') {
-    return 'bg-amber-100 text-semantic-warning dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
-  }
-  return 'bg-brand-primary-light text-brand-primary dark:bg-brand-primary/10 dark:text-brand-primary-accent border-brand-primary/20 dark:border-brand-primary/30'
+// FE-DEF-25: this component already banded three ways and was the correct one
+// of the three. Its own lowercase-and-compare is replaced by the shared
+// resolveSeverityBand so that all three read the field identically; the
+// palette below is unchanged, and `low` now takes the branch that `else`
+// covered before rather than sharing it with an unrecognised value.
+const SEVERITY_BADGE: Record<string, string> = {
+  high: 'bg-rose-100 text-semantic-error dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800/50',
+  medium: 'bg-amber-100 text-semantic-warning dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
+  low: 'bg-brand-primary-light text-brand-primary dark:bg-brand-primary/10 dark:text-brand-primary-accent border-brand-primary/20 dark:border-brand-primary/30',
+  unknown: 'bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-stone-200 dark:border-stone-700',
 }
+
+const getSeverityBadge = (severity?: string) =>
+  SEVERITY_BADGE[resolveSeverityBand(severity)] ?? SEVERITY_BADGE.unknown
 </script>
 
 <template>
@@ -52,7 +56,7 @@ const getSeverityBadge = (severity?: string) => {
             class="text-[9px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-lg border inline-block mb-2.5"
             :class="getSeverityBadge(warning.severity)"
           >
-            {{ warning.severity }} &bull; {{ warning.alert_type }}
+            <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">{{ warning.severity }} &bull; </template>{{ warning.alert_type }}
           </span>
 
           <div>

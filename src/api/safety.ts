@@ -109,6 +109,39 @@ export const showsDuplicates = (outcome: SafetyOutcome) =>
   outcome.status !== 'unavailable' && outcome.duplicates.length > 0
 
 /**
+ * `high` `medium` `low` `unknown`
+ *
+ * The strength of a warning's severity, for components that colour by it.
+ *
+ * FE-DEF-25: three components render this field and each banded it differently
+ * - one three ways, one two ways, and one not at all, painting every warning
+ * the same alarm red. The engine emits three severities, and the Low rule
+ * (niacinamide with ascorbic acid, "short-term facial flushing") was drawn in
+ * the same red as a retinoid layered with a BHA. Same class as FE-DEF-12, where
+ * every match score was painted the same confident green; this is its mirror,
+ * failing toward alarm rather than reassurance.
+ *
+ * The band is shared, not the colours. The three call sites render genuinely
+ * different things - a badge chip in two of them, a line of text in the third -
+ * so each keeps its own palette and takes the banding from here, which is the
+ * arrangement resolveMatchBand already established.
+ *
+ * `unknown` is a real answer, not a default. A missing severity used to print
+ * as "HIGH" through `severity || 'HIGH'`, a value the backend never sent.
+ */
+export type SeverityBand = 'high' | 'medium' | 'low' | 'unknown'
+
+export const resolveSeverityBand = (severity: string | null | undefined): SeverityBand => {
+  if (typeof severity !== 'string') return 'unknown'
+
+  const normalised = severity.trim().toLowerCase()
+  if (normalised === 'high') return 'high'
+  if (normalised === 'medium') return 'medium'
+  if (normalised === 'low') return 'low'
+  return 'unknown'
+}
+
+/**
  * Round a similarity percentage for display, or return null when the backend
  * sent something unusable. Null rather than 0 so the caller can omit the figure
  * instead of printing a number nobody computed.

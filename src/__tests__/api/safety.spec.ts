@@ -10,6 +10,7 @@ import {
   showsDuplicates,
   formatSharedActives,
   describeDuplicateOverlap,
+  resolveSeverityBand,
 } from '../../api/safety'
 
 const conflict = {
@@ -254,6 +255,42 @@ describe('src/api/safety.ts', () => {
       expect(describeDuplicateOverlap({ ...dupe, similarity: 140, shared_actives: [] })).toBe(
         '100% of its active ingredients match.',
       )
+    })
+  })
+
+  describe('resolveSeverityBand()', () => {
+    // FE-DEF-25: three components rendered this field and banded it three
+    // different ways - three-way, two-way, and not at all. The band is shared
+    // now so a Low warning cannot be drawn in the same alarm red as a High one.
+    it('bands a high severity as high', () => {
+      expect(resolveSeverityBand('High')).toBe('high')
+    })
+
+    it('bands a medium severity as medium', () => {
+      expect(resolveSeverityBand('Medium')).toBe('medium')
+    })
+
+    it('bands a low severity as low, distinctly from medium', () => {
+      // The reachable case this entry was about: conflict_rules holds a Low
+      // rule, and two of the three components had no band for it.
+      expect(resolveSeverityBand('Low')).toBe('low')
+    })
+
+    it('reads the severity whatever case and spacing the backend sends', () => {
+      expect(resolveSeverityBand('  HIGH  ')).toBe('high')
+      expect(resolveSeverityBand('low')).toBe('low')
+    })
+
+    it('reports a missing severity as unknown rather than defaulting it to high', () => {
+      // The second half of FE-DEF-25. `severity || 'HIGH'` printed a value the
+      // backend never sent, and printed the most alarming one.
+      expect(resolveSeverityBand(undefined)).toBe('unknown')
+      expect(resolveSeverityBand(null)).toBe('unknown')
+      expect(resolveSeverityBand('')).toBe('unknown')
+    })
+
+    it('reports a severity it does not recognise as unknown rather than guessing', () => {
+      expect(resolveSeverityBand('critical')).toBe('unknown')
     })
   })
 })

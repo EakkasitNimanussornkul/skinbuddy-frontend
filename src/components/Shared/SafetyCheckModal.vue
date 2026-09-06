@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { describeDuplicateOverlap, type DuplicateMatch } from '../../api/safety'
+import { describeDuplicateOverlap, resolveSeverityBand, type DuplicateMatch } from '../../api/safety'
 
 const props = withDefaults(
   defineProps<{
@@ -22,6 +22,16 @@ const props = withDefaults(
 )
 
 const emit = defineEmits(['close'])
+
+// FE-DEF-25: the severity line was `high ? error : warning`, so Low and Medium
+// were the same amber. The band is shared with the two other components that
+// render this field; these colours are this component's own.
+const SEVERITY_TEXT: Record<string, string> = {
+  high: 'text-semantic-error',
+  medium: 'text-semantic-warning',
+  low: 'text-brand-primary',
+  unknown: 'text-brand-text-muted',
+}
 
 const skinConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Skin Type Conflict'))
 const chemicalConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Chemical Interaction Warning' || w.alert_type === 'Active Routine Clash'))
@@ -101,7 +111,14 @@ const isSafe = computed(
               <div v-if="chemicalConflicts.length" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-error/10 text-semantic-error rounded-md border border-semantic-error/20">Chemical Interaction Risks</span>
                 <div v-for="(warn, i) in chemicalConflicts" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
-                  <span class="text-[10px] font-bold tracking-wide" :class="warn.severity?.toLowerCase() === 'high' ? 'text-semantic-error' : 'text-semantic-warning'">
+                  <!-- FE-DEF-25: was a two-way test that drew Low in the same
+                       amber as Medium. Banded by the shared rule now; the
+                       colours stay this component's own. -->
+                  <span
+                    v-if="resolveSeverityBand(warn.severity) !== 'unknown'"
+                    class="text-[10px] font-bold tracking-wide"
+                    :class="SEVERITY_TEXT[resolveSeverityBand(warn.severity)]"
+                  >
                     Severity: {{ warn.severity }}
                   </span>
                   <p>{{ warn.message }}</p>
