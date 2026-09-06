@@ -9,6 +9,7 @@ import ExploreView from '../views/ExploreView.vue'
 import HomeView from '../views/HomeView.vue'
 import ProductDetailView from '../views/ProductDetailView.vue'
 import RoutineView from '../views/RoutineView.vue'
+import RoutineHistoryView from '../views/RoutineHistoryView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ShelfView from '../views/ShelfView.vue'
 import SkinAnalysisView from '../views/SkinAnalysisView.vue'
@@ -81,6 +82,12 @@ const router = createRouter({
       path: '/routine',
       name: 'routine',
       component: RoutineView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/routine/history',
+      name: 'routine-history',
+      component: RoutineHistoryView,
       meta: { requiresAuth: true },
     },
     {
