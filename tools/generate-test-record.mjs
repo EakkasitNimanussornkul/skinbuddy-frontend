@@ -63,7 +63,8 @@ const SPEC_MAP = [
     file: 'src/__tests__/api/shelfapi.spec.ts',
     feature: '#3 Skincare storage',
     module: 'api/shelfapi',
-    prerequisite: 'Shared axios client (src/api/index.ts) replaced with a mock. No network access.',
+    prerequisite: 'Shared axios client (src/api/index.ts) replaced with a mock. The date-derivation cards call pure functions directly with plain objects and an explicit clock, so they do not depend on the day the suite is run. No network access.',
+    note: 'The four date-derivation groups here are shared rules rather than request wrappers, and each was extracted because two places disagreed. resolveExpiryDate, daysUntilExpiry and resolveShelfItemStatus pin FE-DEF-16, where a shelf card read "Expired" while the Expired filter did not list the same item. paoPeriodHasElapsed pins FE-DEF-19, where the expiry edit panel\'s calendar refused a past date and the period buttons beside it wrote one anyway.',
   },
   {
     file: 'src/__tests__/api/dates.spec.ts',

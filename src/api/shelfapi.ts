@@ -1,4 +1,5 @@
 import { apiClient } from './index'
+import { addMonthsAsDateString, parseLocalDate, toLocalDateString } from './dates'
 import type { ShelfItem, UsageState } from '../stores/shelfStore'
 
 const USAGE_STATES: readonly string[] = ['unopened', 'active', 'archived']
@@ -148,6 +149,36 @@ export const daysUntilExpiry = (
   const target = resolveExpiryDate(item)
   if (!target) return null
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 3600 * 24))
+}
+
+/**
+ * True when a period of `months` begun on `openedDate` has already run out.
+ *
+ * The other half of FE-DEF-19. The edit panel's period buttons compute an
+ * expiry from the item's opened date, so for a product opened longer ago than
+ * the period they produce a date in the past - which the calendar sitting
+ * beside them refuses. This is the predicate that lets the buttons refuse it
+ * too, so one rule governs the whole panel: an expiry date is not set by hand
+ * to a day that has already passed.
+ *
+ * Nothing is lost by refusing. `resolveExpiryDate` already falls back to
+ * opened date plus period when no expiration date is stored, so such an item
+ * reads "Expired" on its card and in the status filter whether or not the date
+ * is written into the field.
+ *
+ * The comparison is on `YYYY-MM-DD` strings, whose lexicographic order is
+ * their chronological order - no second Date parse, and no time-of-day to make
+ * "today" compare as past.
+ */
+export const paoPeriodHasElapsed = (
+  openedDate: string | null | undefined,
+  months: number,
+  now: Date = new Date(),
+): boolean => {
+  const opened = parseLocalDate(openedDate)
+  if (!opened || !Number.isFinite(months)) return false
+
+  return addMonthsAsDateString(opened, months) < toLocalDateString(now)
 }
 
 export const resolveShelfItemStatus = (

@@ -16,6 +16,7 @@ import {
   resolveExpiryDate,
   daysUntilExpiry,
   resolveShelfItemStatus,
+  paoPeriodHasElapsed,
 } from '../../api/shelfapi'
 
 describe('src/api/shelfapi.ts', () => {
@@ -330,6 +331,47 @@ describe('src/api/shelfapi.ts', () => {
 
     it('reports an unopened item with no determinable expiry as Unopened', () => {
       expect(resolveShelfItemStatus({ usage_state: 'unopened' }, now)).toBe('Unopened')
+    })
+  })
+
+  describe('paoPeriodHasElapsed()', () => {
+    // The rule behind the greyed period buttons in the expiry edit panel. It
+    // exists so the buttons and the calendar beside them enforce one rule -
+    // FE-DEF-19 was that the calendar refused past dates and the buttons wrote
+    // them anyway.
+    const now = new Date(2026, 8, 6)
+
+    it('reports a period that ran out before today as elapsed', () => {
+      // Opened eight months ago, three month period: ran out five months ago.
+      expect(paoPeriodHasElapsed('2026-01-06', 3, now)).toBe(true)
+    })
+
+    it('reports a period still running as not elapsed', () => {
+      expect(paoPeriodHasElapsed('2026-01-06', 12, now)).toBe(false)
+    })
+
+    it('treats a period ending today as still running, so today stays selectable', () => {
+      // The boundary the calendar draws in the same panel: today is the first
+      // day it enables, so the button that lands on today must stay enabled.
+      expect(paoPeriodHasElapsed('2026-06-06', 3, now)).toBe(false)
+    })
+
+    it('reports a period that ended yesterday as elapsed', () => {
+      // One day either side of the boundary, to pin it rather than assume it.
+      expect(paoPeriodHasElapsed('2026-06-05', 3, now)).toBe(true)
+    })
+
+    it('reports no period as elapsed when the item has no opened date', () => {
+      // The panel only shows these buttons for an opened item, so this is a
+      // guard rather than a reachable branch - but returning true here would
+      // grey out every option on a product with nothing wrong with it.
+      expect(paoPeriodHasElapsed(null, 3, now)).toBe(false)
+      expect(paoPeriodHasElapsed('', 3, now)).toBe(false)
+      expect(paoPeriodHasElapsed('not a date', 3, now)).toBe(false)
+    })
+
+    it('reports no period as elapsed when the period is not a number', () => {
+      expect(paoPeriodHasElapsed('2020-01-01', Number.NaN, now)).toBe(false)
     })
   })
 })

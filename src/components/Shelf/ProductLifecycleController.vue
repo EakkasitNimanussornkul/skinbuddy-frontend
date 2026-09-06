@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { markItemOpened } from '../../api/shelfapi.ts'
+import { markItemOpened, paoPeriodHasElapsed } from '../../api/shelfapi.ts'
 import { addMonthsAsDateString, parseLocalDate, toLocalDateString } from '../../api/dates.ts'
 import { useToast } from '../../composables/useToast.ts'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
@@ -37,20 +37,30 @@ const formatDate = (dateString: string | null) => {
   return `${day}/${month}/${year.slice(2)}`
 }
 
-// Counts from the item's OPENED date, deliberately - a period after opening is
-// defined from when the product was opened. ProductConfigurator.setPAO counts
-// from today instead, which is right for its own context: at add time there is
-// no opened date yet. The two differ on purpose; FE-DEF-19 recorded that
-// nothing said so.
+// FE-DEF-19, closed. One rule now governs both controls in this panel: an
+// expiry date is not set by hand to a day that has already passed. The
+// calendar greys out those days; these buttons grey out the periods that would
+// land on one, which for this item is any period shorter than the time since
+// it was opened.
 //
-// STILL OPEN, and the remaining half of FE-DEF-19: for a product opened longer
-// ago than the period, this computes a date in the past - which the calendar
-// beside it now refuses again. The button is telling the truth (that product
-// really did expire) and the calendar is enforcing the rule the panel is meant
-// to enforce; reconciling them needs a product decision, not a code change.
+// Refusing them costs nothing. resolveExpiryDate falls back to opened date plus
+// period when no expiration date is stored, so a product opened longer ago than
+// its period already reads "Expired" on its card and under the Expired filter
+// without this field being written at all. The button would only be restating
+// what the shelf already shows, in a field meant for choosing a new date.
+//
+// The arithmetic itself is unchanged and still counts from the item's OPENED
+// date - a period after opening is defined from when the product was opened.
+// ProductConfigurator.setPAO counts from today, which is right for its own
+// context: at add time there is no opened date yet.
+const periodHasElapsed = (months: number) =>
+  paoPeriodHasElapsed(props.item?.opened_date, months)
+
+const hasElapsedPeriods = computed(() => paoOptions.some(periodHasElapsed))
+
 const setEditPAO = (months: number) => {
   const opened = parseLocalDate(props.item?.opened_date)
-  if (!opened) return
+  if (!opened || periodHasElapsed(months)) return
   activeEditPao.value = months
   editExpirationDate.value = addMonthsAsDateString(opened, months)
 }
@@ -169,20 +179,31 @@ const handleStartPAO = async () => {
           @wheel="handleHorizontalWheel"
           class="flex overflow-x-auto gap-2 pb-2 p-1 horizontal-pao-track -mx-1 select-none"
         >
+          <!-- FE-DEF-19: greyed the same way the calendar greys a past day,
+               and for the same reason - this period ended before today. -->
           <button
             v-for="months in paoOptions"
             :key="months"
+            :disabled="periodHasElapsed(months)"
             @click="setEditPAO(months)"
             :class="[
-              'shrink-0 px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer',
-              activeEditPao === months
-                ? 'bg-brand-primary text-white border-brand-primary shadow-md'
-                : 'bg-brand-surface-light dark:bg-brand-surface-dark border-brand-surface-border dark:border-stone-700 text-brand-text-muted hover:border-brand-primary/50'
+              'shrink-0 px-4 py-2 rounded-xl text-xs font-bold border transition-all',
+              periodHasElapsed(months)
+                ? 'opacity-30 cursor-not-allowed bg-brand-surface-light dark:bg-brand-surface-dark border-brand-surface-border dark:border-stone-700 text-brand-text-muted'
+                : activeEditPao === months
+                  ? 'cursor-pointer bg-brand-primary text-white border-brand-primary shadow-md'
+                  : 'cursor-pointer bg-brand-surface-light dark:bg-brand-surface-dark border-brand-surface-border dark:border-stone-700 text-brand-text-muted hover:border-brand-primary/50'
             ]"
           >
             {{ months }}M
           </button>
         </div>
+
+        <p v-if="hasElapsedPeriods" class="-mt-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+          Periods that would already have ended are unavailable. This product has
+          been open longer than those, and its shelf card already shows it as
+          expired.
+        </p>
 
         <!-- FE-DEF-19, reopened 06/09/2026. This binding was dropped in
              dbf9b82 on the reasoning that the period buttons beside it can
