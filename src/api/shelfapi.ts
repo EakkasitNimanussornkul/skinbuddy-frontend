@@ -103,6 +103,13 @@ export const removeFromShelf = async (itemId: string) => {
  *
  * Pure and exported so both consumers share one rule and so the rule can be
  * tested - this project has no component-mount layer.
+ *
+ * Both dates are read as local calendar days (FE-DEF-22). Under `new Date()`
+ * they were read as UTC midnight, which in UTC+7 is 07:00 the same morning - so
+ * for the first seven hours of every day an item that expired yesterday counted
+ * as zero days left and read "Expiring Soon" on its card while the Expired
+ * filter did not list it. That is FE-DEF-16's symptom exactly, reappearing
+ * inside the function extracted to end it.
  */
 export const resolveExpiryDate = (item: {
   expiration_date?: string | null
@@ -112,8 +119,7 @@ export const resolveExpiryDate = (item: {
   if (!item) return null
 
   if (item.expiration_date) {
-    const stored = new Date(item.expiration_date)
-    return Number.isNaN(stored.getTime()) ? null : stored
+    return parseLocalDate(item.expiration_date)
   }
 
   if (!item.opened_date || item.pao === null || item.pao === undefined) return null
@@ -121,8 +127,8 @@ export const resolveExpiryDate = (item: {
   const months = parseInt(String(item.pao))
   if (Number.isNaN(months)) return null
 
-  const opened = new Date(item.opened_date)
-  if (Number.isNaN(opened.getTime())) return null
+  const opened = parseLocalDate(item.opened_date)
+  if (!opened) return null
 
   opened.setMonth(opened.getMonth() + months)
   return opened
@@ -148,7 +154,14 @@ export const daysUntilExpiry = (
 ): number | null => {
   const target = resolveExpiryDate(item)
   if (!target) return null
-  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 3600 * 24))
+
+  // Math.ceil of any value in (-1, 0) is -0, which is what an item expiring
+  // later today produces. It behaves as zero everywhere this is currently read
+  // - `-0 < 0` is false, and it prints as "0" - but handing a negative zero out
+  // of a shared helper is a trap for the next caller. Normalised here, where
+  // -0 === 0 makes the comparison do the work.
+  const days = Math.ceil((target.getTime() - now.getTime()) / (1000 * 3600 * 24))
+  return days === 0 ? 0 : days
 }
 
 /**

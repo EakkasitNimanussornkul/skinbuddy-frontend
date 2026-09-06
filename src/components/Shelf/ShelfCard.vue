@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ItemBadge from '../Shelf/ItemBadge.vue'
-import { resolveExpiryDate } from '../../api/shelfapi'
+import { daysUntilExpiry, resolveExpiryDate } from '../../api/shelfapi'
 import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
@@ -41,8 +41,14 @@ const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText:
     }
   }
 
-  const today = new Date()
-  const daysLeft = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
+  // FE-DEF-23: this was a second copy of daysUntilExpiry, written out by hand
+  // with the same thresholds. The two agreed - including agreeing while both
+  // were wrong, which is how FE-DEF-22 stayed invisible - but the FE-DEF-16 fix
+  // shared only resolveExpiryDate and left the countdown duplicated. The badge
+  // and the status filter now count the same way as well as expire on the same
+  // date. `?? 0` cannot be reached: targetDate is non-null by this line, and
+  // daysUntilExpiry returns null only when it is not.
+  const daysLeft = daysUntilExpiry(props.item) ?? 0
   const formattedDate = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   if (daysLeft < 0) {

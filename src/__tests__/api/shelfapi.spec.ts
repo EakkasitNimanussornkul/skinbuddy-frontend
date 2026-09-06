@@ -18,6 +18,7 @@ import {
   resolveShelfItemStatus,
   paoPeriodHasElapsed,
 } from '../../api/shelfapi'
+import { toLocalDateString } from '../../api/dates'
 
 describe('src/api/shelfapi.ts', () => {
   beforeEach(() => {
@@ -249,10 +250,14 @@ describe('src/api/shelfapi.ts', () => {
   })
 
   describe('resolveExpiryDate()', () => {
+    // Asserted through toLocalDateString, not toISOString. These three read the
+    // result back in UTC until FE-DEF-22, which is the same mistake the function
+    // itself was making: an expiry is a calendar day, and reading it in UTC
+    // moves it by a day for most of every day.
     it('uses the stored expiration date when the item has one', () => {
       const d = resolveExpiryDate({ expiration_date: '2027-03-01', opened_date: '2020-01-01', pao: 3 })
 
-      expect(d?.toISOString().slice(0, 10)).toBe('2027-03-01')
+      expect(toLocalDateString(d!)).toBe('2027-03-01')
     })
 
     it('falls back to the opened date plus the period after opening when no date is stored', () => {
@@ -260,13 +265,22 @@ describe('src/api/shelfapi.ts', () => {
       // ShelfView's status filter, so the two disagreed about the same item.
       const d = resolveExpiryDate({ opened_date: '2026-01-15', pao: 3 })
 
-      expect(d?.toISOString().slice(0, 10)).toBe('2026-04-15')
+      expect(toLocalDateString(d!)).toBe('2026-04-15')
     })
 
     it('accepts a period after opening given as a string such as "6"', () => {
       const d = resolveExpiryDate({ opened_date: '2026-01-15', pao: '6' })
 
-      expect(d?.toISOString().slice(0, 10)).toBe('2026-07-15')
+      expect(toLocalDateString(d!)).toBe('2026-07-15')
+    })
+
+    it('reads a stored date as local midnight, not as the UTC instant of that day', () => {
+      // FE-DEF-22. Under new Date() this returned 07:00 local in UTC+7, which
+      // pushed every countdown taken from it into the following morning.
+      const d = resolveExpiryDate({ expiration_date: '2026-09-06' })
+
+      expect(d?.getHours()).toBe(0)
+      expect(d?.getDate()).toBe(6)
     })
 
     it('returns null when there is neither a stored date nor an opened date', () => {
@@ -298,10 +312,29 @@ describe('src/api/shelfapi.ts', () => {
     it('returns null when no expiry can be determined, rather than treating it as expired', () => {
       expect(daysUntilExpiry({ pao: 6 }, new Date('2026-01-01T00:00:00Z'))).toBeNull()
     })
+
+    it('reports an item that expired yesterday as past due when checked early in the morning', () => {
+      // FE-DEF-22, the case that was live. Checked at 06:00 on the 7th, an
+      // expiry of the 6th used to come back as 0 - which reads "In 0 days" on
+      // the card and classifies as Expiring Soon, so the Expired filter hid the
+      // item it is named after. The same shape as FE-DEF-16, one layer down.
+      const days = daysUntilExpiry({ expiration_date: '2026-09-06' }, new Date(2026, 8, 7, 6, 0))
+
+      expect(days).toBe(-1)
+    })
+
+    it('reports an item expiring today as having no days left rather than as past due', () => {
+      const days = daysUntilExpiry({ expiration_date: '2026-09-06' }, new Date(2026, 8, 6, 18, 0))
+
+      expect(days).toBe(0)
+    })
   })
 
   describe('resolveShelfItemStatus()', () => {
-    const now = new Date('2026-06-01T00:00:00Z')
+    // A local Date, not a UTC instant: every date these cards reason about is a
+    // calendar day, so pinning the clock to one keeps the assertions true in
+    // whatever zone the suite is run in.
+    const now = new Date(2026, 5, 1)
 
     it('reports an archived item as Archived whatever its dates say', () => {
       const s = resolveShelfItemStatus({ usage_state: 'archived', expiration_date: '2020-01-01' }, now)
@@ -331,6 +364,18 @@ describe('src/api/shelfapi.ts', () => {
 
     it('reports an unopened item with no determinable expiry as Unopened', () => {
       expect(resolveShelfItemStatus({ usage_state: 'unopened' }, now)).toBe('Unopened')
+    })
+
+    it('reports an item that expired yesterday as Expired when checked early in the morning', () => {
+      // FE-DEF-22 at the level the Expired filter reads. This returned
+      // "Expiring Soon" before, so the pill named after the state did not list
+      // the item in it.
+      const s = resolveShelfItemStatus(
+        { usage_state: 'active', expiration_date: '2026-09-06' },
+        new Date(2026, 8, 7, 6, 0),
+      )
+
+      expect(s).toBe('Expired')
     })
   })
 
