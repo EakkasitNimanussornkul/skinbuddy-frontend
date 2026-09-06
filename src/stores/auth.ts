@@ -17,9 +17,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   const loginWithLine = () => {
     const clientId = import.meta.env.VITE_LINE_CLIENT_ID
-    const redirectUri = encodeURIComponent(import.meta.env.VITE_LINE_REDIRECT_URI)
     const state = crypto.randomUUID()
-    window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=profile%20openid`
+    // bot_prompt=aggressive shows the "add friend" screen during login so the user
+    // befriends our LINE Official Account. This is REQUIRED for push reminders
+    // (UC-21 / UC-26) to be deliverable — LINE only pushes to friended users.
+    // Requires the Login channel to be linked to a Messaging API channel (OA).
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: import.meta.env.VITE_LINE_REDIRECT_URI,
+      state,
+      scope: 'profile openid',
+      bot_prompt: 'aggressive',
+    })
+    window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`
   }
 
   const setAuth = (newToken: string, userData: any) => {
