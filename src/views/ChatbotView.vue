@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { askSkinBuddy } from '@/api/chat'
-import { generateRoutine, applyRoutine } from '@/api/routineApi'
+import { generateRoutine, applyRoutine, getRoutine } from '@/api/routineApi'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chatStore'
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import RoutineProposalCard from '@/components/Routine/RoutineProposalCard.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
@@ -15,6 +16,28 @@ const router = useRouter()
 const userInput = ref('')
 const isLoading = ref(false)
 const chatContainer = ref<HTMLElement | null>(null)
+const inputRef = ref<HTMLInputElement | null>(null)
+
+// Common opening questions, shown until the user sends their first message.
+// Tapping one fills the input so it can still be edited before sending.
+const SUGGESTED_QUESTIONS = [
+    'What order should I apply my products?',
+    'Can I use retinol and vitamin C together?',
+    'How often should I exfoliate?',
+    'Why is my skin purging?',
+    'How long until I see results?',
+    'Is my current routine too harsh?',
+]
+
+const hasUserMessage = computed(() => chatStore.messages.some((m: any) => m.role === 'user'))
+const showSuggestions = computed(
+    () => !hasUserMessage.value && routineStage.value === 'idle' && !isLoading.value,
+)
+
+const useSuggestion = (question: string) => {
+    userInput.value = question
+    inputRef.value?.focus()
+}
 
 // Routine generation sub-flow (UC-15). 'awaiting-concerns' = the bot asked the
 // follow-up question and is waiting for the user's next message to generate.
@@ -78,6 +101,48 @@ const runRoutineGeneration = async (concerns: string) => {
         isLoading.value = false
         routineStage.value = 'idle'
         scrollToBottom()
+    }
+}
+
+// UC-15 SRS-62 / [A1]: confirm before applying, and warn explicitly when this
+// would replace an existing active routine.
+const pendingApply = ref<any>(null)
+const replacingExisting = ref(false)
+const applying = ref(false)
+
+const confirmTitle = computed(() =>
+    replacingExisting.value ? 'Replace your current routine?' : 'Use this routine?',
+)
+const confirmMessage = computed(() =>
+    replacingExisting.value
+        ? 'This will replace your current routine — continue? Your existing routine is archived, and any recommended products you don\'t own yet are added to your storage.'
+        : 'This will become your active routine. Any recommended products you don\'t own yet are added to your storage.',
+)
+
+const requestApply = async (msg: any) => {
+    try {
+        const data = await getRoutine()
+        replacingExisting.value = !!data?.routine && (data.steps?.length ?? 0) > 0
+    } catch {
+        // Couldn't check — still confirm, just with the neutral wording.
+        replacingExisting.value = false
+    }
+    pendingApply.value = msg
+}
+
+const cancelApply = () => {
+    pendingApply.value = null
+}
+
+const confirmApply = async () => {
+    const msg = pendingApply.value
+    if (!msg) return
+    applying.value = true
+    try {
+        await applyProposedRoutine(msg)
+    } finally {
+        applying.value = false
+        pendingApply.value = null
     }
 }
 
@@ -186,7 +251,7 @@ const sendMessage = async () => {
                     <RoutineProposalCard
                         :steps="msg.routine || []"
                         :applied="msg.applied"
-                        @use="applyProposedRoutine(msg)"
+                        @use="requestApply(msg)"
                         @adjust="adjustProposedRoutine"
                         @view="router.push('/routine')"
                     />
@@ -240,8 +305,22 @@ const sendMessage = async () => {
         <!-- Input footer -->
         <footer
             class="px-4 py-3 bg-brand-surface-light dark:bg-brand-surface-dark border-t border-stone-200 dark:border-stone-800 transition-colors duration-300">
+
+            <!-- Suggested questions — shown until the first user message -->
+            <div v-if="showSuggestions" class="mb-2.5">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted dark:text-stone-500 mb-1.5 px-1">
+                    Try asking
+                </p>
+                <div class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">
+                    <button v-for="q in SUGGESTED_QUESTIONS" :key="q" @click="useSuggestion(q)" type="button"
+                        class="shrink-0 whitespace-nowrap text-xs font-semibold text-brand-primary dark:text-orange-400 bg-brand-primary/10 dark:bg-orange-900/20 hover:bg-brand-primary/20 dark:hover:bg-orange-900/40 active:scale-[0.97] px-3.5 py-2 rounded-full border border-brand-primary/20 dark:border-orange-700/30 transition-all cursor-pointer">
+                        {{ q }}
+                    </button>
+                </div>
+            </div>
+
             <div class="flex gap-2 items-center relative">
-                <input v-model="userInput" type="text" placeholder="Ask about your routine…"
+                <input ref="inputRef" v-model="userInput" type="text" placeholder="Ask about your routine…"
                     @keydown.enter.prevent="sendMessage" :disabled="isLoading"
                     class="flex-1 bg-brand-bg-light dark:bg-brand-bg-dark border border-stone-200 dark:border-stone-700 rounded-full py-3 pl-5 pr-12 text-sm text-brand-text dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 dark:focus:ring-orange-400/30 transition-all disabled:opacity-50" />
                 <button @click="sendMessage" :disabled="!userInput.trim() || isLoading"
@@ -253,6 +332,19 @@ const sendMessage = async () => {
                 </button>
             </div>
         </footer>
+
+        <!-- UC-15 SRS-62: confirmation before applying a routine -->
+        <ConfirmModal
+            v-if="pendingApply"
+            :title="confirmTitle"
+            :message="confirmMessage"
+            :confirm-label="replacingExisting ? 'Replace routine' : 'Use routine'"
+            cancel-label="Not now"
+            :variant="replacingExisting ? 'danger' : 'primary'"
+            :busy="applying"
+            @confirm="confirmApply"
+            @cancel="cancelApply"
+        />
 
     </div>
 </template>
