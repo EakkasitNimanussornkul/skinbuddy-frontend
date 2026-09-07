@@ -63,7 +63,8 @@ const SPEC_MAP = [
     file: 'src/__tests__/api/shelfapi.spec.ts',
     feature: '#3 Skincare storage',
     module: 'api/shelfapi',
-    prerequisite: 'Shared axios client (src/api/index.ts) replaced with a mock. No network access.',
+    prerequisite: 'Shared axios client (src/api/index.ts) replaced with a mock. The date-derivation cards call pure functions directly with plain objects and an explicit clock, so they do not depend on the day the suite is run. No network access.',
+    note: 'The four date-derivation groups here are shared rules rather than request wrappers, and each was extracted because two places disagreed. resolveExpiryDate, daysUntilExpiry and resolveShelfItemStatus pin FE-DEF-16, where a shelf card read "Expired" while the Expired filter did not list the same item. paoPeriodHasElapsed pins FE-DEF-19, where the expiry edit panel\'s calendar refused a past date and the period buttons beside it wrote one anyway.',
   },
   {
     file: 'src/__tests__/api/dates.spec.ts',
@@ -72,6 +73,14 @@ const SPEC_MAP = [
     prerequisite:
       "Pure functions called directly with Date objects and date strings. Vitest fake timers pin the clock where 'today' is asserted. No component mounting and no network access.",
     note: "Pins FE-DEF-21: every opened date, expiration date and picker floor in the shelf was computed with new Date().toISOString().split('T')[0], which reads the calendar day in UTC and so returns yesterday for the whole local morning in UTC+7. The assertions are written against the machine's own local calendar rather than fixed strings, so they hold in any zone the project is marked in.",
+  },
+  {
+    file: 'src/__tests__/composables/useClampedText.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'composables/useClampedText',
+    prerequisite:
+      'The overflow comparison called directly with two heights. No component mounting, no DOM measurement and no network access.',
+    note: 'Pins FE-DEF-26 and FE-DEF-27: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered. The measurement around it needs a mounted component, which this project has no layer for, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser.',
   },
   {
     file: 'src/__tests__/api/products.spec.ts',

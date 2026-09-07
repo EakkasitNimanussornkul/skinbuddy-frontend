@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { watch } from 'vue'
+import { useClampedText } from '../../composables/useClampedText'
+import { resolveSeverityBand } from '../../api/safety'
 
 export interface WarningAlert {
   alert_type: string
@@ -7,7 +9,7 @@ export interface WarningAlert {
   message: string
 }
 
-defineProps<{
+const props = defineProps<{
   warnings: WarningAlert[]
   isLoading?: boolean
   // Distinct from `warnings: []`. An empty list means the scan ran and found
@@ -15,15 +17,30 @@ defineProps<{
   scanFailed?: boolean
 }>()
 
-const expandedIndices = ref<Record<number, boolean>>({})
+// FE-DEF-26: the toggle below used to render for every warning. A one-line
+// message such as "Use at night." is not clamped by anything, so its "Read
+// more" opened nothing and its "Read less" closed nothing. Whether a message
+// overflows two lines depends on the font and the width it is read at, not on
+// the message, so it is measured.
+const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
-const toggleExpand = (idx: number) => {
-  expandedIndices.value[idx] = !expandedIndices.value[idx]
+watch(() => props.warnings, remeasure)
+
+// FE-DEF-25: this badge was a hardcoded rose, so a Low warning was drawn in the
+// same alarm red as a High one. The band is shared with the two other
+// components that render this field; the palette is this component's own.
+const SEVERITY_BADGE: Record<string, string> = {
+  high: 'bg-rose-950/80 border-rose-800/60 text-rose-400',
+  medium: 'bg-amber-950/80 border-amber-800/60 text-amber-400',
+  low: 'bg-stone-800/80 border-stone-600/60 text-stone-300',
+  unknown: 'bg-stone-800/80 border-stone-600/60 text-stone-300',
 }
+
+const severityBadgeClass = (severity: string | null | undefined) =>
+  SEVERITY_BADGE[resolveSeverityBand(severity)] ?? SEVERITY_BADGE.unknown
 </script>
 
 <template>
-  <!-- 🌟 ENHANCED ANIMATED ANALYZING STATE 🌟 -->
   <div v-if="isLoading" class="p-5 rounded-3xl bg-stone-900/40 border border-brand-primary/20 backdrop-blur-sm shadow-sm relative overflow-hidden">
     <!-- Ambient Pulse Glow Effect -->
     <div class="absolute -inset-x-20 -top-20 h-40 bg-brand-primary/10 rounded-full blur-2xl animate-pulse"></div>
@@ -79,25 +96,36 @@ const toggleExpand = (idx: number) => {
         :key="idx"
         class="p-4 rounded-2xl bg-stone-800/60 dark:bg-stone-900/80 border border-stone-700/60 space-y-2 shadow-sm"
       >
-        <!-- Alert Badge Header -->
-        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-950/80 border border-rose-800/60 text-[10px] font-black tracking-wider uppercase text-rose-400">
-          <span>{{ warning.severity || 'HIGH' }}</span>
-          <span>•</span>
+        <!-- Alert Badge Header. The severity is omitted rather than defaulted
+             when the backend did not send one - `severity || 'HIGH'` printed a
+             value nobody computed, and printed the most alarming one. -->
+        <div
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black tracking-wider uppercase"
+          :class="severityBadgeClass(warning.severity)"
+        >
+          <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">
+            <span>{{ warning.severity }}</span>
+            <span>•</span>
+          </template>
           <span>{{ warning.alert_type }}</span>
         </div>
 
         <!-- Alert Message Body -->
-        <p :class="['text-xs sm:text-sm font-medium text-stone-200 leading-relaxed transition-all', expandedIndices[idx] ? '' : 'line-clamp-2']">
+        <p
+          :ref="(el) => setElement(idx, el)"
+          :class="['text-xs sm:text-sm font-medium text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
+        >
           {{ warning.message }}
         </p>
 
-        <!-- Read More Toggle -->
+        <!-- Read More Toggle: only when there is more to read (FE-DEF-26) -->
         <button
-          @click="toggleExpand(idx)"
+          v-if="overflowing[idx]"
+          @click="toggle(idx)"
           class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline cursor-pointer pt-0.5"
         >
-          <span>{{ expandedIndices[idx] ? 'Read less' : 'Read more' }}</span>
-          <svg :class="['w-3 h-3 transition-transform', expandedIndices[idx] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <span>{{ expanded[idx] ? 'Read less' : 'Read more' }}</span>
+          <svg :class="['w-3 h-3 transition-transform', expanded[idx] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
           </svg>
         </button>

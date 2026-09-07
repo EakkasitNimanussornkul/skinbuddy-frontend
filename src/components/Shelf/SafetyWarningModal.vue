@@ -1,36 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { watch } from 'vue'
+import { useClampedText } from '../../composables/useClampedText'
+import { resolveSeverityBand } from '../../api/safety'
 
-defineProps<{
+const props = defineProps<{
   warnings: any[]
 }>()
 
 const emit = defineEmits(['cancel', 'proceed'])
 
-// Track which warnings are currently expanded
-const expandedWarnings = ref(new Set<number>())
+// FE-DEF-27: the toggle below was rendered only for messages longer than 90
+// characters, a stand-in for "this is more than two lines" that has no
+// relationship to how many lines the text occupies. At this modal's width an
+// 86-character warning wraps to four lines and was clamped to two with the
+// toggle hidden, so half of a safety warning could not be reached at all. The
+// same measurement the inspection card uses now decides it.
+const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
-const toggleExpand = (index: number) => {
-  const newSet = new Set(expandedWarnings.value)
-  if (newSet.has(index)) {
-    newSet.delete(index)
-  } else {
-    newSet.add(index)
-  }
-  expandedWarnings.value = newSet
+watch(() => props.warnings, remeasure)
+
+// FE-DEF-25: this component already banded three ways and was the correct one
+// of the three. Its own lowercase-and-compare is replaced by the shared
+// resolveSeverityBand so that all three read the field identically; the
+// palette below is unchanged, and `low` now takes the branch that `else`
+// covered before rather than sharing it with an unrecognised value.
+const SEVERITY_BADGE: Record<string, string> = {
+  high: 'bg-rose-100 text-semantic-error dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800/50',
+  medium: 'bg-amber-100 text-semantic-warning dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
+  low: 'bg-brand-primary-light text-brand-primary dark:bg-brand-primary/10 dark:text-brand-primary-accent border-brand-primary/20 dark:border-brand-primary/30',
+  unknown: 'bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-stone-200 dark:border-stone-700',
 }
 
-// Dynamically style the badge based on the backend severity level
-const getSeverityBadge = (severity?: string) => {
-  const s = (severity || '').toLowerCase()
-  if (s === 'high') {
-    return 'bg-rose-100 text-semantic-error dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
-  }
-  if (s === 'medium') {
-    return 'bg-amber-100 text-semantic-warning dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
-  }
-  return 'bg-brand-primary-light text-brand-primary dark:bg-brand-primary/10 dark:text-brand-primary-accent border-brand-primary/20 dark:border-brand-primary/30'
-}
+const getSeverityBadge = (severity?: string) =>
+  SEVERITY_BADGE[resolveSeverityBand(severity)] ?? SEVERITY_BADGE.unknown
 </script>
 
 <template>
@@ -54,24 +56,25 @@ const getSeverityBadge = (severity?: string) => {
             class="text-[9px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-lg border inline-block mb-2.5"
             :class="getSeverityBadge(warning.severity)"
           >
-            {{ warning.severity }} &bull; {{ warning.alert_type }}
+            <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">{{ warning.severity }} &bull; </template>{{ warning.alert_type }}
           </span>
 
           <div>
             <p
+              :ref="(el) => setElement(index, el)"
               class="text-sm font-medium text-brand-text dark:text-stone-300 leading-relaxed transition-all duration-300"
-              :class="{ 'line-clamp-2': !expandedWarnings.has(index) }"
+              :class="{ 'line-clamp-2': !expanded[index] }"
             >
               {{ warning.message }}
             </p>
 
             <button
-              v-if="warning.message?.length > 90"
-              @click="toggleExpand(index)"
+              v-if="overflowing[index]"
+              @click="toggle(index)"
               class="text-xs font-bold text-brand-primary hover:text-brand-primary-hover mt-2 transition-colors flex items-center gap-1"
             >
-              {{ expandedWarnings.has(index) ? 'Show less' : 'Read more' }}
-              <svg :class="['w-3 h-3 transition-transform', expandedWarnings.has(index) ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+              {{ expanded[index] ? 'Show less' : 'Read more' }}
+              <svg :class="['w-3 h-3 transition-transform', expanded[index] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
             </button>
           </div>
 
