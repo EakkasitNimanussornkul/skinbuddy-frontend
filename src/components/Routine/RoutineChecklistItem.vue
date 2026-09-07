@@ -9,6 +9,10 @@ const props = withDefaults(
     accent: 'morning' | 'evening' | 'weekly'
     busy?: boolean
     dueToday?: boolean
+    // Completion state for THIS card's session. A "both" product renders one
+    // card in each session, so the parent passes the per-session flag rather
+    // than the card reading a single whole-step value.
+    completed?: boolean
   }>(),
   { dueToday: true },
 )
@@ -18,7 +22,9 @@ const emit = defineEmits(['toggle-complete', 'edit-frequency', 'remove'])
 const product = computed(() => props.step?.products || {})
 const name = computed(() => product.value?.name || 'Product')
 const imageUrl = computed(() => product.value?.image_url || null)
-const completed = computed(() => !!props.step?.completed_today)
+const completed = computed(() =>
+  props.completed !== undefined ? props.completed : !!props.step?.completed_today,
+)
 
 const frequency = computed(() => props.step?.frequency || 'daily')
 // Same vocabulary as the proposal card: "Daily", "Tue · Sat", "Mon · Wed · Fri".

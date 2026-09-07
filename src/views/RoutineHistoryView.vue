@@ -102,6 +102,14 @@ const selectedLabel = computed(() =>
     : '',
 )
 
+// AM = morning (amber), PM = evening (brand). Matches the checklist's blocks.
+const sessionBadge = (session: string) => {
+  const base = 'shrink-0 text-[9px] font-bold uppercase tracking-wider rounded px-1.5 py-0.5'
+  return session === 'AM'
+    ? `${base} bg-amber-200/70 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300`
+    : `${base} bg-brand-primary-light text-brand-primary dark:bg-brand-primary/20`
+}
+
 const openDay = (key: string | null, entry: AdherenceDay | null) => {
   if (!key || !entry || entry.status === 'none') return
   selectedKey.value = key
@@ -231,9 +239,10 @@ const openDay = (key: string | null, entry: AdherenceDay | null) => {
             <div v-if="selected.completed.length">
               <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1.5">Completed</p>
               <ul class="space-y-1">
-                <li v-for="s in selected.completed" :key="s.step_id || s.product_name" class="text-sm text-brand-text dark:text-stone-200 flex items-start gap-2">
+                <li v-for="s in selected.completed" :key="`${s.step_id || s.product_name}-${s.session}`" class="text-sm text-brand-text dark:text-stone-200 flex items-start gap-2">
                   <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                  {{ s.product_name }}
+                  <span class="flex-1">{{ s.product_name }}</span>
+                  <span v-if="s.session" :class="sessionBadge(s.session)">{{ s.session }}</span>
                 </li>
               </ul>
             </div>
@@ -241,9 +250,10 @@ const openDay = (key: string | null, entry: AdherenceDay | null) => {
             <div v-if="selected.missed.length">
               <p class="text-[10px] font-bold uppercase tracking-widest text-semantic-error mb-1.5">Missed</p>
               <ul class="space-y-1">
-                <li v-for="s in selected.missed" :key="s.step_id || s.product_name" class="text-sm text-brand-text-muted flex items-start gap-2">
+                <li v-for="s in selected.missed" :key="`${s.step_id || s.product_name}-${s.session}`" class="text-sm text-brand-text-muted flex items-start gap-2">
                   <svg class="w-4 h-4 text-semantic-error/70 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                  {{ s.product_name }}
+                  <span class="flex-1">{{ s.product_name }}</span>
+                  <span v-if="s.session" :class="sessionBadge(s.session)">{{ s.session }}</span>
                 </li>
               </ul>
             </div>

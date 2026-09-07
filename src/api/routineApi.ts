@@ -61,31 +61,43 @@ export const reorderSteps = async (stepIds: string[]) => {
   return response.data
 }
 
-// UC-22: mark a step completed for a period (defaults to today on the server)
-export const completeStep = async (stepId: string, periodKey?: string) => {
+// UC-22: mark a step completed for a period (defaults to today on the server).
+// `session` ("AM"/"PM") records which session was ticked, so a "both" product
+// can be done in the morning without also marking the evening.
+export const completeStep = async (stepId: string, periodKey?: string, session?: string) => {
   const response = await apiClient.post(`/routine/steps/${stepId}/complete`, {
     period_key: periodKey ?? null,
+    time_of_day: session ?? null,
   })
   return response.data
 }
 
-// UC-22: undo a completion
-export const uncompleteStep = async (stepId: string, periodKey?: string) => {
-  const url = periodKey
-    ? `/routine/steps/${stepId}/complete?period_key=${periodKey}`
-    : `/routine/steps/${stepId}/complete`
-  const response = await apiClient.delete(url)
+// UC-22: undo a completion (of one session, when a session is given)
+export const uncompleteStep = async (stepId: string, periodKey?: string, session?: string) => {
+  const params = new URLSearchParams()
+  if (periodKey) params.set('period_key', periodKey)
+  if (session) params.set('time_of_day', session)
+  const qs = params.toString()
+  const response = await apiClient.delete(`/routine/steps/${stepId}/complete${qs ? `?${qs}` : ''}`)
   return response.data
 }
 
 // UC-27: routine completion history grouped by day
+// `session` is "AM"/"PM" for a per-session task, or null for a legacy whole-day
+// completion. A "both" product can appear once in completed and once in missed.
+export interface AdherenceItem {
+  step_id: string | null
+  session: string | null
+  product_name: string
+}
+
 export interface AdherenceDay {
   status: 'complete' | 'partial' | 'missed' | 'none'
   due: number
   done: number
-  completed: { step_id: string | null; product_name: string }[]
-  missed: { step_id: string | null; product_name: string }[]
-  also_completed: { step_id: string | null; product_name: string }[]
+  completed: AdherenceItem[]
+  missed: AdherenceItem[]
+  also_completed: AdherenceItem[]
 }
 
 export interface AdherenceResponse {

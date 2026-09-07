@@ -35,18 +35,31 @@ const goGenerate = () => router.push({ path: '/chat', query: { intent: 'generate
 
 const existingProductIds = computed(() => steps.value.map((s) => s.product_id).filter(Boolean))
 
-// A step counts toward "done today" only if it is actually scheduled for today —
-// otherwise a 2x/week step makes 100% unreachable on the days it isn't due.
-const dueToday = computed(() => steps.value.filter((s) => isDueToday(s.frequency)))
-const completedCount = computed(() => dueToday.value.filter((s) => s.completed_today).length)
+// "Done today" is counted per session: a "both" product due today is two tasks
+// (morning + evening), so completing only the morning reads as 1 of 2. A step
+// counts only on days it is actually scheduled, so a 2x/week step doesn't make
+// 100% unreachable on its off days.
+const sessionsOf = (s: any): ('am' | 'pm')[] => {
+  const t = (s.time_of_day || 'both').toLowerCase()
+  return t === 'both' ? ['am', 'pm'] : [t as 'am' | 'pm']
+}
+const dueTodayCount = computed(() =>
+  steps.value.reduce((n, s) => (isDueToday(s.frequency) ? n + sessionsOf(s).length : n), 0),
+)
+const completedCount = computed(() =>
+  steps.value.reduce((n, s) => {
+    if (!isDueToday(s.frequency)) return n
+    return n + sessionsOf(s).filter((sess) => (sess === 'am' ? s.completed_am : s.completed_pm)).length
+  }, 0),
+)
 
 // Morning / Evening only. Cadence is shown per step, not used to file it into a
 // separate block — see groupSteps() in utils/routineSchedule.
 const grouped = computed(() => groupSteps(steps.value))
 
 const blocks = computed(() => [
-  { key: 'morning', title: 'Morning', accent: 'morning' as const, pill: 'bg-amber-200/70 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300', items: grouped.value.morning },
-  { key: 'evening', title: 'Evening', accent: 'evening' as const, pill: 'bg-brand-primary-light text-brand-primary dark:bg-brand-primary/20 dark:text-brand-primary-accent', items: grouped.value.evening },
+  { key: 'morning', title: 'Morning', session: 'am' as const, accent: 'morning' as const, pill: 'bg-amber-200/70 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300', items: grouped.value.morning },
+  { key: 'evening', title: 'Evening', session: 'pm' as const, accent: 'evening' as const, pill: 'bg-brand-primary-light text-brand-primary dark:bg-brand-primary/20 dark:text-brand-primary-accent', items: grouped.value.evening },
 ])
 
 const fetchRoutine = async () => {
@@ -63,15 +76,18 @@ const fetchRoutine = async () => {
 
 onMounted(fetchRoutine)
 
-// UC-22: toggle completion (optimistic)
-const toggleComplete = async (step: any) => {
-  const previous = !!step.completed_today
-  step.completed_today = !previous
+// UC-22: toggle completion for one session (optimistic). The same step object is
+// shared by the Morning and Evening cards, so we flip only that session's flag.
+const toggleComplete = async (step: any, session: 'am' | 'pm') => {
+  const flag = session === 'am' ? 'completed_am' : 'completed_pm'
+  const previous = !!step[flag]
+  step[flag] = !previous
+  const sessionArg = session.toUpperCase() // "AM" | "PM"
   try {
-    if (step.completed_today) await completeStep(step.id)
-    else await uncompleteStep(step.id)
+    if (step[flag]) await completeStep(step.id, undefined, sessionArg)
+    else await uncompleteStep(step.id, undefined, sessionArg)
   } catch {
-    step.completed_today = previous // revert
+    step[flag] = previous // revert
     addToast('Could not update completion', 'error')
   }
 }
@@ -244,7 +260,7 @@ const saveFrequency = async (payload: { frequency: string; time_of_day: string }
         <div>
           <h1 class="text-2xl sm:text-3xl font-serif font-bold dark:text-white">Routine Checklist</h1>
           <p class="text-xs text-brand-text-muted mt-0.5">
-            <template v-if="steps.length">{{ completedCount }} of {{ dueToday.length }} due today</template>
+            <template v-if="steps.length">{{ completedCount }} of {{ dueTodayCount }} due today</template>
             <template v-else>Build a routine from the products you own.</template>
           </p>
         </div>
@@ -394,7 +410,8 @@ const saveFrequency = async (payload: { frequency: string; time_of_day: string }
                   :accent="block.accent"
                   :busy="busy"
                   :due-today="isDueToday(step.frequency)"
-                  @toggle-complete="toggleComplete(step)"
+                  :completed="block.session === 'am' ? step.completed_am : step.completed_pm"
+                  @toggle-complete="toggleComplete(step, block.session)"
                   @edit-frequency="stepToEditFrequency = step"
                   @remove="stepToRemove = step"
                 />
