@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
-import { resolveSeverityBand } from '../../api/safety'
+import { resolveSeverityBand, type SafetyStatus } from '../../api/safety'
 
 export interface WarningAlert {
   alert_type: string
@@ -12,9 +12,14 @@ export interface WarningAlert {
 const props = defineProps<{
   warnings: WarningAlert[]
   isLoading?: boolean
-  // Distinct from `warnings: []`. An empty list means the scan ran and found
-  // nothing; this means it never produced a verdict at all.
-  scanFailed?: boolean
+  // The outcome's status, not a boolean for "something went wrong". Both
+  // non-verdict statuses are distinct from `warnings: []`, which means the scan
+  // ran and found nothing - but they are also distinct from each other, and
+  // FE-DEF-29 is that they were being told to the user in the same words. A
+  // second boolean alongside the first would have let both be set at once,
+  // which is not a state that exists.
+  // Null means no check has resolved yet, so neither panel below is shown.
+  scanStatus?: SafetyStatus | null
 }>()
 
 // FE-DEF-26: the toggle below used to render for every warning. A one-line
@@ -64,8 +69,9 @@ const severityBadgeClass = (severity: string | null | undefined) =>
     </div>
   </div>
 
-  <!-- Scan Unavailable: must not look like a clean result -->
-  <div v-else-if="scanFailed" class="p-5 rounded-3xl bg-amber-500/5 border border-amber-500/30 space-y-2">
+  <!-- Scan Unavailable: the check did not run. Must not look like a clean
+       result, and says the one thing that is worth doing about it. -->
+  <div v-else-if="scanStatus === 'unavailable'" class="p-5 rounded-3xl bg-amber-500/5 border border-amber-500/30 space-y-2">
     <div class="flex items-center gap-3.5">
       <div class="flex items-center justify-center w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 shrink-0">
         <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,6 +82,27 @@ const severityBadgeClass = (severity: string | null | undefined) =>
         <span class="text-xs font-bold text-brand-text dark:text-stone-200 tracking-wide block">Safety Scan Unavailable</span>
         <p class="text-[11px] font-medium text-brand-text-muted">
           We couldn't complete the compatibility check, so this product has not been assessed. This is not a clean result.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not Assessed: the check ran and returned no verdict for this product.
+       Also not a clean result, but nothing the user can do will change it, so
+       it does not borrow the sentence above and ask them to wait and retry
+       (FE-DEF-29). It says what is known and stops there - the cause sits in the
+       catalogue, and this component has not been told what it is. -->
+  <div v-else-if="scanStatus === 'unassessed'" class="p-5 rounded-3xl bg-stone-500/5 border border-stone-500/30 space-y-2">
+    <div class="flex items-center gap-3.5">
+      <div class="flex items-center justify-center w-10 h-10 rounded-2xl bg-stone-500/10 border border-stone-500/30 text-brand-text-muted shrink-0">
+        <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div class="space-y-1">
+        <span class="text-xs font-bold text-brand-text dark:text-stone-200 tracking-wide block">Not Assessed</span>
+        <p class="text-[11px] font-medium text-brand-text-muted">
+          The compatibility check ran but returned no verdict for this product, so it has not been assessed against your shelf. This is not a clean result.
         </p>
       </div>
     </div>

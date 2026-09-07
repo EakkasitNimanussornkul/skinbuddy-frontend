@@ -65,6 +65,17 @@ const handleSave = async (configPayload: any, forceSave = false) => {
         return
       }
 
+      // FE-DEF-29: a separate branch and not a shared one, for two reasons.
+      // The words differ - nothing failed here and nothing is worth retrying,
+      // so the message above would be false. And without it this status would
+      // fall through to the block below and open the conflict modal on an empty
+      // warnings list: a dialogue listing no conflicts, over a "Proceed Anyway"
+      // button, for a product that was never assessed.
+      if (outcome.status === 'unassessed') {
+        addToast('This product has not been assessed, so it cannot be added.', 'error')
+        return
+      }
+
       analysisWarnings.value = outcome.warnings
       pendingPayload.value = configPayload
       showWarningModal.value = true

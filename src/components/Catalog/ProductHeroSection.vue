@@ -8,6 +8,7 @@ import {
   showsDuplicates,
   type DuplicateMatch,
   type SafetyOutcome,
+  type SafetyStatus,
 } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
@@ -112,7 +113,10 @@ const showWarningModal = ref(false)
 const isAnalyzing = ref(false)
 const hasCheckedSafety = ref(false)
 const backendWarnings = ref<any[]>([])
-const safetyUnavailable = ref(false)
+// Null until a check resolves. The whole status, not a boolean for "it failed":
+// the modal words a check that never ran and a check that returned no verdict
+// differently, and only one of the two is worth retrying (FE-DEF-29).
+const safetyStatus = ref<SafetyStatus | null>(null)
 // Already filtered through showsDuplicates() below, so anything in here is
 // known to have come from a check that produced an answer. The modal can render
 // it on length alone.
@@ -132,11 +136,17 @@ const runBackendAnalysis = async () => {
   isAnalyzing.value = false
 
   backendWarnings.value = outcome.warnings
-  safetyUnavailable.value = outcome.status === 'unavailable'
+  safetyStatus.value = outcome.status
   backendDuplicates.value = showsDuplicates(outcome) ? outcome.duplicates : []
 
   if (outcome.status === 'unavailable') {
     addToast('Could not complete safety diagnostic verification.', 'error')
+  }
+
+  // Not phrased as a failure, because nothing failed. The check ran; there was
+  // no verdict in it to report.
+  if (outcome.status === 'unassessed') {
+    addToast('This product has not been assessed.', 'error')
   }
 
   return outcome
@@ -160,8 +170,11 @@ const handleOpenConfigurator = async () => {
   }
   const outcome = await runBackendAnalysis()
 
-  // Only an explicit pass opens the configurator. An unavailable check stops
-  // here - the toast above has already told the user why.
+  // Only an explicit pass opens the configurator, and only a reported conflict
+  // opens the warning modal. Written as two named statuses rather than as
+  // "anything else warns", so splitting `unavailable` in FE-DEF-29 could not
+  // route a status with no warnings in it into a modal that lists them: both
+  // non-verdict statuses stop here, each having already said so in a toast.
   if (outcome.status === 'warned') {
     showWarningModal.value = true
   } else if (outcome.status === 'cleared') {
@@ -358,7 +371,7 @@ const handleCommitToShelf = async () => {
       :warnings="backendWarnings"
       :duplicates="backendDuplicates"
       :has-checked="hasCheckedSafety"
-      :scan-failed="safetyUnavailable"
+      :scan-status="safetyStatus"
       @close="isSafetyModalOpen = false"
     />
 

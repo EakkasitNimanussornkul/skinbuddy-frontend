@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { describeDuplicateOverlap, resolveSeverityBand, type DuplicateMatch } from '../../api/safety'
+import {
+  describeDuplicateOverlap,
+  resolveSeverityBand,
+  type DuplicateMatch,
+  type SafetyStatus,
+} from '../../api/safety'
 
 const props = withDefaults(
   defineProps<{
@@ -9,16 +14,20 @@ const props = withDefaults(
     isLoading: boolean
     warnings: Array<{ alert_type: string; severity: string; message: string }>
     hasChecked: boolean
-    // The check did not produce a verdict. Without this, an empty warnings array
-    // from a failed request rendered as a pass.
-    scanFailed?: boolean
+    // The outcome's own status. Without it, an empty warnings array from a
+    // failed request rendered as a pass. It is the whole status rather than a
+    // "it failed" boolean because the two statuses that produce no verdict need
+    // different words on screen - FE-DEF-29 - and because reading it directly
+    // is what keeps `isSafe` below from being re-derived from a list length.
+    // Null until a check resolves.
+    scanStatus?: SafetyStatus | null
     // Shelf products with substantially overlapping actives. The caller has
     // already run showsDuplicates() over these, so an empty list here means the
     // check ran and found nothing - never that it failed. Do not add a second
     // failure branch on this length; that is what FE-DEF-03 was.
     duplicates?: DuplicateMatch[]
   }>(),
-  { scanFailed: false, duplicates: () => [] },
+  { scanStatus: null, duplicates: () => [] },
 )
 
 const emit = defineEmits(['close'])
@@ -35,9 +44,10 @@ const SEVERITY_TEXT: Record<string, string> = {
 
 const skinConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Skin Type Conflict'))
 const chemicalConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Chemical Interaction Warning' || w.alert_type === 'Active Routine Clash'))
-const isSafe = computed(
-  () => props.hasChecked && !props.scanFailed && props.warnings.length === 0,
-)
+// Reads the verdict rather than reconstructing it from an empty list. `cleared`
+// is the only status the backend affirms, so this cannot drift back toward
+// "no warnings, therefore safe" - the reading FE-DEF-03 recorded.
+const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared')
 </script>
 
 <template>
@@ -66,9 +76,15 @@ const isSafe = computed(
           </div>
 
           <template v-else-if="hasChecked">
-            <!-- Case 0: the evaluation did not complete. Reported before the
-                 clean and conflict cases, because neither of those is known. -->
-            <div v-if="scanFailed" class="text-center py-6 space-y-3">
+            <!-- Case 0: the evaluation did not run. Reported before the clean
+                 and conflict cases, because neither of those is known.
+
+                 A null status is folded in here rather than given a branch of
+                 its own: reaching this template means hasChecked is set, so a
+                 modal that has checked and holds no status has no verdict, and
+                 that is what this panel says. Failing into the panel that
+                 claims least is the same choice blocksAction makes. -->
+            <div v-if="scanStatus === 'unavailable' || scanStatus == null" class="text-center py-6 space-y-3">
               <div class="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto border border-amber-500/30">
                 <svg class="w-7 h-7 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -77,6 +93,24 @@ const isSafe = computed(
               <h4 class="text-base font-serif font-bold text-brand-text dark:text-white">Evaluation Unavailable</h4>
               <p class="text-xs text-brand-text-muted max-w-xs mx-auto leading-relaxed">
                 We couldn't reach the compatibility engine, so this formula has not been evaluated against your shelf. Please try again shortly.
+              </p>
+            </div>
+
+            <!-- Case 0b: the evaluation ran and returned no verdict for this
+                 product. Every bit as much "not cleared" as the panel above,
+                 and separated from it only because the advice differs: there is
+                 nothing to come back and retry, so it does not say there is
+                 (FE-DEF-29). It also does not name a cause - the reason sits in
+                 the catalogue and this screen has not been told it. -->
+            <div v-else-if="scanStatus === 'unassessed'" class="text-center py-6 space-y-3">
+              <div class="w-14 h-14 bg-stone-500/10 text-brand-text-muted rounded-full flex items-center justify-center mx-auto border border-stone-500/30">
+                <svg class="w-7 h-7 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 class="text-base font-serif font-bold text-brand-text dark:text-white">Not Assessed</h4>
+              <p class="text-xs text-brand-text-muted max-w-xs mx-auto leading-relaxed">
+                The compatibility check ran but returned no verdict for this formula, so it has not been evaluated against your shelf.
               </p>
             </div>
 

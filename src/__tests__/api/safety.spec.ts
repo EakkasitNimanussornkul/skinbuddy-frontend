@@ -50,13 +50,22 @@ describe('src/api/safety.ts', () => {
       expect(outcome).toEqual({ status: 'unavailable', warnings: [], duplicates: [] })
     })
 
-    it('reports a response carrying no safety verdict as unavailable, not as cleared', () => {
+    it('reports a response carrying no safety verdict as unassessed, not as cleared', () => {
       const outcome = evaluateSafety({ warnings: [] }, false)
 
-      expect(outcome.status).toBe('unavailable')
+      expect(outcome.status).toBe('unassessed')
+    })
+
+    it('separates a check that returned no verdict from one that never ran', () => {
+      // FE-DEF-29: both were 'unavailable', so all three surfaces had one
+      // sentence to describe two situations and it asked the user to retry
+      // something that retrying cannot fix.
+      expect(evaluateSafety({ warnings: [] }, false).status).toBe('unassessed')
+      expect(evaluateSafety(null, true).status).toBe('unavailable')
     })
 
     it('treats a null response body as unavailable even when the request did not throw', () => {
+      // Not unassessed: there is no body, so nothing came back to assess.
       expect(evaluateSafety(null, false).status).toBe('unavailable')
       expect(evaluateSafety(undefined, false).status).toBe('unavailable')
     })
@@ -93,6 +102,13 @@ describe('src/api/safety.ts', () => {
       // This is the assertion that pins FE-DEF-01: the add flow previously fell
       // through to addToShelf when the analysis threw.
       expect(blocksAction({ status: 'unavailable', warnings: [], duplicates: [] })).toBe(true)
+    })
+
+    it('blocks the action when the check returned no verdict, which is not a pass either', () => {
+      // FE-DEF-29 split this out of 'unavailable' so the two could be worded
+      // differently on screen. The gate must not have widened in the process:
+      // an unassessed product is still one nobody cleared.
+      expect(blocksAction({ status: 'unassessed', warnings: [], duplicates: [] })).toBe(true)
     })
 
     it('still allows the action when the user already owns a similar product, because a dupe is not a hazard', () => {
@@ -156,7 +172,7 @@ describe('src/api/safety.ts', () => {
       // whether an unverdicted response may be rendered.
       const outcome = evaluateSafety({ warnings: [], duplicates: [dupe] }, false)
 
-      expect(outcome.status).toBe('unavailable')
+      expect(outcome.status).toBe('unassessed')
       expect(outcome.duplicates).toEqual([dupe])
     })
   })
@@ -176,13 +192,23 @@ describe('src/api/safety.ts', () => {
       expect(showsDuplicates({ status: 'cleared', warnings: [], duplicates: [] })).toBe(false)
     })
 
-    it('hides the section when the check produced no verdict, even though duplicates arrived', () => {
-      // The case the status half of the guard exists for. A partial response can
-      // carry duplicates without an is_safe verdict; rendering them would imply
-      // a shelf comparison completed when it did not.
+    it('hides the section when the check never ran, even though duplicates arrived', () => {
+      // The case the status half of the guard exists for. Rendering a list that
+      // reached us outside a completed check would imply a shelf comparison
+      // that did not happen.
       expect(
         showsDuplicates({ status: 'unavailable', warnings: [], duplicates: [dupe] }),
       ).toBe(false)
+    })
+
+    it('shows the section on a response that carried duplicates but no safety verdict, because that check did run', () => {
+      // The line this guard draws is answered against unanswered, not safe
+      // against unsafe. An unassessed response came back and its duplicate scan
+      // completed, so its list means what it says even though the conflict
+      // check reached no verdict. FE-DEF-29 is what made the two separable.
+      expect(
+        showsDuplicates({ status: 'unassessed', warnings: [], duplicates: [dupe] }),
+      ).toBe(true)
     })
 
     it('hides the section when the check failed and returned nothing', () => {

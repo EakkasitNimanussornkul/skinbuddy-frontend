@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { removeFromShelf, analyzeProduct } from '../../api/shelfapi'
-import { resolveSafety } from '../../api/safety'
+import { resolveSafety, type SafetyStatus } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 
 import KeyActivesGrid from './KeyActivesGrid.vue'
@@ -22,7 +22,11 @@ const { addToast } = useToast()
 const isVisible = ref(false)
 const isAnalyzing = ref(false)
 const warningAlerts = ref<WarningAlert[]>([])
-const scanFailed = ref(false)
+// Null until a check resolves, which is neither of the two failure statuses and
+// must not render as either: the modal mounts before the request is issued, and
+// seeding this with a real status would flash a panel for a check that has not
+// happened yet.
+const scanStatus = ref<SafetyStatus | null>(null)
 
 const localItem = ref({ ...props.item })
 
@@ -38,8 +42,10 @@ const runAutomaticSafetyCheck = async () => {
   warningAlerts.value = outcome.warnings
   // Tracked separately from the payload. An empty warnings array previously
   // rendered identically whether the scan passed or never ran, so a failed
-  // scan read as a clean safety verdict.
-  scanFailed.value = outcome.status === 'unavailable'
+  // scan read as a clean safety verdict. The whole status is carried rather
+  // than a boolean derived from it, because the card now words the two
+  // non-verdict outcomes differently (FE-DEF-29).
+  scanStatus.value = outcome.status
 }
 
 onMounted(() => {
@@ -162,7 +168,7 @@ const handleExecuteDelete = async () => {
             <div class="space-y-6">
 
               <!-- 🌟 1. Safety Inspection Box (With Scanner HUD animation) -->
-              <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-failed="scanFailed" />
+              <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-status="scanStatus" />
 
               <!-- 🌟 2. Description -->
               <div v-if="description">

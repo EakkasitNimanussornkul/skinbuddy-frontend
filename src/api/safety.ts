@@ -29,9 +29,25 @@ export interface SafetyAnalysis {
 /**
  * `cleared`     the check ran and found nothing
  * `warned`      the check ran and found conflicts
- * `unavailable` the check did not produce an answer
+ * `unassessed`  the check ran and returned no verdict for this product
+ * `unavailable` the check did not run
+ *
+ * FE-DEF-29: the last two were one member. Both are "we cannot say this product
+ * is safe", which is why they share every consequence that matters - neither
+ * clears a product and neither lets a save through - but they have opposite
+ * remedies, and the copy on all three surfaces could only be true of one of
+ * them. "Please try again shortly" is the right thing to tell someone whose
+ * request never completed and the wrong thing to tell someone looking at a
+ * catalogue row with nothing recorded to check against, for whom retrying will
+ * never do anything.
+ *
+ * Which of the two it is was never missing: `failed` is an argument to
+ * evaluateSafety and the response body is in front of it. The two were being
+ * collapsed here and the information discarded, so the components downstream
+ * had nothing left to phrase a true sentence from. Splitting the member gives
+ * it back to them without the API growing a field.
  */
-export type SafetyStatus = 'cleared' | 'warned' | 'unavailable'
+export type SafetyStatus = 'cleared' | 'warned' | 'unassessed' | 'unavailable'
 
 export interface SafetyOutcome {
   status: SafetyStatus
@@ -64,10 +80,10 @@ export const evaluateSafety = (
 
   const warnings = Array.isArray(analysis.warnings) ? analysis.warnings : []
 
-  // Carried on every branch below, including the unavailable one, rather than
-  // being emptied there. A partial response can genuinely arrive with dupes and
-  // no verdict, and hiding that here would leave showsDuplicates() looking like
-  // it guards something that cannot happen.
+  // Carried on every branch below, including the unassessed one, rather than
+  // being emptied there. A response can genuinely arrive with dupes and no
+  // verdict, and hiding that here would leave showsDuplicates() looking like it
+  // guards something that cannot happen.
   const duplicates = Array.isArray(analysis.duplicates) ? analysis.duplicates : []
 
   // Warnings win over a contradictory verdict. If the backend reports conflicts
@@ -80,9 +96,11 @@ export const evaluateSafety = (
     return { status: 'cleared', warnings: [], duplicates }
   }
 
-  // No warnings and no affirmative verdict. We did not receive an answer, so we
-  // must not report one.
-  return { status: 'unavailable', warnings: [], duplicates }
+  // The request completed and the body came back without conflicts and without
+  // an affirmative verdict. Still not a pass - the rule above holds - but it is
+  // an answer, and the thing it says is that this product was not assessed.
+  // Distinct from the branch at the top, which is the absence of an answer.
+  return { status: 'unassessed', warnings: [], duplicates }
 }
 
 /**
@@ -91,6 +109,11 @@ export const evaluateSafety = (
  * Anything other than an explicit pass stops the flow. Callers must branch on
  * this rather than on `warnings.length`, which cannot distinguish "nothing
  * found" from "nothing received".
+ *
+ * Written against `cleared` rather than against a list of the statuses that
+ * stop, so splitting `unavailable` into two members in FE-DEF-29 could not
+ * quietly open the gate: a new way of failing to clear a product fails closed
+ * here by construction, without this line being touched.
  */
 export const blocksAction = (outcome: SafetyOutcome) => outcome.status !== 'cleared'
 
@@ -101,6 +124,14 @@ export const blocksAction = (outcome: SafetyOutcome) => outcome.status !== 'clea
  * mistake FE-DEF-03 recorded for warnings: an empty list means "you own nothing
  * similar" after a completed check and "we do not know" after a failed one, and
  * the length cannot tell them apart. The status check is what separates them.
+ *
+ * It tests `unavailable` and not "anything short of cleared", which is the
+ * difference that matters after FE-DEF-29 split the two. An `unassessed`
+ * response came back: its duplicate scan ran and its list means what it says,
+ * even though the conflict check reached no verdict. Those dupes are shown.
+ * The distinction being drawn here is answered against unanswered, not safe
+ * against unsafe - which is also why this must not be rewritten in terms of
+ * blocksAction, whose line is drawn in the other place.
  *
  * Note this deliberately does NOT feed blocksAction. Owning a similar product
  * is information, not a hazard, and must never stop a save.
