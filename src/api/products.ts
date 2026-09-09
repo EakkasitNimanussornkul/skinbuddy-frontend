@@ -329,6 +329,47 @@ export const countProductIngredients = (product: unknown): number => {
     .length
 }
 
+export interface ComparisonSimilarity {
+  band: SimilarityBand
+  /** The figure as shown, or a phrase saying there is none. */
+  label: string
+  description: string
+}
+
+/**
+ * Everything a screen needs to show a comparison's ingredient-overlap figure.
+ *
+ * Two screens render it - the side-by-side overview and the ingredients matrix
+ * - and this exists so it cannot come out differently on the two. That is not a
+ * hypothetical: this codebase has already had the same number rendered by three
+ * components carrying three private copies of its thresholds, which is FE-DEF-12,
+ * and three components banding one severity field three different ways, which is
+ * FE-DEF-25. The band, the rounding and the sentence are decided once here; the
+ * colours stay each screen's own, which is the split resolveMatchBand
+ * established.
+ *
+ * Reads the counts off the same payload that carries the score, so the caller
+ * does not have to know that a zero can mean two things - see
+ * resolveSimilarityBand for why it can.
+ */
+export const resolveComparisonSimilarity = (
+  data: { similarity_score?: number | null; product_a?: unknown; product_b?: unknown } | null | undefined,
+): ComparisonSimilarity => {
+  const score = data?.similarity_score
+  const band = resolveSimilarityBand(
+    score,
+    countProductIngredients(data?.product_a),
+    countProductIngredients(data?.product_b),
+  )
+
+  return {
+    band,
+    // Omitted rather than shown as "0%" when the figure could not be computed.
+    label: band === 'unavailable' ? 'No overlap figure' : `${Math.round(score as number)}% shared ingredients`,
+    description: describeSimilarityBand(band),
+  }
+}
+
 /**
  * `loading`  the request is in flight
  * `failed`   the request did not complete

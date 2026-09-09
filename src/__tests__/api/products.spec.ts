@@ -21,6 +21,7 @@ import {
   resolveMatchAvailability,
   describeMatchAvailability,
   resolveSimilarityBand,
+  resolveComparisonSimilarity,
   countProductIngredients,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
@@ -322,6 +323,82 @@ describe('src/api/products.ts', () => {
       expect(resolveSimilarityBand(undefined, 10, 10)).toBe('unavailable')
       expect(resolveSimilarityBand(NaN, 10, 10)).toBe('unavailable')
       expect(resolveSimilarityBand('60' as never, 10, 10)).toBe('unavailable')
+    })
+  })
+
+  describe('resolveComparisonSimilarity()', () => {
+    const withIngredients = (n: number) => ({
+      product_ingredients: Array.from({ length: n }, (_, i) => ({ ingredients: { id: `i-${i}` } })),
+    })
+
+    it('reads the figure and both ingredient counts off one comparison payload', () => {
+      const outcome = resolveComparisonSimilarity({
+        similarity_score: 72,
+        product_a: withIngredients(10),
+        product_b: withIngredients(8),
+      })
+
+      expect(outcome.band).toBe('high')
+      expect(outcome.label).toBe('72% shared ingredients')
+    })
+
+    it('rounds the figure for display rather than printing the backend decimal', () => {
+      const outcome = resolveComparisonSimilarity({
+        similarity_score: 12.5,
+        product_a: withIngredients(10),
+        product_b: withIngredients(8),
+      })
+
+      expect(outcome.label).toBe('13% shared ingredients')
+    })
+
+    it('omits the figure entirely when neither product has an ingredient list', () => {
+      // The backend's Jaccard returns 0.0 for an empty union. Printing that as
+      // "0% shared ingredients" states a comparison that never happened.
+      const outcome = resolveComparisonSimilarity({
+        similarity_score: 0,
+        product_a: withIngredients(0),
+        product_b: withIngredients(0),
+      })
+
+      expect(outcome.band).toBe('unavailable')
+      expect(outcome.label).toBe('No overlap figure')
+      expect(outcome.label).not.toMatch(/%/)
+    })
+
+    it('still prints a real zero when the two products genuinely share nothing', () => {
+      const outcome = resolveComparisonSimilarity({
+        similarity_score: 0,
+        product_a: withIngredients(12),
+        product_b: withIngredients(9),
+      })
+
+      expect(outcome.band).toBe('low')
+      expect(outcome.label).toBe('0% shared ingredients')
+    })
+
+    it('gives the same answer to both screens that render this figure', () => {
+      // The point of the helper. The overview and the ingredients matrix show
+      // one number to one user, and each having its own copy of the rounding
+      // and the thresholds is exactly what FE-DEF-12 was.
+      const payload = {
+        similarity_score: 59.6,
+        product_a: withIngredients(10),
+        product_b: withIngredients(8),
+      }
+
+      expect(resolveComparisonSimilarity(payload)).toEqual(resolveComparisonSimilarity(payload))
+      // 59.6 rounds to 60 for display but bands on the raw value, so the badge
+      // reads "60%" while the sentence is the moderate one. Pinned because the
+      // obvious "round first, then band" refactor would silently change it.
+      expect(resolveComparisonSimilarity(payload).label).toBe('60% shared ingredients')
+      expect(resolveComparisonSimilarity(payload).band).toBe('moderate')
+    })
+
+    it('reports an absent payload as unavailable rather than throwing', () => {
+      expect(resolveComparisonSimilarity(null).band).toBe('unavailable')
+      expect(resolveComparisonSimilarity(undefined).band).toBe('unavailable')
+      expect(resolveComparisonSimilarity({}).band).toBe('unavailable')
     })
   })
 

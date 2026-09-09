@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CompareFlagMarker from './CompareFlagMarker.vue'
 import type { CompareResponse } from '../../api/products'
 
 defineProps<{ data: CompareResponse }>()
@@ -14,9 +15,8 @@ const propertiesList = [
 ]
 
 // Null is a third answer, not a missing one. `safety_flags` can legitimately
-// omit a key, and reporting that as `false` would print a claim about a
-// formulation nobody made - the same fault FE-DEF-25 recorded for severity and
-// FE-DEF-12 for the match score.
+// omit a key, and reporting that as `false` would state something about the
+// formulation that nobody recorded. CompareFlagMarker draws it as its own thing.
 const verifyFlagState = (product: any, propertyKey: string): boolean | null => {
   if (!product) return null
   if (product.safety_flags && product.safety_flags[propertyKey] !== undefined) {
@@ -27,71 +27,49 @@ const verifyFlagState = (product: any, propertyKey: string): boolean | null => {
 </script>
 
 <template>
-  <div class="bg-brand-surface-light dark:bg-brand-surface-dark p-5 sm:p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-xl space-y-3.5">
+  <div class="bg-brand-surface-light dark:bg-brand-surface-dark p-5 sm:p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-xl space-y-3">
 
-    <!-- Header and legend on one line. The legend is new: the old layout put A
-         and B at opposite ends of a full-width row and relied on that distance
-         to say which was which, which a chip cannot do. Stated once here rather
-         than repeated in all seven chips. -->
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <div class="font-serif font-bold text-sm text-brand-text-muted tracking-wider uppercase">
-        Free-From Composition Metrics
-      </div>
-      <div class="flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-wider text-brand-text-muted">
-        <span class="flex items-center gap-1.5">
-          <span class="w-4 h-4 rounded-full bg-stone-400/10 border border-stone-400/20 flex items-center justify-center text-[9px] font-black">A</span>
-          <span class="truncate max-w-[7rem]">{{ data.product_a?.brand || 'Formula A' }}</span>
-        </span>
-        <span class="flex items-center gap-1.5">
-          <span class="w-4 h-4 rounded-full bg-stone-400/10 border border-stone-400/20 flex items-center justify-center text-[9px] font-black">B</span>
-          <span class="truncate max-w-[7rem]">{{ data.product_b?.brand || 'Formula B' }}</span>
-        </span>
-      </div>
+    <!-- Header, and a legend naming which side is which product. The row layout
+         below says it by position - product A on the left, product B on the
+         right, matching the two columns the rest of the screen uses - and the
+         legend states in words what that position means, which the previous
+         version left the reader to infer. -->
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+      <span class="text-[10px] font-bold uppercase tracking-widest text-brand-primary truncate max-w-[8rem]">
+        {{ data.product_a?.brand || 'Formula A' }}
+      </span>
+      <span class="font-serif font-bold text-xs sm:text-sm text-brand-text-muted tracking-wider uppercase order-first w-full text-center sm:order-none sm:w-auto">
+        Free-From Composition
+      </span>
+      <span class="text-[10px] font-bold uppercase tracking-widest text-brand-primary truncate max-w-[8rem] text-right">
+        {{ data.product_b?.brand || 'Formula B' }}
+      </span>
     </div>
 
-    <!-- Chip grid. Was seven full-width rows at 53px each, 458px of panel for
-         fourteen booleans. The markers stay in A-then-B reading order inside
-         each chip so the mapping to the product-A-left / product-B-right
-         arrangement the rest of the screen uses survives the compaction. -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+    <!-- Same three-part row as before - product A's answer at the left edge, the
+         property in the middle, product B's answer at the right edge - because
+         that mapping to the page's two product columns is what makes the panel
+         readable without a legend per line. Only the scale changed: the panel
+         spent 458px on fourteen booleans, at 53px a row, which was more page
+         than the facts were worth. Padding, marker and label sizes are all down
+         a step, and the panel's own padding with them. -->
+    <div class="border border-brand-surface-border dark:border-stone-800/80 rounded-2xl overflow-hidden divide-y divide-brand-surface-border dark:divide-stone-800/60">
       <div
         v-for="item in propertiesList"
         :key="item.key"
-        class="flex items-center gap-2 px-2.5 py-2 rounded-2xl border border-brand-surface-border dark:border-stone-800/80 bg-brand-bg-light/40 dark:bg-stone-900/30 hover:bg-brand-bg-light dark:hover:bg-stone-900/60 transition-colors min-w-0"
+        class="grid grid-cols-12 items-center gap-2 py-1.5 px-3 sm:px-4 hover:bg-brand-bg-light/40 dark:hover:bg-stone-900/10 transition-colors"
       >
-        <div class="flex items-center gap-1 shrink-0">
-          <!-- Written once per product rather than once per state per product:
-               the previous layout repeated the same three-branch block verbatim
-               for A and for B, so a change to any marker had to be made twice. -->
-          <!-- Keyed by position, not by value: A and B agree on most properties,
-               and keying on the state would emit the same key twice whenever
-               they do. -->
-          <template
-            v-for="(side, sideIdx) in [verifyFlagState(data.product_a, item.key), verifyFlagState(data.product_b, item.key)]"
-            :key="sideIdx"
-          >
-            <span
-              v-if="side === true"
-              class="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0"
-            >
-              <svg class="w-2.5 h-2.5 stroke-[3.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </span>
-            <span
-              v-else-if="side === false"
-              class="w-4 h-4 rounded-full bg-rose-500/10 text-semantic-error border border-rose-500/20 flex items-center justify-center shrink-0"
-            >
-              <svg class="w-2.5 h-2.5 stroke-[3.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </span>
-            <span
-              v-else
-              class="w-4 h-4 rounded-full bg-stone-400/10 text-stone-400 dark:text-stone-500 border border-stone-400/20 flex items-center justify-center font-bold text-[9px] shrink-0"
-            >?</span>
-          </template>
+        <div class="col-span-2 flex justify-start">
+          <CompareFlagMarker :state="verifyFlagState(data.product_a, item.key)" />
         </div>
 
-        <span class="text-[10px] font-bold text-brand-text dark:text-stone-300 uppercase tracking-wide leading-tight min-w-0 break-words">
+        <div class="col-span-8 text-center font-bold text-brand-text dark:text-stone-300 uppercase tracking-wide text-[10px] leading-tight">
           {{ item.label }}
-        </span>
+        </div>
+
+        <div class="col-span-2 flex justify-end">
+          <CompareFlagMarker :state="verifyFlagState(data.product_b, item.key)" />
+        </div>
       </div>
     </div>
   </div>

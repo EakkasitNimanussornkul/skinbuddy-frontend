@@ -4,10 +4,9 @@ import {
   MATCH_SCORE_BASIS,
   countProductIngredients,
   describeMatchAvailability,
-  describeSimilarityBand,
+  resolveComparisonSimilarity,
   resolveMatchAvailability,
   resolveMatchBand,
-  resolveSimilarityBand,
   type CompareResponse,
 } from '../../api/products'
 import { useAuthStore } from '../../stores/auth'
@@ -54,26 +53,12 @@ const matchExplanation = computed(() => {
   return availability === 'scored' ? MATCH_SCORE_BASIS : describeMatchAvailability(availability)
 })
 
-// The compare endpoint has always returned this figure and no screen has ever
-// shown it. It is the share of the two full ingredient lists that appears in
-// both - a Jaccard index over ingredient ids, computed by the backend and
-// already rounded there, so it is rendered rather than recomputed.
-const similarity = computed(() => {
-  const score = props.data?.similarity_score
-  const band = resolveSimilarityBand(
-    score,
-    countProductIngredients(props.data?.product_a),
-    countProductIngredients(props.data?.product_b),
-  )
-
-  return {
-    band,
-    // Omitted rather than shown as "0%" when the figure could not be computed,
-    // for the reason resolveSimilarityBand documents.
-    label: band === 'unavailable' ? 'No overlap figure' : `${Math.round(score)}% shared ingredients`,
-    description: describeSimilarityBand(band),
-  }
-})
+// The share of the two full ingredient lists that appears in both - a Jaccard
+// index over ingredient ids, computed and rounded by the backend, so it is
+// rendered rather than recomputed. Resolved through the shared helper because
+// the ingredients matrix shows the same figure, and this is exactly the shape
+// that produced FE-DEF-12: one number, several screens, a private copy each.
+const similarity = computed(() => resolveComparisonSimilarity(props.data))
 
 const SIMILARITY_STYLES: Record<string, string> = {
   high: 'bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent border-brand-primary/20',

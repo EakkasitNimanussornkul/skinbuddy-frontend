@@ -1,7 +1,27 @@
 <script setup lang="ts">
-import type { CompareResponse } from '../../api/products'
+import { computed } from 'vue'
+import { resolveComparisonSimilarity, type CompareResponse } from '../../api/products'
 
-defineProps<{ data: CompareResponse }>()
+const props = defineProps<{ data: CompareResponse }>()
+
+// The same figure the side-by-side overview shows, resolved through the same
+// helper rather than recomputed here. This panel already listed the shared
+// ingredients by name and gave their count; the proportion they represent is
+// what turns "seven shared" into something meaningful, since seven out of nine
+// and seven out of forty are not the same fact.
+//
+// Deliberately not a second calculation. Rounding, banding and wording all come
+// from resolveComparisonSimilarity, so the two screens cannot disagree about a
+// number the user can see on both - the failure FE-DEF-12 recorded when three
+// components each kept their own copy of the match thresholds.
+const similarity = computed(() => resolveComparisonSimilarity(props.data))
+
+const SIMILARITY_STYLES: Record<string, string> = {
+  high: 'bg-brand-primary text-white border-brand-primary',
+  moderate: 'bg-semantic-warning/15 text-semantic-warning border-semantic-warning/30',
+  low: 'bg-brand-surface-light dark:bg-stone-900 text-brand-text-muted border-brand-surface-border dark:border-stone-800',
+  unavailable: 'bg-brand-surface-light dark:bg-stone-900 text-brand-text-muted border-brand-surface-border dark:border-stone-800',
+}
 </script>
 
 <template>
@@ -9,9 +29,19 @@ defineProps<{ data: CompareResponse }>()
 
     <!-- Shared Cross-Chemical Overlap Header Banner -->
     <div class="bg-brand-primary-light/50 dark:bg-brand-primary/5 border border-brand-primary/20 rounded-[2.5rem] p-6 space-y-3 shadow-sm">
-      <h4 class="text-xs font-bold uppercase tracking-widest text-brand-primary dark:text-brand-primary-accent">
-        Shared Component Overlap ({{ data?.shared_ingredients?.length || 0 }})
-      </h4>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h4 class="text-xs font-bold uppercase tracking-widest text-brand-primary dark:text-brand-primary-accent">
+          Shared Component Overlap ({{ data?.shared_ingredients?.length || 0 }})
+        </h4>
+        <span :class="['text-xs font-black px-3.5 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs shrink-0', SIMILARITY_STYLES[similarity.band]]">
+          {{ similarity.label }}
+        </span>
+      </div>
+
+      <p class="text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 font-medium">
+        {{ similarity.description }}
+      </p>
+
       <div class="flex flex-wrap gap-2 pt-1">
         <span v-for="ing in (data?.shared_ingredients || [])" :key="ing.id" class="px-3.5 py-2 bg-brand-surface-light dark:bg-stone-900 text-brand-text dark:text-stone-200 rounded-2xl text-xs font-bold border border-brand-surface-border dark:border-stone-800 shadow-xs flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-brand-primary shadow-sm"></span>
