@@ -1,7 +1,20 @@
 <script setup lang="ts">
-import { resolveMatchBand, type CompareResponse } from '../../api/products'
+import { computed } from 'vue'
+import {
+  MATCH_SCORE_BASIS,
+  countProductIngredients,
+  describeMatchAvailability,
+  describeSimilarityBand,
+  resolveMatchAvailability,
+  resolveMatchBand,
+  resolveSimilarityBand,
+  type CompareResponse,
+} from '../../api/products'
+import { useAuthStore } from '../../stores/auth'
 
-defineProps<{ data: CompareResponse }>()
+const props = defineProps<{ data: CompareResponse }>()
+
+const authStore = useAuthStore()
 
 // Badge styles per match band. Thresholds come from resolveMatchBand rather
 // than being repeated here - three components render this score and each used
@@ -16,12 +29,57 @@ const getMatchBadgeStyles = (product: any) => {
   return 'bg-semantic-error/5 text-semantic-error border-semantic-error/20'
 }
 
+// FE-DEF-30: this read "Failed to calculate score" for every product without
+// one. The backend returns null whenever it has no skin type to score against,
+// which is the ordinary state for a signed-out visitor - and this is the one of
+// the three screens rendering this field with no signed-out branch ahead of it,
+// so an anonymous comparison reported two failures for a request that succeeded.
+// The viewer's own session says which it is; the response never had to.
+const matchAvailability = (score: number | null | undefined) =>
+  resolveMatchAvailability(score, authStore.isAuthenticated, authStore.user?.skin_type)
+
 const formatMatchScore = (product: any) => {
-  const score = product?.skin_match_score
-  if (resolveMatchBand(score) === 'unavailable') {
-    return 'Failed to calculate score'
+  const availability = matchAvailability(product?.skin_match_score)
+  if (availability === 'scored') return `${Math.round(product.skin_match_score)}% Match`
+  if (availability === 'signed-out') return 'Sign in to score'
+  if (availability === 'no-profile') return 'Take the skin quiz'
+  return 'Not scored'
+}
+
+// One line beneath the pair rather than one per product: both sides are missing
+// a score for the same reason whenever either is, because the reason is the
+// viewer's profile and not the product.
+const matchExplanation = computed(() => {
+  const availability = matchAvailability(props.data?.product_a?.skin_match_score)
+  return availability === 'scored' ? MATCH_SCORE_BASIS : describeMatchAvailability(availability)
+})
+
+// The compare endpoint has always returned this figure and no screen has ever
+// shown it. It is the share of the two full ingredient lists that appears in
+// both - a Jaccard index over ingredient ids, computed by the backend and
+// already rounded there, so it is rendered rather than recomputed.
+const similarity = computed(() => {
+  const score = props.data?.similarity_score
+  const band = resolveSimilarityBand(
+    score,
+    countProductIngredients(props.data?.product_a),
+    countProductIngredients(props.data?.product_b),
+  )
+
+  return {
+    band,
+    // Omitted rather than shown as "0%" when the figure could not be computed,
+    // for the reason resolveSimilarityBand documents.
+    label: band === 'unavailable' ? 'No overlap figure' : `${Math.round(score)}% shared ingredients`,
+    description: describeSimilarityBand(band),
   }
-  return `${Math.round(score)}% Match`
+})
+
+const SIMILARITY_STYLES: Record<string, string> = {
+  high: 'bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent border-brand-primary/20',
+  moderate: 'bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20',
+  low: 'bg-stone-100 dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700',
+  unavailable: 'bg-stone-100 dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700',
 }
 
 // 🌟 Added missing helper to prevent ReferenceError
@@ -90,16 +148,28 @@ const getProductDescription = (product: any) => {
       </div>
 
       <!-- Match Score Matrix Layer -->
-      <div class="grid grid-cols-2 divide-x divide-brand-surface-border dark:divide-stone-800/60 py-4.5 bg-white dark:bg-brand-surface-dark">
-        <div class="flex justify-center items-center px-2">
-          <span :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_a)]">
-            {{ formatMatchScore(data.product_a) }}
-          </span>
+      <div class="bg-white dark:bg-brand-surface-dark">
+        <div class="grid grid-cols-2 divide-x divide-brand-surface-border dark:divide-stone-800/60 py-4.5">
+          <div class="flex justify-center items-center px-2">
+            <span :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_a)]">
+              {{ formatMatchScore(data.product_a) }}
+            </span>
+          </div>
+          <div class="flex justify-center items-center px-2">
+            <span :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_b)]">
+              {{ formatMatchScore(data.product_b) }}
+            </span>
+          </div>
         </div>
-        <div class="flex justify-center items-center px-2">
-          <span :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_b)]">
-            {{ formatMatchScore(data.product_b) }}
-          </span>
+
+        <!-- What the two badges above are a score of. Spans the pair rather than
+             sitting in either column: the figure is personal to the viewer, so
+             the sentence is the same on both sides. -->
+        <div class="px-5 sm:px-8 pb-5 -mt-1">
+          <p class="text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 font-medium max-w-xl mx-auto">
+            <span class="font-bold uppercase tracking-widest text-brand-text dark:text-stone-300">Skin Match</span>
+            &mdash; {{ matchExplanation }}
+          </p>
         </div>
       </div>
 
@@ -111,8 +181,22 @@ const getProductDescription = (product: any) => {
 
       <!-- Ingredient Counts -->
       <div class="grid grid-cols-2 divide-x divide-brand-surface-border dark:divide-stone-800/60 py-4 text-xs font-bold text-brand-text-muted dark:text-stone-400">
-        <div><span class="font-mono text-brand-primary text-sm font-black">{{ data.product_a?.product_ingredients?.length || 0 }}</span> ingredients</div>
-        <div><span class="font-mono text-brand-primary text-sm font-black">{{ data.product_b?.product_ingredients?.length || 0 }}</span> ingredients</div>
+        <div><span class="font-mono text-brand-primary text-sm font-black">{{ countProductIngredients(data.product_a) }}</span> ingredients</div>
+        <div><span class="font-mono text-brand-primary text-sm font-black">{{ countProductIngredients(data.product_b) }}</span> ingredients</div>
+      </div>
+
+      <!-- Ingredient Overlap. A property of the pair, not of either column, so
+           it spans both and is read after the two counts it is derived from.
+           The backend has returned this figure since the compare endpoint was
+           written and no screen has ever shown it. -->
+      <div class="py-5 px-5 sm:px-8 bg-brand-bg-light/30 dark:bg-stone-900/20 space-y-2">
+        <span :class="['inline-block text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs', SIMILARITY_STYLES[similarity.band]]">
+          {{ similarity.label }}
+        </span>
+        <p class="text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 font-medium max-w-xl mx-auto">
+          <span class="font-bold uppercase tracking-widest text-brand-text dark:text-stone-300">Ingredient Overlap</span>
+          &mdash; {{ similarity.description }}
+        </p>
       </div>
     </div>
   </div>

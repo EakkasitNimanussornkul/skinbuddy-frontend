@@ -158,6 +158,139 @@ export const resolveMatchBand = (score: number | null | undefined): MatchBand =>
 }
 
 /**
+ * What the match score is a score *of*, in one sentence.
+ *
+ * The number was rendered on three screens as a bare "82% Match" with nothing
+ * saying what it matched against, so it read as a rating of the product. It is
+ * not: it is a rating of the fit between this product's ingredients and the
+ * viewer's own Baumann skin type, and the same product scores differently for
+ * two different people. Shared so the three screens describe it identically.
+ */
+export const MATCH_SCORE_BASIS =
+  "How well this formula's ingredients suit your Baumann skin type. It is personal to your profile, not a rating of the product."
+
+/**
+ * `scored`      a score was computed and can be shown
+ * `signed-out`  nobody is signed in, so there is no profile to score against
+ * `no-profile`  signed in, but the skin quiz has not been taken
+ * `not-scored`  a profile exists and the backend still returned no score
+ *
+ * Why this exists: the backend sets `skin_match_score` to null whenever it has
+ * no skin type to score against, which is the ordinary state for a signed-out
+ * visitor and for anyone who has not finished the quiz. Nothing has failed in
+ * either case. `CompareIdentityHeader` rendered that null as "Failed to
+ * calculate score" (FE-DEF-30) - the same fault as FE-DEF-29, a known and
+ * permanent state reported as a temporary failure, and the one screen of the
+ * three with no signed-out branch of its own to catch it first.
+ *
+ * The distinction is not in the response and does not need to be: the viewer's
+ * own session already holds it. `not-scored` is the residue - signed in, quiz
+ * taken, still no number - and is the only one of the four that describes
+ * something actually going wrong.
+ */
+export type MatchAvailability = 'scored' | 'signed-out' | 'no-profile' | 'not-scored'
+
+export const resolveMatchAvailability = (
+  score: number | null | undefined,
+  isAuthenticated: boolean,
+  skinType: string | null | undefined,
+): MatchAvailability => {
+  if (resolveMatchBand(score) !== 'unavailable') return 'scored'
+  if (!isAuthenticated) return 'signed-out'
+  if (typeof skinType !== 'string' || skinType.trim().length === 0) return 'no-profile'
+  return 'not-scored'
+}
+
+/** The sentence shown in place of a score. Never "failed" unless it did. */
+export const describeMatchAvailability = (availability: MatchAvailability): string => {
+  if (availability === 'signed-out') return 'Sign in to see how this suits your skin.'
+  if (availability === 'no-profile') return 'Take the skin quiz to see how this suits your skin.'
+  if (availability === 'not-scored') return 'This formula could not be scored against your profile.'
+  return ''
+}
+
+/**
+ * `unavailable` no overlap figure could be computed for this pair
+ * `high`        >= 60
+ * `moderate`    >= 25
+ * `low`         below 25
+ *
+ * These are display bands over `CompareResponse.similarity_score`, and they are
+ * deliberately not borrowed from the backend's DUPE_SIMILARITY_THRESHOLD even
+ * though the high boundary lands on the same number. That threshold is applied
+ * to a Jaccard over *active* ingredients only; the compare endpoint computes
+ * its figure over the *full* ingredient list, fillers included. Same function,
+ * two different inputs, so the two percentages are not on the same scale and
+ * one cannot inherit the other's cut-off. See the note sent to the backend.
+ */
+export type SimilarityBand = 'unavailable' | 'high' | 'moderate' | 'low'
+
+export const SIMILARITY_BAND_HIGH = 60
+export const SIMILARITY_BAND_MODERATE = 25
+
+/**
+ * Band a comparison's ingredient-overlap figure for display.
+ *
+ * `ingredientCountA/B` are not decoration. The backend computes this as a
+ * Jaccard index and returns `0.0` when the union of the two ingredient sets is
+ * empty - which happens only when *neither* product has any ingredients on
+ * record. That is "there was nothing to compare", and it arrives indistinguishable
+ * from a genuine "these two share nothing", which is a real and different
+ * answer. The counts are already in the same response, so the caller can tell
+ * the two apart without the API being changed; a zero from two empty lists is
+ * reported as unavailable rather than as 0%.
+ *
+ * One empty list and one populated one is a true 0%: the union is non-empty and
+ * the intersection really is.
+ */
+export const resolveSimilarityBand = (
+  score: number | null | undefined,
+  ingredientCountA: number,
+  ingredientCountB: number,
+): SimilarityBand => {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return 'unavailable'
+  if (ingredientCountA <= 0 && ingredientCountB <= 0) return 'unavailable'
+  if (score >= SIMILARITY_BAND_HIGH) return 'high'
+  if (score >= SIMILARITY_BAND_MODERATE) return 'moderate'
+  return 'low'
+}
+
+/**
+ * The sentence under the overlap figure.
+ *
+ * Says what was measured - the share of all listed ingredients the two have in
+ * common - rather than leaving a bare percentage to be read as "how alike these
+ * products are", which it is not. Two moisturisers can share most of their
+ * base and behave completely differently.
+ */
+export const describeSimilarityBand = (band: SimilarityBand): string => {
+  if (band === 'unavailable') {
+    return 'Neither formula has an ingredient list on record, so there was nothing to compare.'
+  }
+  if (band === 'high') {
+    return 'These two list most of the same ingredients. Owning both may be redundant.'
+  }
+  if (band === 'moderate') {
+    return 'These two share a noticeable part of their ingredient lists.'
+  }
+  return 'These two are built from largely different ingredient lists.'
+}
+
+/**
+ * How many ingredients a compare payload lists for one product.
+ *
+ * Counts the entries that actually carry an ingredient, which is the same test
+ * the backend applies when it builds the sets it measures - a row whose join
+ * came back empty is not an ingredient either side is counting.
+ */
+export const countProductIngredients = (product: unknown): number => {
+  const rows = (product as { product_ingredients?: unknown } | null)?.product_ingredients
+  if (!Array.isArray(rows)) return 0
+  return rows.filter((row) => row && typeof row === 'object' && 'ingredients' in row && row.ingredients)
+    .length
+}
+
+/**
  * `loading`  the request is in flight
  * `failed`   the request did not complete
  * `empty`    the catalogue arrived and nothing matched the active filters

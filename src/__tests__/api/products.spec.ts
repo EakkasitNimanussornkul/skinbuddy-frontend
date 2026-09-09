@@ -18,6 +18,10 @@ import {
   buildComparePath,
   resolveCatalogState,
   resolveMatchBand,
+  resolveMatchAvailability,
+  describeMatchAvailability,
+  resolveSimilarityBand,
+  countProductIngredients,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
   getProductById,
@@ -236,6 +240,112 @@ describe('src/api/products.ts', () => {
       // Distinct from the case above: 0 is a real result, null is the absence
       // of one. Treating them alike is the confusion this function exists for.
       expect(resolveMatchBand(0)).toBe('weak')
+    })
+  })
+
+  describe('resolveMatchAvailability()', () => {
+    it('reports a computed score as scored regardless of the session', () => {
+      expect(resolveMatchAvailability(82, true, 'DSPW')).toBe('scored')
+    })
+
+    it('reports a missing score for a signed-out visitor as signed-out, not as a failure', () => {
+      // FE-DEF-30. The backend returns null because there is no profile to
+      // score against, which is the ordinary state for a visitor. The compare
+      // header called this "Failed to calculate score".
+      expect(resolveMatchAvailability(null, false, null)).toBe('signed-out')
+    })
+
+    it('reports a missing score for a signed-in user who has not taken the quiz as no-profile', () => {
+      expect(resolveMatchAvailability(null, true, null)).toBe('no-profile')
+      expect(resolveMatchAvailability(null, true, '   ')).toBe('no-profile')
+    })
+
+    it('reports a missing score for a user who does have a profile as not-scored', () => {
+      // The residue, and the only one of the four where something did go wrong.
+      expect(resolveMatchAvailability(null, true, 'DSPW')).toBe('not-scored')
+    })
+
+    it('prefers the signed-out reading over the profile one, since a signed-out session has no profile to read', () => {
+      expect(resolveMatchAvailability(null, false, 'DSPW')).toBe('signed-out')
+    })
+
+    it('never describes an absent score as a failure', () => {
+      // Pins the defect itself rather than any one branch: whatever the
+      // session, the sentence shown in place of a score must not claim the
+      // request broke.
+      const sessions: Array<[boolean, string | null]> = [
+        [false, null],
+        [true, null],
+        [true, 'DSPW'],
+      ]
+
+      for (const [isAuthenticated, skinType] of sessions) {
+        const sentence = describeMatchAvailability(
+          resolveMatchAvailability(null, isAuthenticated, skinType),
+        )
+
+        expect(sentence).not.toMatch(/fail/i)
+        expect(sentence.length).toBeGreaterThan(0)
+      }
+    })
+  })
+
+  describe('resolveSimilarityBand()', () => {
+    it('bands a high overlap, a moderate one and a low one', () => {
+      expect(resolveSimilarityBand(85, 10, 10)).toBe('high')
+      expect(resolveSimilarityBand(60, 10, 10)).toBe('high')
+      expect(resolveSimilarityBand(59.9, 10, 10)).toBe('moderate')
+      expect(resolveSimilarityBand(25, 10, 10)).toBe('moderate')
+      expect(resolveSimilarityBand(24.9, 10, 10)).toBe('low')
+    })
+
+    it('reports a zero from two products that both list ingredients as a real low overlap', () => {
+      // A genuine answer: the union is non-empty and the intersection is empty.
+      expect(resolveSimilarityBand(0, 12, 9)).toBe('low')
+    })
+
+    it('reports a zero from two products with no ingredients at all as unavailable', () => {
+      // The backend's Jaccard returns 0.0 for an empty union, which is "there
+      // was nothing to compare" wearing the same shape as "these share
+      // nothing". The counts are in the same response and separate them.
+      expect(resolveSimilarityBand(0, 0, 0)).toBe('unavailable')
+    })
+
+    it('still reports a real zero when only one of the two lists is empty', () => {
+      // The union is not empty here, so the zero was computed and means it.
+      expect(resolveSimilarityBand(0, 14, 0)).toBe('low')
+      expect(resolveSimilarityBand(0, 0, 14)).toBe('low')
+    })
+
+    it('reports a missing or non-numeric figure as unavailable', () => {
+      expect(resolveSimilarityBand(null, 10, 10)).toBe('unavailable')
+      expect(resolveSimilarityBand(undefined, 10, 10)).toBe('unavailable')
+      expect(resolveSimilarityBand(NaN, 10, 10)).toBe('unavailable')
+      expect(resolveSimilarityBand('60' as never, 10, 10)).toBe('unavailable')
+    })
+  })
+
+  describe('countProductIngredients()', () => {
+    it('counts only the rows that actually carry an ingredient', () => {
+      // The same test the backend applies when it builds the sets it measures,
+      // so the counts shown beside the overlap figure describe its input.
+      const product = {
+        product_ingredients: [
+          { ingredients: { id: 'i-1', name: 'Glycerin' } },
+          { ingredients: null },
+          {},
+          { ingredients: { id: 'i-2', name: 'Niacinamide' } },
+        ],
+      }
+
+      expect(countProductIngredients(product)).toBe(2)
+    })
+
+    it('reports zero for a product with no ingredient list, rather than throwing', () => {
+      expect(countProductIngredients({ product_ingredients: [] })).toBe(0)
+      expect(countProductIngredients({})).toBe(0)
+      expect(countProductIngredients(null)).toBe(0)
+      expect(countProductIngredients({ product_ingredients: 'nope' })).toBe(0)
     })
   })
 
