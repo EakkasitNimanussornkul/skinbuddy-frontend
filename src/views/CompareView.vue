@@ -16,7 +16,14 @@ const { addToast } = useToast()
 const isLoading = ref(true)
 const compareData = ref<any | null>(null)
 const errorMsg = ref('')
-const activeTab = ref<'overview' | 'ingredients'>('overview')
+// Three tabs, not two. The actives matrix was the third panel on Overview and
+// measured 1582px on its own against the other two's 1136px combined, so the
+// first tab of the comparison was around three screens tall and the figures the
+// user came to compare were below the fold. It is a section in its own right -
+// it renders both products' key actives and both products' contraindications -
+// so it gets its own tab rather than being shortened into something that says
+// less.
+const activeTab = ref<'overview' | 'actives' | 'ingredients'>('overview')
 
 const loadComparison = async () => {
   const slugA = route.query.a as string
@@ -94,11 +101,14 @@ watch(() => route.query, () => { if (route.query.a && route.query.b) loadCompari
           <span class="text-brand-text dark:text-stone-200 font-bold">Cross Comparison</span>
         </nav>
 
-        <div class="flex bg-brand-bg-light dark:bg-stone-900 p-1 rounded-xl gap-1">
-          <button @click="activeTab = 'overview'" :class="['px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'overview' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
+        <div class="flex flex-wrap bg-brand-bg-light dark:bg-stone-900 p-1 rounded-xl gap-1">
+          <button @click="activeTab = 'overview'" :class="['px-4 sm:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'overview' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
             Side-by-Side Overview
           </button>
-          <button @click="activeTab = 'ingredients'" :class="['px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'ingredients' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
+          <button @click="activeTab = 'actives'" :class="['px-4 sm:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'actives' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
+            Actives &amp; Concerns
+          </button>
+          <button @click="activeTab = 'ingredients'" :class="['px-4 sm:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'ingredients' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
             Ingredients Matrix
           </button>
         </div>
@@ -128,12 +138,15 @@ watch(() => route.query, () => { if (route.query.a && route.query.b) loadCompari
 
           <!-- Subcomponent 2: Free-From Flags Properties Comparison Grid Sheet -->
           <CompareSafetyChecklist :data="compareData" />
+        </div>
 
+        <!-- Tab Context Target 2: Actives and Contraindications Panel Pair -->
+        <div v-else-if="activeTab === 'actives'" class="animate-fade-in">
           <!-- Subcomponent 3: Actives, Key Benefits, and Concerns Layout Grid Panel -->
           <CompareActivesMatrix :data="compareData" />
         </div>
 
-        <!-- Tab Context Target 2: Ingredients Deep Side-by-side Structural Matrix Grid Block -->
+        <!-- Tab Context Target 3: Ingredients Deep Side-by-side Structural Matrix Grid Block -->
         <div v-else class="animate-fade-in">
           <!-- Subcomponent 4: Ingredient Lists Deep-Dive Column View Grid -->
           <CompareIngredientsGrid :data="compareData" />

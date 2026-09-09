@@ -221,7 +221,29 @@ export const describeMatchAvailability = (availability: MatchAvailability): stri
  * to a Jaccard over *active* ingredients only; the compare endpoint computes
  * its figure over the *full* ingredient list, fillers included. Same function,
  * two different inputs, so the two percentages are not on the same scale and
- * one cannot inherit the other's cut-off. See the note sent to the backend.
+ * one cannot inherit the other's cut-off.
+ *
+ * The full-list basis is settled and pinned backend-side (`a67888d`), and the
+ * reason is better than the one this comment was first written with. It is not
+ * about agreeing with the shelf's duplicate figure on another screen: it is
+ * that `shared_ingredients` arrives in the *same* response, is built from the
+ * same unfiltered lists, and renders directly beside this number. A filtered
+ * score above an unfiltered list would read as "12% shared" over a visibly
+ * longer set of shared ingredients, and filtering the list to match would
+ * delete real shared ingredients from the one element whose whole job is to
+ * show them. The number agrees with the list underneath it; that it therefore
+ * disagrees with a different feature on a different screen is the accepted
+ * cost, and is why the two are worded as different questions rather than as
+ * one figure computed twice.
+ *
+ * One claim made while deciding this was wrong and is corrected here so it is
+ * not repeated: the full-list figure is *not* systematically the higher of the
+ * two. Measured over all 21 catalogue pairs, full exceeded actives on 9, was
+ * lower on 2 and equal on 10, with a maximum divergence of 10 points. Filtering
+ * shrinks the union faster than the intersection when what the two products
+ * share is itself an active, so the direction of the difference depends on the
+ * pair. Do not band these two figures against each other on the assumption of a
+ * fixed bias.
  */
 export type SimilarityBand = 'unavailable' | 'high' | 'moderate' | 'low'
 
@@ -242,6 +264,23 @@ export const SIMILARITY_BAND_MODERATE = 25
  *
  * One empty list and one populated one is a true 0%: the union is non-empty and
  * the intersection really is.
+ *
+ * **This reads the counts because the score's basis is the full list.** The
+ * backend deliberately keeps the `0.0` rather than returning null - two other
+ * callers use the value as a threshold test and a sort key, and neither wants
+ * an optional - so separating the two cases is the displaying caller's job, and
+ * doing it from the lists in the same response is only sound while the score is
+ * computed over exactly those lists. Both halves of that dependency are written
+ * down: the backend's docstring says a displaying caller relies on it, and this
+ * says the reliance exists. If the compare figure is ever computed over a
+ * filtered subset of what the response returns, this stops being correct and
+ * the answer is a nullable `similarity_score`, not a cleverer count.
+ *
+ * Note this is *not* the FE-DEF-28 pattern despite the family resemblance, and
+ * the difference is worth keeping straight: what made that one a defect was
+ * that `is_safe` gated an action and failed open, so an unassessed product was
+ * presented as clear and could be added. This figure gates nothing. A value
+ * that can mean two things is a problem in proportion to what depends on it.
  */
 export const resolveSimilarityBand = (
   score: number | null | undefined,
