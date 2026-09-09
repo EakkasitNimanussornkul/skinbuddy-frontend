@@ -23,6 +23,8 @@ import {
   resolveSimilarityBand,
   resolveComparisonSimilarity,
   resolveProductLabel,
+  resolvePairConflictState,
+  resolvePairConflicts,
   countProductIngredients,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
@@ -439,6 +441,76 @@ describe('src/api/products.ts', () => {
         brand: '',
         name: 'Formula B',
       })
+    })
+  })
+
+  describe('resolvePairConflictState()', () => {
+    const stocked = (n = 6) => ({
+      product_ingredients: Array.from({ length: n }, (_, i) => ({ ingredients: { id: `i-${i}` } })),
+    })
+    const clash = { alert_type: 'Chemical Interaction Warning', severity: 'high', message: 'Do not layer these.' }
+
+    it('reports clashes when the engine returned any', () => {
+      expect(
+        resolvePairConflictState({ conflicts: [clash], product_a: stocked(), product_b: stocked() }),
+      ).toBe('conflicts')
+    })
+
+    it('reports a clean pair when the engine ran on both products and returned none', () => {
+      expect(
+        resolvePairConflictState({ conflicts: [], product_a: stocked(), product_b: stocked() }),
+      ).toBe('clear')
+    })
+
+    it('does not call a pair clear when one product has no ingredients to compare', () => {
+      // FE-DEF-32's rule, and the one evaluateSafety exists for: an empty list
+      // is not on its own evidence of safety. CompareResponse carries no
+      // is_safe, so the counts are the only thing that separates a check that
+      // found nothing from one that had nothing to check.
+      expect(
+        resolvePairConflictState({ conflicts: [], product_a: stocked(0), product_b: stocked() }),
+      ).toBe('unassessable')
+      expect(
+        resolvePairConflictState({ conflicts: [], product_a: stocked(), product_b: stocked(0) }),
+      ).toBe('unassessable')
+    })
+
+    it('never downgrades a reported clash to unassessable, whatever the lists look like', () => {
+      // A non-empty list is proof the engine ran. The guard above exists to
+      // catch silence and must not be allowed to suppress a warning.
+      expect(
+        resolvePairConflictState({ conflicts: [clash], product_a: stocked(0), product_b: stocked(0) }),
+      ).toBe('conflicts')
+    })
+
+    it('treats a response with no conflicts field as unassessable, not as clear', () => {
+      // An older or partial payload. Reporting "no clashes" about a field that
+      // never arrived is reporting a result nobody produced.
+      expect(resolvePairConflictState({ product_a: stocked(), product_b: stocked() })).toBe('unassessable')
+      expect(resolvePairConflictState({ conflicts: 'nope', product_a: stocked(), product_b: stocked() })).toBe(
+        'unassessable',
+      )
+      expect(resolvePairConflictState(null)).toBe('unassessable')
+    })
+  })
+
+  describe('resolvePairConflicts()', () => {
+    it('returns the warnings the engine reported', () => {
+      const clash = { alert_type: 'Category Conflict', severity: 'high', message: 'Retinoid with BHA.' }
+
+      expect(resolvePairConflicts({ conflicts: [clash] })).toEqual([clash])
+    })
+
+    it('drops entries with no message rather than rendering an empty warning card', () => {
+      const clash = { alert_type: 'Category Conflict', severity: 'high', message: 'Retinoid with BHA.' }
+
+      expect(resolvePairConflicts({ conflicts: [clash, null, {}, { message: 42 }] as never })).toEqual([clash])
+    })
+
+    it('returns an empty list for a malformed or absent field rather than throwing', () => {
+      expect(resolvePairConflicts({ conflicts: 'nope' as never })).toEqual([])
+      expect(resolvePairConflicts({})).toEqual([])
+      expect(resolvePairConflicts(null)).toEqual([])
     })
   })
 

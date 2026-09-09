@@ -370,6 +370,63 @@ export const resolveProductLabel = (product: unknown, fallbackName: string): Pro
   return { brand: '', name: fallbackName }
 }
 
+/**
+ * `conflicts`     the engine reported clashes between these two products
+ * `clear`         the engine ran on both and reported none
+ * `unassessable`  the engine could not have compared them
+ *
+ * FE-DEF-32: `CompareResponse.conflicts` carries the result of the same
+ * three-pass compatibility engine the shelf uses, run between the two products
+ * on screen, and no component read the field. The comparison ran, found the
+ * clash, and the screen said nothing - on a panel already titled
+ * "Contraindications & Concerns", which showed each product's ingredient
+ * concerns in isolation instead.
+ *
+ * The third state exists because an empty list is not on its own evidence of
+ * safety - the rule evaluateSafety was written for, in the one place it cannot
+ * be applied. `CompareResponse` carries no `is_safe`, so an engine that had
+ * nothing to work with returns the same empty array as one that checked and
+ * found nothing. What it does carry is both ingredient lists, and a pairwise
+ * comparison needs both: if either product has nothing on record, the pass that
+ * compares them could not have run and its silence means nothing. Reported as
+ * unassessable rather than clear, which is the conservative direction and the
+ * one FE-DEF-28 was logged for failing.
+ *
+ * `conflicts` is tested before the counts on purpose. A non-empty list is proof
+ * the engine ran, whatever the lists look like, and a reported clash must never
+ * be downgraded to "could not check" by a guard meant to catch silence.
+ */
+export type PairConflictState = 'conflicts' | 'clear' | 'unassessable'
+
+export const resolvePairConflictState = (
+  data: { conflicts?: unknown; product_a?: unknown; product_b?: unknown } | null | undefined,
+): PairConflictState => {
+  const conflicts = data?.conflicts
+  if (Array.isArray(conflicts) && conflicts.length > 0) return 'conflicts'
+
+  if (countProductIngredients(data?.product_a) <= 0) return 'unassessable'
+  if (countProductIngredients(data?.product_b) <= 0) return 'unassessable'
+
+  // A response with no `conflicts` field at all is not a completed check
+  // either - it is an older or partial payload, and saying "no clashes" about
+  // it would be reporting a result that never arrived.
+  if (!Array.isArray(conflicts)) return 'unassessable'
+
+  return 'clear'
+}
+
+/** The conflicts to render, or an empty list when there is nothing to show. */
+export const resolvePairConflicts = (
+  data: { conflicts?: unknown } | null | undefined,
+): WarningAlert[] => {
+  const conflicts = data?.conflicts
+  if (!Array.isArray(conflicts)) return []
+  return conflicts.filter(
+    (entry): entry is WarningAlert =>
+      !!entry && typeof entry === 'object' && typeof (entry as WarningAlert).message === 'string',
+  )
+}
+
 export interface ComparisonSimilarity {
   band: SimilarityBand
   /** The figure as shown, or a phrase saying there is none. */
