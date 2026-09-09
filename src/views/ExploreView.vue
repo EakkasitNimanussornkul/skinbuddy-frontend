@@ -74,9 +74,21 @@ const syncFiltersFromURL = () => {
 // (CompareSelectorModal) and from the similar-products widget, both of which
 // pick exactly two products and route through buildComparePath.
 
+// The term the catalogue on screen was actually requested with. Compared
+// against `searchQuery` to decide whether an address change needs a new
+// request; see the watcher at the bottom of this file. Held rather than derived
+// from the watcher's own previous value, which depends on vue-router replacing
+// the query object rather than mutating it - true today, and not something this
+// file should quietly rely on.
+let fetchedQuery = ''
+
 const fetchCatalog = async () => {
   isLoading.value = true
   catalogFailed.value = false
+  // Recorded before the await, not after. A failure leaves the failed state on
+  // screen for this term rather than re-requesting it on the next unrelated
+  // address change.
+  fetchedQuery = searchQuery.value
   try {
     const data = await searchProducts(searchQuery.value, activeMinPrice.value, activeMaxPrice.value)
     catalog.value = data || []
@@ -149,8 +161,18 @@ const loadRecommendations = async () => {
 }
 
 onMounted(() => {
-  fetchCatalog()
+  // FE-DEF-30: syncFiltersFromURL first. It is what sets `searchQuery` from the
+  // address's `q`, and fetchCatalog sends `searchQuery` to the backend - so in
+  // the other order the first request of every Explore load carried an empty
+  // term no matter what the user searched for. Both are synchronous reads of
+  // route.query, so the ordering costs nothing.
+  //
+  // The term then filtered the response in memory instead (`filteredCatalog`),
+  // over the at-most-100 products the unfiltered request returned, so a product
+  // outside that first page was invisible to an exact search and the page said
+  // "No Formulation Matches" about a product the catalogue holds.
   syncFiltersFromURL()
+  fetchCatalog()
   loadRecommendations()
 })
 
@@ -191,6 +213,23 @@ watch(
   () => route.query,
   () => {
     syncFiltersFromURL()
+
+    // The second half of FE-DEF-30, and the half the entry's ordering fix does
+    // not reach. `SearchAutocompleteInput` pushes /explore?q=... - so for a user
+    // already on Explore, searching again changes only the address, and this
+    // watcher used to update `searchQuery` and stop there. The catalogue was
+    // never re-requested, leaving the new term to filter the previous term's
+    // results in memory. The first search of a session reached the server after
+    // the fix above; every one after it still would not have.
+    //
+    // Guarded on the term rather than firing on any query change, because `q`
+    // and the price bounds are the only parameters fetchCatalog sends. Category
+    // and brand are applied client-side over the same response, so re-fetching
+    // for them would put a network request behind every filter chip and change
+    // nothing on screen.
+    if (searchQuery.value !== fetchedQuery) {
+      fetchCatalog()
+    }
   },
   { deep: true }
 )
