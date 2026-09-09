@@ -327,14 +327,21 @@ watch(
            be nothing to rank and an empty state would say nothing useful. -->
       <div
         v-if="showRecommendations"
-        class="bg-brand-surface-light dark:bg-brand-surface-dark p-6 sm:p-8 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm"
+        class="bg-brand-surface-light dark:bg-brand-surface-dark p-5 sm:p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm"
       >
+        <!-- Compact and without the rule. This is a signpost on the way to the
+             catalogue rather than the subject of the page, and at full size it
+             pushed "All Formulations" - what the user came to Explore for -
+             below the fold. `hide-divider` because this host already draws its
+             own bordered card, so the widget's rule was a line inside a box. -->
         <SkinTypeRecommendationsWidget
           :user-skin-type="authStore.user?.skin_type || ''"
           :products="recommendedProducts"
           :loading="recommendationsLoading"
           :failed="recommendationsFailed"
           hide-catalog-link
+          compact
+          hide-divider
           subheading="Ranked against your Baumann profile. Browse the full registry below."
           @retry="loadRecommendations"
         />
