@@ -22,6 +22,7 @@ import {
   describeMatchAvailability,
   resolveSimilarityBand,
   resolveComparisonSimilarity,
+  resolveProductLabel,
   countProductIngredients,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
@@ -399,6 +400,45 @@ describe('src/api/products.ts', () => {
       expect(resolveComparisonSimilarity(null).band).toBe('unavailable')
       expect(resolveComparisonSimilarity(undefined).band).toBe('unavailable')
       expect(resolveComparisonSimilarity({}).band).toBe('unavailable')
+    })
+  })
+
+  describe('resolveProductLabel()', () => {
+    it('returns the brand and the name separately, so a label can show both', () => {
+      expect(resolveProductLabel({ brand: 'CeraVe', name: 'Niacinamide Serum' }, 'Formula A')).toEqual({
+        brand: 'CeraVe',
+        name: 'Niacinamide Serum',
+      })
+    })
+
+    it('promotes the brand into the name slot when the product has no name', () => {
+      // Rather than rendering the brand above an empty line. Both fields are
+      // nullable server-side.
+      expect(resolveProductLabel({ brand: 'CeraVe', name: null }, 'Formula A')).toEqual({
+        brand: '',
+        name: 'CeraVe',
+      })
+    })
+
+    it('falls back to the positional label when the product has neither', () => {
+      // A column still has to be callable something the reader can match to a
+      // side, and "Formula A" is at least true.
+      expect(resolveProductLabel({}, 'Formula A')).toEqual({ brand: '', name: 'Formula A' })
+      expect(resolveProductLabel(null, 'Formula B')).toEqual({ brand: '', name: 'Formula B' })
+    })
+
+    it('treats a whitespace-only field as absent rather than rendering a blank label', () => {
+      expect(resolveProductLabel({ brand: '   ', name: '  ' }, 'Formula A')).toEqual({
+        brand: '',
+        name: 'Formula A',
+      })
+    })
+
+    it('ignores non-string fields instead of printing them', () => {
+      expect(resolveProductLabel({ brand: 42, name: { toString: () => 'x' } }, 'Formula B')).toEqual({
+        brand: '',
+        name: 'Formula B',
+      })
     })
   })
 

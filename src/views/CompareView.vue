@@ -23,7 +23,19 @@ const errorMsg = ref('')
 // it renders both products' key actives and both products' contraindications -
 // so it gets its own tab rather than being shortened into something that says
 // less.
-const activeTab = ref<'overview' | 'actives' | 'ingredients'>('overview')
+type CompareTab = 'overview' | 'actives' | 'ingredients'
+
+const activeTab = ref<CompareTab>('overview')
+
+// Declared once and rendered by both controls below. There are now two of them
+// - a button bar on desktop and a select on mobile - and a tab added to one and
+// missed on the other would be reachable on only half the devices. Keeping the
+// list in one place is what makes that impossible rather than merely unlikely.
+const TABS: ReadonlyArray<{ id: CompareTab; label: string }> = [
+  { id: 'overview', label: 'Side-by-Side Overview' },
+  { id: 'actives', label: 'Actives & Concerns' },
+  { id: 'ingredients', label: 'Ingredients Matrix' },
+]
 
 const loadComparison = async () => {
   const slugA = route.query.a as string
@@ -101,15 +113,41 @@ watch(() => route.query, () => { if (route.query.a && route.query.b) loadCompari
           <span class="text-brand-text dark:text-stone-200 font-bold">Cross Comparison</span>
         </nav>
 
-        <div class="flex flex-wrap bg-brand-bg-light dark:bg-stone-900 p-1 rounded-xl gap-1">
-          <button @click="activeTab = 'overview'" :class="['px-4 sm:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'overview' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
-            Side-by-Side Overview
-          </button>
-          <button @click="activeTab = 'actives'" :class="['px-4 sm:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'actives' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
-            Actives &amp; Concerns
-          </button>
-          <button @click="activeTab = 'ingredients'" :class="['px-4 sm:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none', activeTab === 'ingredients' ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']">
-            Ingredients Matrix
+        <!-- Mobile: a select rather than the button bar. Three tabs at these
+             labels do not fit a phone width in one row - they wrapped to two
+             and then three lines, which turned a control into a paragraph. A
+             native select is used deliberately over a custom dropdown: it opens
+             in the platform's own picker, needs no outside-click handling or
+             focus trapping to be correct, and is keyboard and screen-reader
+             accessible without any of it being written here. -->
+        <div class="relative w-full sm:hidden">
+          <label for="compare-tab-select" class="sr-only">Choose a comparison section</label>
+          <select
+            id="compare-tab-select"
+            v-model="activeTab"
+            class="w-full appearance-none bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 text-brand-text dark:text-stone-200 text-xs font-bold rounded-xl pl-4 pr-10 py-3 cursor-pointer focus:outline-none focus:border-brand-primary/60 transition-colors"
+          >
+            <option v-for="tab in TABS" :key="tab.id" :value="tab.id">{{ tab.label }}</option>
+          </select>
+          <svg
+            class="w-4 h-4 stroke-[2.5] text-brand-text-muted absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        <!-- Desktop: the segmented bar, unchanged in behaviour. Both controls
+             read the same TABS list, so neither can offer a section the other
+             does not. -->
+        <div class="hidden sm:flex bg-brand-bg-light dark:bg-stone-900 p-1 rounded-xl gap-1">
+          <button
+            v-for="tab in TABS"
+            :key="tab.id"
+            @click="activeTab = tab.id"
+            :class="['px-4 lg:px-5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer select-none whitespace-nowrap', activeTab === tab.id ? 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-primary shadow-sm' : 'text-brand-text-muted hover:text-brand-text dark:hover:text-stone-300']"
+          >
+            {{ tab.label }}
           </button>
         </div>
       </div>

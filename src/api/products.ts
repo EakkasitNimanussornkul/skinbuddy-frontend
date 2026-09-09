@@ -223,9 +223,10 @@ export const describeMatchAvailability = (availability: MatchAvailability): stri
  * two different inputs, so the two percentages are not on the same scale and
  * one cannot inherit the other's cut-off.
  *
- * The full-list basis is settled and pinned backend-side (`a67888d`), and the
- * reason is better than the one this comment was first written with. It is not
- * about agreeing with the shelf's duplicate figure on another screen: it is
+ * The full-list basis is settled, though **not pinned anywhere** - see the note
+ * on resolveSimilarityBand below. The reason for it is better than the one this
+ * comment was first written with. It is not about agreeing with the shelf's
+ * duplicate figure on another screen: it is
  * that `shared_ingredients` arrives in the *same* response, is built from the
  * same unfiltered lists, and renders directly beside this number. A filtered
  * score above an unfiltered list would read as "12% shared" over a visibly
@@ -270,11 +271,20 @@ export const SIMILARITY_BAND_MODERATE = 25
  * callers use the value as a threshold test and a sort key, and neither wants
  * an optional - so separating the two cases is the displaying caller's job, and
  * doing it from the lists in the same response is only sound while the score is
- * computed over exactly those lists. Both halves of that dependency are written
- * down: the backend's docstring says a displaying caller relies on it, and this
- * says the reliance exists. If the compare figure is ever computed over a
- * filtered subset of what the response returns, this stops being correct and
- * the answer is a nullable `similarity_score`, not a cleverer count.
+ * computed over exactly those lists. If the compare figure is ever computed
+ * over a filtered subset of what the response returns, this stops being correct
+ * and the answer is a nullable `similarity_score`, not a cleverer count.
+ *
+ * **That dependency is written down only here.** It was briefly recorded on the
+ * backend too, in a docstring and two tests, and that commit was removed on the
+ * owner's instruction before it reached any branch. So nothing on the backend
+ * side states the requirement, nothing there fails if the compare call is
+ * switched to filter actives, and `app/api/products.py` still carries the
+ * comment claiming the compare endpoint shares the slug endpoint's definition
+ * of "similar" - which it does not, the slug endpoint having a category
+ * restriction that compare cannot have. Anyone changing that line sees the
+ * misleading comment and no test. Treat this paragraph as the whole of the
+ * protection.
  *
  * Note this is *not* the FE-DEF-28 pattern despite the family resemblance, and
  * the difference is worth keeping straight: what made that one a defect was
@@ -327,6 +337,37 @@ export const countProductIngredients = (product: unknown): number => {
   if (!Array.isArray(rows)) return 0
   return rows.filter((row) => row && typeof row === 'object' && 'ingredients' in row && row.ingredients)
     .length
+}
+
+/**
+ * Name one of the two products in a comparison, for a label that has room for
+ * both parts.
+ *
+ * The compare screen's panels labelled their two sides by brand alone, which
+ * does not say which formula a column holds - and says nothing whatsoever when
+ * both products are the same brand, which is among the likeliest comparisons a
+ * user runs. The name carries the identity; the brand is context above it.
+ *
+ * `brand` and `name` are both nullable server-side, so neither can be assumed.
+ * When the name is missing the brand is promoted into its place rather than
+ * left beside an empty line, and when both are missing the caller's positional
+ * fallback is used - a column has to be callable something, and "Formula A" is
+ * at least true.
+ */
+export interface ProductLabel {
+  /** May be empty; render it only when it has content. */
+  brand: string
+  name: string
+}
+
+export const resolveProductLabel = (product: unknown, fallbackName: string): ProductLabel => {
+  const record = product as { brand?: unknown; name?: unknown } | null | undefined
+  const brand = typeof record?.brand === 'string' ? record.brand.trim() : ''
+  const name = typeof record?.name === 'string' ? record.name.trim() : ''
+
+  if (name) return { brand, name }
+  if (brand) return { brand: '', name: brand }
+  return { brand: '', name: fallbackName }
 }
 
 export interface ComparisonSimilarity {

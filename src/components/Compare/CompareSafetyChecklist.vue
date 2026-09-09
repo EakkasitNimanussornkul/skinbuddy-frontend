@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import CompareFlagMarker from './CompareFlagMarker.vue'
-import type { CompareResponse } from '../../api/products'
+import { resolveProductLabel, type CompareResponse } from '../../api/products'
 
-defineProps<{ data: CompareResponse }>()
+const props = defineProps<{ data: CompareResponse }>()
+
+// The two sides are labelled by position, so a product missing both a name and
+// a brand still has to be called something the reader can match to a column.
+const labelFor = (product: unknown) =>
+  resolveProductLabel(product, product === props.data?.product_a ? 'Formula A' : 'Formula B')
 
 const propertiesList = [
   { label: 'Alcohol-free', key: 'alcohol_free' },
@@ -32,18 +37,35 @@ const verifyFlagState = (product: any, propertyKey: string): boolean | null => {
     <!-- Header, and a legend naming which side is which product. The row layout
          below says it by position - product A on the left, product B on the
          right, matching the two columns the rest of the screen uses - and the
-         legend states in words what that position means, which the previous
-         version left the reader to infer. -->
-    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-      <span class="text-[10px] font-bold uppercase tracking-widest text-brand-primary truncate max-w-[8rem]">
-        {{ data.product_a?.brand || 'Formula A' }}
-      </span>
-      <span class="font-serif font-bold text-xs sm:text-sm text-brand-text-muted tracking-wider uppercase order-first w-full text-center sm:order-none sm:w-auto">
+         legend states in words what that position means, which the original
+         version left the reader to infer.
+
+         Each side names the product, not just its brand. The brand alone does
+         not identify which formula a column belongs to, and identifies nothing
+         at all when both products are the same brand, which is the comparison a
+         user is most likely to run. -->
+    <div class="grid grid-cols-3 items-start gap-x-3">
+      <div class="min-w-0 text-left">
+        <span class="block text-[9px] font-bold uppercase tracking-widest text-brand-text-muted truncate">
+          {{ labelFor(data.product_a).brand }}
+        </span>
+        <span class="block text-[10px] font-bold text-brand-primary leading-tight line-clamp-2">
+          {{ labelFor(data.product_a).name }}
+        </span>
+      </div>
+
+      <div class="font-serif font-bold text-xs sm:text-sm text-brand-text-muted tracking-wider uppercase text-center self-center">
         Free-From Composition
-      </span>
-      <span class="text-[10px] font-bold uppercase tracking-widest text-brand-primary truncate max-w-[8rem] text-right">
-        {{ data.product_b?.brand || 'Formula B' }}
-      </span>
+      </div>
+
+      <div class="min-w-0 text-right">
+        <span class="block text-[9px] font-bold uppercase tracking-widest text-brand-text-muted truncate">
+          {{ labelFor(data.product_b).brand }}
+        </span>
+        <span class="block text-[10px] font-bold text-brand-primary leading-tight line-clamp-2">
+          {{ labelFor(data.product_b).name }}
+        </span>
+      </div>
     </div>
 
     <!-- Same three-part row as before - product A's answer at the left edge, the
