@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getProductComparison } from '../api/products'
+import { getProductComparison, resolveRequestFailure } from '../api/products'
 import { useToast } from '../composables/useToast'
 
 import CompareIdentityHeader from '../components/Compare/CompareIdentityHeader.vue'
@@ -68,7 +68,22 @@ const loadComparison = async () => {
     // needing to know errorMsg exists, and matches what FE-DEF-09 and
     // FE-DEF-13 settled on for the same trade.
     compareData.value = null
-    errorMsg.value = err.message || "Failed to execute chemical comparison matrix analytics."
+
+    // FE-DEF-35: this was `err.message`, which on an axios rejection is
+    // "Request failed with status code 400" - the transport's own wording,
+    // shown to the user as the explanation. The readable sentence that used to
+    // sit after the `||` could never be reached, because every failure on this
+    // path is an HTTP error and every one of those carries a message.
+    //
+    // The two cases are worth separating rather than replacing one technical
+    // string with one vague one. A 404 is the server answering that a product
+    // is not there, which retrying will not change; anything else means no
+    // answer arrived, which retrying might. Saying "not found" for the second
+    // would state something about the catalogue that nobody established.
+    errorMsg.value =
+      resolveRequestFailure(err) === 'not-found'
+        ? "We couldn't find one or both of those formulations. They may have been removed from the registry."
+        : "We couldn't run this comparison just now. This is a connection problem, not a result - please try again."
     addToast("Could not load formula comparison layers.", "error")
   } finally {
     isLoading.value = false

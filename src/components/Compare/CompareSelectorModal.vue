@@ -53,6 +53,14 @@ const handleConfirmCompare = () => {
   // which meant no encoding: a slug containing & or = would silently truncate
   // or corrupt the other product. buildComparePath is the one place the
   // /compare?a=&b= contract is expressed, and it escapes both values.
+  //
+  // The `|| .id` fallbacks look dead and are not. Every payload that feeds this
+  // modal today carries a slug, but CompareResponse does not: product_a and
+  // product_b are typed ProductDetail, which declares no slug field, so the
+  // backend computes one and the response model strips it. The day a "compare
+  // against something else" control on the compare screen passes a comparison
+  // result in as baseProduct, .slug is undefined here and the id branch is the
+  // only thing that keeps this working. See FE-DEF-35.
   const path = buildComparePath([
     props.baseProduct.slug || props.baseProduct.id,
     selectedTarget.value.slug || selectedTarget.value.id,

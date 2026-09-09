@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getProductBySlug } from '../api/products'
+import { getProductBySlug, resolveRequestFailure } from '../api/products'
 import { useAuthStore } from '../stores/auth'
 import ProductSpecContent from '../components/Catalog/ProductSpecContent.vue'
 import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue'
@@ -30,8 +30,10 @@ const loadPage = async (slug: string) => {
     // A 404 means the catalogue answered and the product is genuinely absent.
     // Anything else means we never got an answer, and telling the user the
     // product "does not exist" would be stating a fact we do not have.
-    const status = (error as { response?: { status?: number } })?.response?.status
-    loadFailed.value = status !== 404
+    //
+    // The reading itself now lives in resolveRequestFailure, shared with
+    // CompareView, which had no such branch at all until FE-DEF-35.
+    loadFailed.value = resolveRequestFailure(error) !== 'not-found'
   } finally {
     isLoading.value = false
   }

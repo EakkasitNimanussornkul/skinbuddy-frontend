@@ -25,6 +25,7 @@ import {
   resolveProductLabel,
   resolvePairConflictState,
   resolvePairConflicts,
+  resolveRequestFailure,
   countProductIngredients,
   MAX_COMPARE_PRODUCTS,
   getProductBySlug,
@@ -441,6 +442,36 @@ describe('src/api/products.ts', () => {
         brand: '',
         name: 'Formula B',
       })
+    })
+  })
+
+  describe('resolveRequestFailure()', () => {
+    it('reads a 404 as the server answering that the thing is absent', () => {
+      expect(resolveRequestFailure({ response: { status: 404 } })).toBe('not-found')
+    })
+
+    it('reads every other status as no usable answer, not as absence', () => {
+      // FE-DEF-35's rule. Saying "we couldn't find that product" for a 400 or a
+      // 500 states something about the catalogue that nobody established - the
+      // same fault FE-DEF-09 recorded for an empty filter result.
+      expect(resolveRequestFailure({ response: { status: 400 } })).toBe('unavailable')
+      expect(resolveRequestFailure({ response: { status: 500 } })).toBe('unavailable')
+      expect(resolveRequestFailure({ response: { status: 401 } })).toBe('unavailable')
+    })
+
+    it('reads a thrown error with no response at all as unavailable', () => {
+      // A network failure, or the parse error CompareView throws itself when
+      // the body arrives without both products.
+      expect(resolveRequestFailure(new Error('Network Error'))).toBe('unavailable')
+      expect(resolveRequestFailure(null)).toBe('unavailable')
+      expect(resolveRequestFailure(undefined)).toBe('unavailable')
+      expect(resolveRequestFailure('nope')).toBe('unavailable')
+    })
+
+    it('does not treat a 404 written as a string as a 404', () => {
+      // Guards the strict comparison. A loose one would also match a stray
+      // truthy value and start reporting absence for failures that are not.
+      expect(resolveRequestFailure({ response: { status: '404' } })).toBe('unavailable')
     })
   })
 

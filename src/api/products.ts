@@ -371,6 +371,32 @@ export const resolveProductLabel = (product: unknown, fallbackName: string): Pro
 }
 
 /**
+ * `not-found`    the server answered and the thing is genuinely absent
+ * `unavailable`  no usable answer arrived
+ *
+ * FE-DEF-35: `CompareView` rendered `err.message` into its error panel. On an
+ * axios rejection that string is "Request failed with status code 400" - so the
+ * user was shown the transport's own wording, and the readable sentence sitting
+ * after the `||` was unreachable for every HTTP error, which is the only kind
+ * this path produces. The backend's `detail` was never read either.
+ *
+ * The distinction matters beyond the wording. Telling someone a product "could
+ * not be found" when the request merely failed states a fact about the
+ * catalogue that nobody established - the rule FE-DEF-09 and ProductDetailView
+ * were both written around, now shared instead of restated.
+ *
+ * Anything without a 404 is `unavailable`, including a thrown parse error with
+ * no response at all. Failing toward "we do not know" is the conservative
+ * direction here, exactly as it is for a safety verdict.
+ */
+export type RequestFailure = 'not-found' | 'unavailable'
+
+export const resolveRequestFailure = (error: unknown): RequestFailure => {
+  const status = (error as { response?: { status?: number } } | null)?.response?.status
+  return status === 404 ? 'not-found' : 'unavailable'
+}
+
+/**
  * `conflicts`     the engine reported clashes between these two products
  * `clear`         the engine ran on both and reported none
  * `unassessable`  the engine could not have compared them
