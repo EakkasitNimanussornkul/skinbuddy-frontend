@@ -29,7 +29,7 @@ const getMatchBadgeStyles = (product: any) => {
   return 'bg-semantic-error/5 text-semantic-error border-semantic-error/20'
 }
 
-// FE-DEF-30: this read "Failed to calculate score" for every product without
+// FE-DEF-31: this read "Failed to calculate score" for every product without
 // one. The backend returns null whenever it has no skin type to score against,
 // which is the ordinary state for a signed-out visitor - and this is the one of
 // the three screens rendering this field with no signed-out branch ahead of it,

@@ -179,7 +179,7 @@ export const MATCH_SCORE_BASIS =
  * no skin type to score against, which is the ordinary state for a signed-out
  * visitor and for anyone who has not finished the quiz. Nothing has failed in
  * either case. `CompareIdentityHeader` rendered that null as "Failed to
- * calculate score" (FE-DEF-30) - the same fault as FE-DEF-29, a known and
+ * calculate score" (FE-DEF-31) - the same fault as FE-DEF-29, a known and
  * permanent state reported as a temporary failure, and the one screen of the
  * three with no signed-out branch of its own to catch it first.
  *

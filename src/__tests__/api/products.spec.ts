@@ -249,7 +249,7 @@ describe('src/api/products.ts', () => {
     })
 
     it('reports a missing score for a signed-out visitor as signed-out, not as a failure', () => {
-      // FE-DEF-30. The backend returns null because there is no profile to
+      // FE-DEF-31. The backend returns null because there is no profile to
       // score against, which is the ordinary state for a visitor. The compare
       // header called this "Failed to calculate score".
       expect(resolveMatchAvailability(null, false, null)).toBe('signed-out')
