@@ -159,4 +159,46 @@ const severityBadgeClass = (severity: string | null | undefined) =>
       </div>
     </div>
   </div>
+
+  <!-- Cleared: the check ran, returned a verdict, and the verdict was a pass.
+       This branch did not exist. The card had one for the check not running,
+       one for it returning no verdict, and one for it finding conflicts - and
+       nothing at all for the outcome the user is most likely to get, so a clean
+       scan rendered an empty element. The scanning panel simply vanished, which
+       reads as the check having been abandoned rather than having passed, and
+       is the one result the three failure panels are worded to be distinguished
+       from.
+
+       Deliberately last, after the warnings branch. `cleared` and a non-empty
+       warnings list cannot both come out of evaluateSafety, but these are props
+       and a caller could set them, and a panel that says "no conflicts" must
+       never be what hides a conflict that was reported. Ordering it behind the
+       warnings makes that impossible rather than merely unlikely - the same
+       reason resolvePairConflictState tests its conflicts before its ingredient
+       counts.
+
+       The wording is scoped to what analyze() actually established: no
+       interaction against the active shelf. It does not say the product is safe
+       for the user. The backend also runs a Baumann skin-type check, but only
+       `if user_skin_type` - a profile with no type saved skips it silently and
+       still returns is_safe: true - so a sentence naming that check would be
+       false for exactly the users least equipped to notice. Claiming general
+       safety would be worse still: nothing here knows about allergies,
+       concentration or frequency. FE-DEF-03 and FE-DEF-29 are both this same
+       mistake in the other direction. -->
+  <div v-else-if="scanStatus === 'cleared'" class="p-5 rounded-3xl bg-emerald-500/5 border border-emerald-500/30 space-y-2">
+    <div class="flex items-center gap-3.5">
+      <div class="flex items-center justify-center w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 shrink-0">
+        <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div class="space-y-1">
+        <span class="text-xs font-bold text-brand-text dark:text-stone-200 tracking-wide block">No Conflicts Found</span>
+        <p class="text-[11px] font-medium text-brand-text-muted">
+          We checked this formula against the products active on your shelf and found no interactions to flag.
+        </p>
+      </div>
+    </div>
+  </div>
 </template>
