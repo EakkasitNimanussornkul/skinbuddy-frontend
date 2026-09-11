@@ -69,6 +69,14 @@ const SPEC_MAP = [
     note: 'The redirect parameter is the subject of most of these cards. A user sent to this screen by the router guard has the page they asked for carried in route.query.redirect, and both units must hand it back - goToQuiz through to the quiz, handleExpressConfirm through to the destination itself. The two failure cards also pin that a rejected save leaves the local session unchanged: recording a skin type the backend refused to store would leave the app showing a profile the API disagrees with.',
   },
   {
+    file: 'src/__tests__/views/SkinProfileView.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinProfileView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, its <Teleport> stubbed. The skin type under test is written into the real auth store with setAuth, because userSkinType reads authStore.user!.skin_type through a non-null assertion. searchProducts is mocked; pickTopRecommendations is deliberately left real, so the recommendation cards show the view actually narrowing a response. The skinProfiles and typologyDetails dictionaries are used as shipped - no fixture. No network access.',
+    note: 'All four units are read through what the page renders: the report body for profileData, the four typology cards for axes, the comparison modal\'s props for openTypologyModal, and the recommendations widget\'s props for loadRecommendations. Two pairs are deliberate rather than redundant - profileData is asserted for two different valid codes, because a view permanently returning the OSPW fallback would satisfy an OSPW assertion on its own; and axes is asserted for OSPW and DRNT, which are complements, so both branches of all four ternaries are taken.',
+  },
+  {
     file: 'src/__tests__/stores/shelfStore.spec.ts',
     feature: '#3 Skincare storage',
     module: 'stores/shelfStore',
