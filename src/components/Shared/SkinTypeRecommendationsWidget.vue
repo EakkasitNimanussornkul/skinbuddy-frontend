@@ -118,13 +118,7 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
           </div>
         </router-link>
 
-        <button
-          v-if="!hideCatalogLink"
-          @click="router.push('/explore')"
-          class="w-full mt-4 py-2.5 bg-brand-bg-light dark:bg-stone-800 hover:bg-brand-primary hover:text-white dark:hover:bg-brand-primary text-brand-text dark:text-stone-200 font-bold text-xs rounded-xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
-        >
-          View Skin Sorting Specs
-        </button>
+
       </div>
     </div>
 
