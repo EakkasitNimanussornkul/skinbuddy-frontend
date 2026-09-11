@@ -58,6 +58,37 @@ describe('useShelfStore', () => {
       expect(store.items[0]!.id).toBe('item-1')
     })
 
+    it('raises the loading flag while the request is still in flight', async () => {
+      // UTC-28-TC-02 in the Test Record describes this state, and until now
+      // nothing proved it existed. Every other case here awaits loadShelf()
+      // before asserting, so isLoading was only ever observed after the promise
+      // settled - and since it initialises to false, all of those assertions
+      // would still pass with `isLoading.value = true` deleted from the store.
+      //
+      // Holding the request open is what makes the pending state observable:
+      // the promise is resolved by hand, from the test, after the assertion.
+      let releaseRequest!: (items: ShelfItem[]) => void
+      const pendingRequest = new Promise<ShelfItem[]>((resolve) => {
+        releaseRequest = resolve
+      })
+      vi.mocked(getMyShelf).mockReturnValue(pendingRequest)
+      const store = useShelfStore()
+
+      // Asserted rather than assumed, so the check below is a transition and
+      // not a flag that was already set before anything happened.
+      expect(store.isLoading).toBe(false)
+
+      const load = store.loadShelf()
+
+      expect(store.isLoading).toBe(true)
+
+      releaseRequest([shelfItem()])
+      await load
+
+      expect(store.isLoading).toBe(false)
+      expect(store.items).toHaveLength(1)
+    })
+
     it('clears the loading flag after a successful load', async () => {
       vi.mocked(getMyShelf).mockResolvedValue([])
       const store = useShelfStore()

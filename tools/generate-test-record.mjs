@@ -80,7 +80,8 @@ const SPEC_MAP = [
     file: 'src/__tests__/stores/shelfStore.spec.ts',
     feature: '#3 Skincare storage',
     module: 'stores/shelfStore',
-    prerequisite: 'Fresh Pinia instance per test. src/api/shelfapi.ts replaced with a mock. No network access.',
+    prerequisite:
+      'Fresh Pinia instance per test. src/api/shelfapi.ts replaced with a mock. No network access. The in-flight loading case holds getMyShelf open on a promise the test resolves by hand, so the pending state is asserted while the request is genuinely unsettled rather than inferred from the value either side of it.',
     note: 'useShelfStore() is not called anywhere in src/ - ShelfView.vue imports only the ShelfItem type from this module and calls getMyShelf() directly into a local ref. These cards therefore document the store module in isolation, not the shelf screen: they are not evidence that loading, adding or removing a shelf item works for a user. The path the application actually takes is covered by the api/shelfapi cards below. The store is correct and its types are used; it simply has no caller.',
   },
   {
