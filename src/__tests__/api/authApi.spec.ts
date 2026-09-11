@@ -78,5 +78,22 @@ describe('src/api/authApi.ts', () => {
 
       expect(result).toEqual({ id: 'u-1', skin_type: 'DRNT' })
     })
+
+    it('propagates the Axios error when the request is rejected', async () => {
+      // The wrapper has no catch, and that is deliberate: SkinTypeLanding's own
+      // handler branches on the rejection to leave the local session unchanged
+      // and tell the user the save failed. A wrapper that swallowed this and
+      // returned undefined would let the caller record a skin type the backend
+      // refused to store.
+      const rejection = Object.assign(new Error('Request failed with status code 422'), {
+        response: { status: 422, data: { detail: 'Invalid skin type code.' } },
+      })
+      vi.mocked(apiClient.patch).mockRejectedValue(rejection)
+
+      // toBe, not toThrow: the assertion is that this exact error object comes
+      // back out, neither wrapped nor replaced with a message of our own.
+      await expect(updateUserSkinType('NOT-A-TYPE')).rejects.toBe(rejection)
+      expect(apiClient.patch).toHaveBeenCalledWith('/auth/me', { skin_type: 'NOT-A-TYPE' })
+    })
   })
 })

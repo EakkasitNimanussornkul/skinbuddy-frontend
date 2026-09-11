@@ -53,6 +53,22 @@ const SPEC_MAP = [
     prerequisite: 'Shared axios client (src/api/index.ts) replaced with a mock. No network access.',
   },
   {
+    file: 'src/__tests__/components/ExpressSkinSelectorModal.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'components/Quiz/ExpressSkinSelectorModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils, isOpen: true, and its <Teleport to="body"> stubbed so the markup stays inside the wrapper. The sixteen Baumann types come from src/data/skinprofiles.ts as shipped - no fixture. No network access.',
+    note: 'filteredTypes is a computed inside <script setup> and is not importable, so it is exercised through the dropdown it feeds: each card asserts the type codes actually listed under the input. That makes these cards evidence about the rendered control, not only about the filter - including that an unmatched query renders no dropdown at all rather than an empty one.',
+  },
+  {
+    file: 'src/__tests__/views/SkinTypeLanding.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinTypeLanding',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a real vue-router memory history, so route.query.redirect is read from an actual route rather than a stub. Fresh Pinia and cleared localStorage per case. src/api/authApi.ts replaced with a mock; router.push spied with its real implementation left in place. The useToast composable is the real one, read back and emptied between cases. No network access.',
+    note: 'The redirect parameter is the subject of most of these cards. A user sent to this screen by the router guard has the page they asked for carried in route.query.redirect, and both units must hand it back - goToQuiz through to the quiz, handleExpressConfirm through to the destination itself. The two failure cards also pin that a rejected save leaves the local session unchanged: recording a skin type the backend refused to store would leave the app showing a profile the API disagrees with.',
+  },
+  {
     file: 'src/__tests__/stores/shelfStore.spec.ts',
     feature: '#3 Skincare storage',
     module: 'stores/shelfStore',
@@ -80,7 +96,7 @@ const SPEC_MAP = [
     module: 'composables/useClampedText',
     prerequisite:
       'The overflow comparison called directly with two heights. No component mounting, no DOM measurement and no network access.',
-    note: 'Pins FE-DEF-26 and FE-DEF-27: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered. The measurement around it needs a mounted component, which this project has no layer for, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser.',
+    note: 'Pins FE-DEF-26 and FE-DEF-27: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser. Earlier revisions of this note said the project had no layer for mounting components. That is no longer true - the two Feature #2 component groups above mount their subjects - but it does not help here: the measurement feeds exceedsClamp with el.scrollHeight and el.clientHeight, and jsdom reports both as 0 because it performs no layout. Every paragraph would test as non-overflowing regardless of its text. Covering that needs a real browser, not a mount.',
   },
   {
     file: 'src/__tests__/api/products.spec.ts',
