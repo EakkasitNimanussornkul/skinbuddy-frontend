@@ -133,6 +133,87 @@ describe('src/components/Shelf/ProductLifecycleController.vue', () => {
       await wrapper.findAll('button').find((b) => b.text() === '')!.trigger('click')
     }
 
+    /** Every period button in the editor, as label -> whether it is offered. */
+    const periodButtons = (wrapper: VueWrapper) =>
+      Object.fromEntries(
+        wrapper
+          .findAll('.horizontal-pao-track button')
+          .map((b) => [b.text(), b.attributes('disabled') === undefined]),
+      )
+
+    const NOTE = 'Periods that would already have ended are unavailable.'
+
+    it('disables the periods that would land on a past date and offers the rest', async () => {
+      // Opened ten months ago, so 1, 3, 6 and 9 months after opening are all
+      // behind us and 12 onwards are not. FE-DEF-19: the calendar beside these
+      // buttons greys out past days, and before this the buttons would happily
+      // compute one - the same panel enforcing a rule with one control and
+      // breaking it with another.
+      const wrapper = mountController(
+        shelfItem({
+          usage_state: 'active',
+          opened_date: addMonthsAsDateString(new Date(), -10),
+          pao: 12,
+        }),
+      )
+      await openEditor(wrapper)
+
+      expect(periodButtons(wrapper)).toEqual({
+        '1M': false,
+        '3M': false,
+        '6M': false,
+        '9M': false,
+        '12M': true,
+        '18M': true,
+        '24M': true,
+        '36M': true,
+      })
+    })
+
+    it('explains why those periods are unavailable rather than greying them silently', async () => {
+      const wrapper = mountController(
+        shelfItem({
+          usage_state: 'active',
+          opened_date: addMonthsAsDateString(new Date(), -10),
+          pao: 12,
+        }),
+      )
+      await openEditor(wrapper)
+
+      expect(wrapper.text()).toContain(NOTE)
+      expect(wrapper.text()).toContain('its shelf card already shows it as expired')
+    })
+
+    it('offers every period and shows no note for a product opened today', async () => {
+      // The other side of the note's condition. Without this case the note
+      // could be rendered unconditionally and the assertion above would not
+      // notice.
+      const wrapper = mountController(openedToday())
+      await openEditor(wrapper)
+
+      expect(Object.values(periodButtons(wrapper)).every(Boolean)).toBe(true)
+      expect(wrapper.text()).not.toContain(NOTE)
+    })
+
+    it('still offers a period that ends exactly today', async () => {
+      // The comparison is strictly before today, so a period running out today
+      // has not elapsed. This matches the calendar next to it, whose min-date is
+      // today and which therefore still allows today to be picked - the two
+      // controls agree on the boundary, which is the whole point of the shared
+      // predicate.
+      const wrapper = mountController(
+        shelfItem({
+          usage_state: 'active',
+          opened_date: addMonthsAsDateString(new Date(), -12),
+          pao: 12,
+        }),
+      )
+      await openEditor(wrapper)
+
+      expect(periodButtons(wrapper)['12M']).toBe(true)
+      expect(periodButtons(wrapper)['9M']).toBe(false)
+    })
+
     it('saves the date derived from a newly chosen period, with that period as the PAO', async () => {
       const item = openedToday()
       const wrapper = mountController(item)
