@@ -93,6 +93,27 @@ describe('useQuizStore', () => {
       expect(store.finalSkinType[0]).toBe('O')
     })
 
+    it('returns ORPT for a mix of axes above and below the threshold', () => {
+      // The realistic result. Every other case here has none, one, or all four
+      // axes above the threshold, so this is the only one where more than one
+      // axis is positive while others are negative - the arrangement that shows
+      // the four comparisons are independent of each other and that each letter
+      // lands in its own position, rather than one verdict being applied across
+      // the code.
+      const store = useQuizStore()
+
+      store.answerQuestion(0, 'hydration', 12, 0)
+      store.answerQuestion(1, 'sensitivity', 8, 0)
+      store.answerQuestion(2, 'pigmentation', 14, 0)
+      store.answerQuestion(3, 'aging', 6, 0)
+
+      // Asserted so the fixture cannot drift: answerQuestion accumulates, and a
+      // change to how it does that could alter these inputs while the type below
+      // still came out right for the wrong reason.
+      expect(store.scores).toEqual({ hydration: 12, sensitivity: 8, pigmentation: 14, aging: 6 })
+      expect(store.finalSkinType).toBe('ORPT')
+    })
+
     it('recomputes as soon as a score changes, rather than caching a stale type', () => {
       const store = useQuizStore()
       expect(store.finalSkinType).toBe('DRNT')
