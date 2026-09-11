@@ -85,6 +85,46 @@ const SPEC_MAP = [
     note: 'useShelfStore() is not called anywhere in src/ - ShelfView.vue imports only the ShelfItem type from this module and calls getMyShelf() directly into a local ref. These cards therefore document the store module in isolation, not the shelf screen: they are not evidence that loading, adding or removing a shelf item works for a user. The path the application actually takes is covered by the api/shelfapi cards below. The store is correct and its types are used; it simply has no caller.',
   },
   {
+    file: 'src/__tests__/views/ShelfView.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'views/ShelfView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, its <Teleport> stubbed. getMyShelf and removeFromShelf are mocked; resolveShelfItemStatus and resolveCatalogState are deliberately left real, because the filtering and the four-state resolution are the rules under test. ShelfCard is replaced with a stub that renders its item id, which is what makes filteredProducts readable; the modals and the quick-add banner are stubbed so their own requests stay out of these assertions. No network access.',
+    note: 'filteredProducts is read as the list of ids the grid renders, and shelfState as which of the four panels is on screen. One caution about the failure cards: the grid is not rendered at all in the failed state, so asserting it is empty says nothing about whether the underlying list was cleared. The card that pins the clearing reads it off the quick-add banner\'s item-count instead, which renders in every state - the grid assertion passed with the clearing removed, and was rewritten after a mutation run caught it.',
+  },
+  {
+    file: 'src/__tests__/components/ProductLifecycleController.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/ProductLifecycleController',
+    prerequisite:
+      'The component mounted with @vue/test-utils. Only markItemOpened is mocked; paoPeriodHasElapsed and the api/dates helpers stay real, because the expiry arithmetic is what these cards check. Expected dates are computed with those same helpers rather than written as fixed strings, so the cards hold in any timezone the project is marked in. No network access.',
+    note: 'The edit cards use an item opened today on purpose. A period is counted from the item\'s OPENED date, and for an item opened today that coincides with today - which is the point: a fixture opened earlier would not distinguish a correct implementation from one counting from today, and ProductConfigurator legitimately counts from today in its own context, where there is no opened date yet.',
+  },
+  {
+    file: 'src/__tests__/components/ArchiveLogForm.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/ArchiveLogForm',
+    prerequisite:
+      'The component mounted with @vue/test-utils, updateShelfStatus mocked. Outcomes are selected by clicking the labelled buttons rather than by setting state, so the label-to-stored-value mapping is exercised rather than assumed. No network access.',
+    note: 'The mapping is the subject: the three buttons read Finished, Abandoned and Expired, and store empty, discarded and expired. Only one pair differs in wording, and nothing else in the codebase states that "Abandoned" and discarded are the same thing.',
+  },
+  {
+    file: 'src/__tests__/components/ItemDetailsModal.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/ItemDetailsModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils. removeFromShelf is mocked, and analyzeProduct is mocked to resolve because the modal runs a safety check from onMounted. The delete is reached by walking the two-step confirmation the way a user does. No network access.',
+    note: 'Covers the permanent delete only. The toast wording is asserted verbatim rather than merely present: ShelfView\'s own delete path emits the identical sentence, and UC-07 and UC-35 quote it, so a drift between the two paths becomes a contradiction in the SRS (FE-DEF-17).',
+  },
+  {
+    file: 'src/__tests__/components/AddProductModal.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/AddProductModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils, its <Teleport> and three child components stubbed. searchProducts, analyzeProduct and addToShelf are mocked; resolveSafety and blocksAction are left real, so the gate these cards describe is the gate the application uses. Product selection and the save are driven through the children\'s own emits. No network access.',
+    note: 'The four outcomes of the compatibility check are distinguished here: cleared saves, unavailable refuses, unassessed refuses with its own wording, and warnings open the confirmation dialogue instead of blocking. The unavailable card is the important one - the catch used to only log, so control fell through to addToShelf and the product was committed unchecked while the user was told it succeeded.',
+  },
+  {
     file: 'src/__tests__/api/shelfapi.spec.ts',
     feature: '#3 Skincare storage',
     module: 'api/shelfapi',

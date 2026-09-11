@@ -1,0 +1,137 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+
+vi.mock('../../api/shelfapi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/shelfapi')>()),
+  updateShelfStatus: vi.fn(),
+}))
+
+import { updateShelfStatus } from '../../api/shelfapi'
+import ArchiveLogForm from '../../components/Shelf/ArchiveLogForm.vue'
+import { useToast } from '../../composables/useToast'
+import type { ShelfItem } from '../../stores/shelfStore'
+
+const { toasts } = useToast()
+
+const shelfItem = (): ShelfItem => ({
+  id: 'item-1',
+  user_id: 'user-1',
+  product_id: 'p-1',
+  usage_state: 'active',
+  opened_date: '2026-01-01',
+  expiration_date: null,
+  pao: null,
+  archive_outcome: null,
+  archive_notes: null,
+  archived_at: null,
+  products: null,
+})
+
+const mountForm = () =>
+  mount(ArchiveLogForm, { props: { item: shelfItem(), usageLifespan: 42 } })
+
+const buttonWith = (wrapper: VueWrapper, text: string) =>
+  wrapper.findAll('button').find((b) => b.text().includes(text))!
+
+/** The metadata object handed to updateShelfStatus by the most recent call. */
+const savedMetadata = () => vi.mocked(updateShelfStatus).mock.calls[0]![2]
+
+describe('src/components/Shelf/ArchiveLogForm.vue', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    toasts.value.splice(0)
+    vi.mocked(updateShelfStatus).mockResolvedValue({})
+  })
+
+  describe('executeArchive()', () => {
+    it('archives as empty by default, which is the Finished option', async () => {
+      // The form opens with an outcome already selected, so a user who writes
+      // notes and submits without touching the three buttons still stores a
+      // defined outcome rather than null.
+      const wrapper = mountForm()
+
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      expect(updateShelfStatus).toHaveBeenCalledWith(
+        'item-1',
+        'archived',
+        expect.objectContaining({ outcome: 'empty' }),
+      )
+    })
+
+    it('stores Abandoned as discarded', async () => {
+      const wrapper = mountForm()
+
+      await buttonWith(wrapper, 'Abandoned').trigger('click')
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      // The label and the stored value differ on this one outcome, which is the
+      // reason this group exists: nothing else in the codebase states that
+      // "Abandoned" and 'discarded' are the same thing.
+      expect(savedMetadata()!.outcome).toBe('discarded')
+    })
+
+    it('stores Expired as expired', async () => {
+      const wrapper = mountForm()
+
+      await buttonWith(wrapper, 'Expired').trigger('click')
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      expect(savedMetadata()!.outcome).toBe('expired')
+    })
+
+    it('carries the notes the user typed and stamps the archive time', async () => {
+      const wrapper = mountForm()
+
+      await wrapper.find('textarea').setValue('Broke me out around week three.')
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      expect(savedMetadata()!.notes).toBe('Broke me out around week three.')
+      // Asserted as a parseable instant rather than a fixed string: the value is
+      // new Date() at submit time, so pinning it exactly would only pin the
+      // clock.
+      expect(Number.isNaN(Date.parse(savedMetadata()!.archived_at as string))).toBe(false)
+    })
+
+    it('signals success to the parent only when the write lands', async () => {
+      const wrapper = mountForm()
+
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('success')).toHaveLength(1)
+    })
+
+    it('reports the failure without claiming the entry was saved', async () => {
+      vi.mocked(updateShelfStatus).mockRejectedValue(new Error('network down'))
+      const wrapper = mountForm()
+      await wrapper.find('textarea').setValue('Notes worth keeping.')
+
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      // No 'success': the parent closes the modal on it, which would discard
+      // what the user just typed at the end of the one flow where they typed
+      // anything. FE-DEF-17 is the copy; this is the control flow behind it.
+      expect(wrapper.emitted('success')).toBeUndefined()
+      expect(toasts.value[0]!.message).toBe("Couldn't save this archive entry. Please try again.")
+      expect(toasts.value[0]!.type).toBe('error')
+    })
+
+    it('re-enables the submit button after a failure so the entry can be retried', async () => {
+      vi.mocked(updateShelfStatus).mockRejectedValue(new Error('network down'))
+      const wrapper = mountForm()
+
+      await buttonWith(wrapper, 'Complete Archive Entry').trigger('click')
+      await flushPromises()
+
+      // Guards the finally block. Without it the only way to resubmit is to
+      // reopen the form, which loses the notes.
+      expect(buttonWith(wrapper, 'Complete Archive Entry').attributes('disabled')).toBeUndefined()
+    })
+  })
+})
