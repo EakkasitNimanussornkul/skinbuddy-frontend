@@ -87,6 +87,22 @@ describe('src/api/safety.ts', () => {
 
       expect(outcome.status).not.toBe('cleared')
     })
+
+    it('reports an explicit unsafe verdict with no listed warnings as unassessed specifically', () => {
+      // Kept alongside the looser assertion above rather than replacing it. That
+      // one pins the safety-critical property - this input must never clear -
+      // and stays true whatever the non-cleared statuses are later called. This
+      // one pins which of them it is, because the three are worded differently
+      // on screen and the difference is the whole of FE-DEF-29.
+      //
+      // The existing 'unassessed' assertion is on a body that omits is_safe.
+      // This one sets it to false explicitly: the backend says "not safe" and
+      // lists nothing, which is a claim without evidence rather than a verdict,
+      // and it must land in the same place as saying nothing at all.
+      const outcome = evaluateSafety({ is_safe: false, warnings: [] }, false)
+
+      expect(outcome.status).toBe('unassessed')
+    })
   })
 
   describe('blocksAction()', () => {
@@ -164,6 +180,21 @@ describe('src/api/safety.ts', () => {
 
     it('reports no duplicates when the request failed, because none were received', () => {
       expect(evaluateSafety(null, true).duplicates).toEqual([])
+    })
+
+    it('preserves duplicates alongside an explicit unsafe verdict that listed no conflicts', () => {
+      // Same body as the unassessed case below but with is_safe: false stated
+      // rather than omitted. Both reach the unassessed branch, and the dupes
+      // must survive either route - a response that says "not safe" without
+      // saying why has still told us what the user already owns, and dropping
+      // that would hide a true fact because a different field was unhelpful.
+      const outcome = evaluateSafety(
+        { is_safe: false, warnings: [], duplicates: [dupe] },
+        false,
+      )
+
+      expect(outcome.status).toBe('unassessed')
+      expect(outcome.duplicates).toEqual([dupe])
     })
 
     it('preserves duplicates on a response that carried them but no safety verdict', () => {

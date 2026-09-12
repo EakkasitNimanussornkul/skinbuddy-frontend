@@ -146,6 +146,42 @@ describe('src/api/products.ts', () => {
       expect(result.map((p) => p.id)).toEqual(['scored'])
     })
 
+    it('sorts, caps and filters in one pass over a realistic response', () => {
+      // The three rules above are each pinned on a fixture built to isolate it.
+      // This is the shape the function is actually called with: a mixed list,
+      // unordered, longer than the cap, with an unscored row in the middle -
+      // and no explicit limit, so the default is the one under test.
+      //
+      // A composition case, not a uniqueness case, and worth saying which. The
+      // obvious ordering bug - slicing before filtering and sorting - does fail
+      // this, but it also fails two of the isolated cases above, so this is not
+      // catching something they would miss. What it adds is the combined
+      // outcome on one realistic input: the three rules are known to work
+      // apart, and this is the only assertion that they produce the right four
+      // products together.
+      const result = pickTopRecommendations([
+        scored('a', 30),
+        scored('b', 90),
+        { id: 'null-one', skin_match_score: null },
+        scored('c', 10),
+        scored('d', 70),
+        scored('e', 50),
+      ])
+
+      expect(result.map((p) => p.id)).toEqual(['b', 'd', 'e', 'a'])
+      expect(result).toHaveLength(4)
+    })
+
+    it('returns an empty array when nothing in the response carries a score', () => {
+      // The anonymous case. /products/search omits skin_match_score for a
+      // caller with no profile, so this is the whole response, not an edge of
+      // it - and the widget's empty state is the correct outcome rather than a
+      // list of products ranked by nothing.
+      const result = pickTopRecommendations([{ id: 'a' }, { id: 'b', skin_match_score: null }])
+
+      expect(result).toEqual([])
+    })
+
     it('drops a NaN score instead of letting it corrupt the ordering', () => {
       const result = pickTopRecommendations([scored('nan', NaN), scored('real', 30)])
 
@@ -226,6 +262,21 @@ describe('src/api/products.ts', () => {
     it('reports a score below 60 as a weak match', () => {
       expect(resolveMatchBand(59.9)).toBe('weak')
       expect(resolveMatchBand(20)).toBe('weak')
+    })
+
+    it('reports a score of exactly 84 as a moderate match', () => {
+      // The Test Plan names 84 and 59 as its boundary fixtures; these two cases
+      // carry those exact values so a plan row and a record row can be matched
+      // without a reader having to reason about 84.9 being the same branch.
+      //
+      // The fractional fixtures above are kept rather than replaced. They are
+      // not redundant: 84.9 also rules out a rounding or truncation bug, which
+      // would send it to 85 and into the strong band, and 84 cannot show that.
+      expect(resolveMatchBand(84)).toBe('moderate')
+    })
+
+    it('reports a score of exactly 59 as a weak match', () => {
+      expect(resolveMatchBand(59)).toBe('weak')
     })
 
     it('reports a missing score as unavailable rather than as a weak match', () => {
