@@ -156,6 +156,33 @@ describe('src/components/Shelf/AddProductModal.vue', () => {
       expect(addToShelf).not.toHaveBeenCalled()
     })
 
+    it('abandons the save entirely when the user cancels out of the warnings', async () => {
+      // The other half of the conflict dialogue. Only `proceed` was covered
+      // here, so nothing showed that declining actually declines - and the
+      // pendingPayload is still sitting in the component at this point, so a
+      // cancel that fell through to the write would commit a product the user
+      // had just refused on a safety warning.
+      vi.mocked(analyzeProduct).mockResolvedValue({
+        is_safe: false,
+        warnings: [{ alert_type: 'Interaction', severity: 'High', message: 'Retinol and AHA.' }],
+        duplicates: [],
+      })
+      const wrapper = await mountModal()
+      await save(wrapper)
+      expect(wrapper.findComponent(SafetyWarningModal).exists()).toBe(true)
+
+      wrapper.findComponent(SafetyWarningModal).vm.$emit('cancel')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SafetyWarningModal).exists()).toBe(false)
+      expect(addToShelf).not.toHaveBeenCalled()
+      // The modal stays open behind the dialogue, so the user is returned to
+      // their configuration rather than having the flow closed out from under
+      // them.
+      expect(wrapper.emitted('close')).toBeUndefined()
+      expect(wrapper.emitted('refresh')).toBeUndefined()
+    })
+
     it('saves the payload it was holding when the user proceeds past the warnings', async () => {
       vi.mocked(analyzeProduct).mockResolvedValue({
         is_safe: false,

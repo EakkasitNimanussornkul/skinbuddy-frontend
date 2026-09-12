@@ -149,6 +149,14 @@ const SPEC_MAP = [
     note: 'The four outcomes of the compatibility check are distinguished here: cleared saves, unavailable refuses, unassessed refuses with its own wording, and warnings open the confirmation dialogue instead of blocking. The unavailable card is the important one - the catch used to only log, so control fell through to addToShelf and the product was committed unchecked while the user was told it succeeded.',
   },
   {
+    file: 'src/__tests__/components/SafetyWarningModal.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/SafetyWarningModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils and a warnings array passed directly - no store, no router, no network. resolveSeverityBand is the real shared reading, so the badge cards exercise the same banding the shelf and compare screens use.',
+    note: 'Both hosts previously hid this component from its own tests: AddProductModal stubs it outright and ProductHeroSection only inspects its props, so nothing rendered this template. One limitation is stated rather than implied - the Read more toggle is gated on the measurement useClampedText performs, and jsdom performs no layout, so scrollHeight and clientHeight both read 0 and nothing registers as overflowing. A card pins that the control is absent under those conditions rather than pretending to test the expansion; the toggle itself needs a real browser, which is how FE-DEF-26 and FE-DEF-27 were verified.',
+  },
+  {
     file: 'src/__tests__/components/ProductHeroSection.spec.ts',
     feature: '#3 Skincare storage',
     module: 'components/Catalog/ProductHeroSection',
