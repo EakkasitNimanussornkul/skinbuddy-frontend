@@ -77,6 +77,22 @@ const SPEC_MAP = [
     note: 'All four units are read through what the page renders: the report body for profileData, the four typology cards for axes, the comparison modal\'s props for openTypologyModal, and the recommendations widget\'s props for loadRecommendations. Two pairs are deliberate rather than redundant - profileData is asserted for two different valid codes, because a view permanently returning the OSPW fallback would satisfy an OSPW assertion on its own; and axes is asserted for OSPW and DRNT, which are complements, so both branches of all four ternaries are taken.',
   },
   {
+    file: 'src/__tests__/components/TypologyComparisonModal.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'components/Quiz/TypologyComparisonModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils with real records from src/data/typologydata.ts - no fixture - and its <Teleport> and the nested ImageZoomModal stubbed. No network access.',
+    note: 'The only prior coverage of this component was in SkinProfileView.spec.ts, which asserts the props are handed over correctly but stubs Teleport, so this template never rendered there and nothing showed what the user is actually shown. These cards render it. The characteristic lists are asserted against the dictionary rather than against the number three: every trait currently records three points, and a card hardcoding that would start hiding the fourth the day one is added.',
+  },
+  {
+    file: 'src/__tests__/components/ImageZoomModal.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'components/Shared/ImageZoomModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils, with <Transition> deliberately left unstubbed. Wheel and pointer events are dispatched against the interactive frame and the result read off the zoom indicator and the image transform. No network access.',
+    note: 'Unstubbing <Transition> is load-bearing rather than tidiness. Vue Test Utils stubs it by default and resetZoom is wired to its @enter hook, so under the default stub that hook never fires and the reopen cards would be asserting a reset the test itself had disabled - checked by running them both ways. Also worth recording for a reader: the clamp lands on exactly 1, not near it, which is what lets the identity comparisons in handleWheel and onDrag be written as === 1 without a floating-point tolerance.',
+  },
+  {
     file: 'src/__tests__/stores/shelfStore.spec.ts',
     feature: '#3 Skincare storage',
     module: 'stores/shelfStore',
