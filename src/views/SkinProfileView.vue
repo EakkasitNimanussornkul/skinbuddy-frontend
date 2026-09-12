@@ -101,7 +101,11 @@ onMounted(loadRecommendations)
       <!-- Header Navigation -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <button @click="router.back()" class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 flex items-center justify-center text-brand-text-muted hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm active:scale-95">
+          <!-- The control carries an icon and no text, so without a label it
+               reaches assistive technology as an unnamed button. The same
+               control in ProductDetailView and CompareView is labelled; this
+               one was not. -->
+          <button @click="router.back()" aria-label="Go back" class="w-10 h-10 rounded-full bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 flex items-center justify-center text-brand-text-muted hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm active:scale-95">
             <svg class="w-5 h-5 pr-0.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div>

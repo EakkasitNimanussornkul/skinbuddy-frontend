@@ -56,7 +56,10 @@ const mountProfile = async (skinType: string) => {
     global: { plugins: [pinia, router], stubs: { teleport: true } },
   })
 
-  return wrapper
+  // The router is returned as well as the wrapper, matching the harness shape
+  // SkinTypeLanding.spec.ts already uses, so navigation can be asserted without
+  // reaching through wrapper.vm for it.
+  return { wrapper, router }
 }
 
 /** The four typology cards, read as the user sees them. */
@@ -82,7 +85,7 @@ describe('src/views/SkinProfileView.vue', () => {
 
   describe('profileData (computed)', () => {
     it('resolves the dictionary entry for the stored skin type', async () => {
-      const wrapper = await mountProfile('DRNT')
+      const { wrapper } = await mountProfile('DRNT')
       const profile = skinProfiles['DRNT']!
 
       expect(wrapper.get('h2').text()).toBe(profile.subtitle)
@@ -94,7 +97,7 @@ describe('src/views/SkinProfileView.vue', () => {
       // Paired with the case above deliberately. On its own, a view that always
       // returned the OSPW fallback would satisfy an OSPW assertion, so at least
       // one case has to show two stored types producing two different reports.
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
 
       expect(wrapper.get('h2').text()).toBe(skinProfiles['OSPW']!.subtitle)
       expect(wrapper.get('h2').text()).not.toBe(skinProfiles['DRNT']!.subtitle)
@@ -104,7 +107,7 @@ describe('src/views/SkinProfileView.vue', () => {
       // Bad data, a truncated string, or a code added server-side before the
       // frontend knows it. The route guard does not cover this, and without the
       // fallback every read of profileData below would throw on render.
-      const wrapper = await mountProfile('XYZQ')
+      const { wrapper } = await mountProfile('XYZQ')
 
       expect(wrapper.get('h2').text()).toBe(skinProfiles['OSPW']!.subtitle)
       expect(wrapper.text()).toContain(skinProfiles['OSPW']!.focusTitle)
@@ -115,7 +118,7 @@ describe('src/views/SkinProfileView.vue', () => {
       // what is actually on the account. Asserted so the distinction is
       // deliberate rather than incidental - a reader of this report is told the
       // code it was generated from.
-      const wrapper = await mountProfile('XYZQ')
+      const { wrapper } = await mountProfile('XYZQ')
 
       expect(wrapper.text()).toContain('Type XYZQ')
     })
@@ -123,7 +126,7 @@ describe('src/views/SkinProfileView.vue', () => {
 
   describe('axes (computed)', () => {
     it('derives the four axis cards from an OSPW code', async () => {
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
 
       expect(axisCards(wrapper)).toEqual([
         { letter: 'O', name: 'Oily', opposite: 'vs. Dry' },
@@ -136,7 +139,7 @@ describe('src/views/SkinProfileView.vue', () => {
     it('derives the opposite four from a DRNT code', async () => {
       // DRNT is OSPW's complement on every axis, so between these two cases
       // both branches of all four ternaries are taken.
-      const wrapper = await mountProfile('DRNT')
+      const { wrapper } = await mountProfile('DRNT')
 
       expect(axisCards(wrapper)).toEqual([
         { letter: 'D', name: 'Dry', opposite: 'vs. Oily' },
@@ -150,7 +153,7 @@ describe('src/views/SkinProfileView.vue', () => {
       // A mixed code, for the same reason the quiz store has one: a code whose
       // letters are all first-branch or all second-branch cannot show that the
       // four positions are independent of each other.
-      const wrapper = await mountProfile('ORPT')
+      const { wrapper } = await mountProfile('ORPT')
 
       expect(axisCards(wrapper).map((a) => a.letter)).toEqual(['O', 'R', 'P', 'T'])
       expect(axisCards(wrapper).map((a) => a.name)).toEqual([
@@ -164,13 +167,13 @@ describe('src/views/SkinProfileView.vue', () => {
 
   describe('openTypologyModal()', () => {
     it('keeps the comparison modal closed until an axis is opened', async () => {
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
 
       expect(modal(wrapper).props('isOpen')).toBe(false)
     })
 
     it('opens the modal with both trait records for the axis that was clicked', async () => {
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
 
       await wrapper.findAll('.snap-center')[0]!.trigger('click')
 
@@ -180,7 +183,7 @@ describe('src/views/SkinProfileView.vue', () => {
     })
 
     it('resolves the traits of whichever axis was clicked, not always the first', async () => {
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
 
       await wrapper.findAll('.snap-center')[2]!.trigger('click')
 
@@ -193,7 +196,7 @@ describe('src/views/SkinProfileView.vue', () => {
       // props as nullable (FE-DEF-08). X is not a Baumann letter, so the active
       // lookup misses; the opposite is still derived from the ternary and so
       // still resolves.
-      const wrapper = await mountProfile('XYZQ')
+      const { wrapper } = await mountProfile('XYZQ')
 
       await wrapper.findAll('.snap-center')[0]!.trigger('click')
 
@@ -214,7 +217,7 @@ describe('src/views/SkinProfileView.vue', () => {
         product('p-77', 77),
       ])
 
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
       await flushPromises()
 
       expect(searchProducts).toHaveBeenCalled()
@@ -227,7 +230,7 @@ describe('src/views/SkinProfileView.vue', () => {
     })
 
     it('clears the loading flag once the request settles', async () => {
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
 
       expect(widget(wrapper).props('loading')).toBe(true)
 
@@ -240,7 +243,7 @@ describe('src/views/SkinProfileView.vue', () => {
     it('empties the list and marks the section failed when the request rejects', async () => {
       vi.mocked(searchProducts).mockRejectedValue(new Error('Network Error'))
 
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
       await flushPromises()
 
       expect(widget(wrapper).props('products')).toEqual([])
@@ -256,7 +259,7 @@ describe('src/views/SkinProfileView.vue', () => {
       // error panel over a list that had loaded.
       vi.mocked(searchProducts).mockRejectedValueOnce(new Error('Network Error'))
 
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
       await flushPromises()
       expect(widget(wrapper).props('failed')).toBe(true)
 
@@ -274,10 +277,53 @@ describe('src/views/SkinProfileView.vue', () => {
         product('unscored', null),
       ])
 
-      const wrapper = await mountProfile('OSPW')
+      const { wrapper } = await mountProfile('OSPW')
       await flushPromises()
 
       expect(widget(wrapper).props('products').map((p: ScoredProduct) => p.id)).toEqual(['scored'])
+    })
+  })
+
+  describe('router.back() (header back control)', () => {
+    // Its own group because the handler is inline in the template and has no
+    // named function to hang it on. STC-34-TC-4 cites this rather than a
+    // source-level reading that the handler exists.
+    const backButton = (wrapper: VueWrapper) => wrapper.get('button[aria-label="Go back"]')
+
+    it('returns to the previous page when the back control is clicked', async () => {
+      const { wrapper, router } = await mountProfile('OSPW')
+      const back = vi.spyOn(router, 'back')
+
+      await backButton(wrapper).trigger('click')
+
+      expect(back).toHaveBeenCalledTimes(1)
+    })
+
+    it('goes back rather than pushing a destination of its own', async () => {
+      // back() and push('/somewhere') both leave the page, so a test asserting
+      // only that navigation happened would accept either. They are not
+      // interchangeable: this control returns the user wherever they came from,
+      // and a push would send everyone to one fixed place and grow the history
+      // stack instead of unwinding it.
+      const { wrapper, router } = await mountProfile('OSPW')
+      const back = vi.spyOn(router, 'back')
+      const push = vi.spyOn(router, 'push')
+
+      await backButton(wrapper).trigger('click')
+
+      expect(back).toHaveBeenCalledTimes(1)
+      expect(push).not.toHaveBeenCalled()
+    })
+
+    it('is reachable by its accessible name, not only by its position', async () => {
+      // The control renders an icon and no text. Without the label it arrives at
+      // assistive technology as an unnamed button, and the only way to find it
+      // here would be "the first button on the page" - which is what the other
+      // two cases would then be pinning. ProductDetailView and CompareView label
+      // the same control; this one did not until now.
+      const { wrapper } = await mountProfile('OSPW')
+
+      expect(wrapper.findAll('button[aria-label="Go back"]')).toHaveLength(1)
     })
   })
 })
