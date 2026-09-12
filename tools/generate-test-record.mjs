@@ -149,6 +149,14 @@ const SPEC_MAP = [
     note: 'The four outcomes of the compatibility check are distinguished here: cleared saves, unavailable refuses, unassessed refuses with its own wording, and warnings open the confirmation dialogue instead of blocking. The unavailable card is the important one - the catch used to only log, so control fell through to addToShelf and the product was committed unchecked while the user was told it succeeded.',
   },
   {
+    file: 'src/__tests__/components/ProductHeroSection.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Catalog/ProductHeroSection',
+    prerequisite:
+      'The component mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia, cleared localStorage and the nested SafetyCheckModal and <Teleport> stubbed. analyzeProduct and addToShelf are mocked; resolveSafety and showsDuplicates are left real, so the gate is the one the application uses. The add is driven through the primary control rather than by calling the handler. No network access.',
+    note: 'Mirrors the four safety outcomes covered for AddProductModal, and records the one real difference between the two screens. The flows are ordered oppositely: AddProductModal collects the configuration first and checks on save, so its override has a pendingPayload to commit in one step. Here the check runs first and the configurator opens only on a pass, so at override time the user has chosen no period, opened state or date - the override therefore opens the configurator rather than saving, and a card pins that it does. Committing directly would store defaults nobody picked.',
+  },
+  {
     file: 'src/__tests__/api/shelfapi.spec.ts',
     feature: '#3 Skincare storage',
     module: 'api/shelfapi',

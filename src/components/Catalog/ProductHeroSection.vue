@@ -139,14 +139,23 @@ const runBackendAnalysis = async () => {
   safetyStatus.value = outcome.status
   backendDuplicates.value = showsDuplicates(outcome) ? outcome.duplicates : []
 
+  // Worded identically to AddProductModal, which runs the same check through
+  // the same resolveSafety for the same purpose. The two screens had different
+  // sentences for the same two statuses, so which explanation a user got
+  // depended on where they happened to be adding from. FE-DEF-17 is the same
+  // fault for the shelf's delete wording, and the reason it matters beyond
+  // tidiness: the use-case documents quote interface strings verbatim, so two
+  // strings for one outcome become two claims in the SRS.
   if (outcome.status === 'unavailable') {
-    addToast('Could not complete safety diagnostic verification.', 'error')
+    addToast('Failed to analyze product. Please try again.', 'error')
   }
 
   // Not phrased as a failure, because nothing failed. The check ran; there was
-  // no verdict in it to report.
+  // no verdict in it to report. The sentence names the consequence as well as
+  // the state - "has not been assessed" alone leaves the user to guess why the
+  // add did not happen.
   if (outcome.status === 'unassessed') {
-    addToast('This product has not been assessed.', 'error')
+    addToast('This product has not been assessed, so it cannot be added.', 'error')
   }
 
   return outcome
@@ -190,6 +199,21 @@ const handleCompareClick = () => {
   emit('open-compare-selector', props.product)
 }
 
+// Opens the configurator rather than saving, and that is not the same gap as
+// AddProductModal's one-step override.
+//
+// The two screens order the flow oppositely. AddProductModal collects the
+// configuration first and runs the check on save, so by the time its warning
+// modal appears there is a pendingPayload and "Proceed Anyway" has something to
+// commit. Here the check runs first - handleOpenConfigurator only opens the
+// configurator on an explicit pass - so at this point the user has not chosen a
+// PAO, an opened state or a date. Committing directly would save isOpened: true
+// with a 12-month period and today's date, none of which they picked, which is
+// the same class of fault as reporting a value nobody computed.
+//
+// So the second step is not a redundant re-confirmation: it is the only
+// configuration step this flow has. What is overridden is the block, after
+// which the user configures exactly as the cleared path does.
 const handleBypassProceed = () => {
   showWarningModal.value = false
   isConfiguringAdd.value = true
