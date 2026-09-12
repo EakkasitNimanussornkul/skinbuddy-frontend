@@ -118,8 +118,14 @@ const getTierBgColor = (tier: string) => {
   return 'bg-stone-400 dark:bg-stone-500'
 }
 
+// The overlay above already asks "Want to know more about this product?" and
+// this fires when the user clicks it, so repeating the question back is
+// answering nobody - and it was the only popup reason in the app phrased as a
+// question rather than as "Sign in to ...". The overlay states the offer at
+// length; the popup restates it in one imperative line, matching the six other
+// call sites and the guard's default.
 const handleGuestTrigger = () => {
-  authStore.triggerLoginPopup('Want to know more about this product? Log in to view full active diagnostic details.')
+  authStore.triggerLoginPopup('Sign in to see the full ingredient breakdown and diagnostics for this product.')
 }
 </script>
 

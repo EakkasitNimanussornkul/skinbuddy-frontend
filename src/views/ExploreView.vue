@@ -306,12 +306,23 @@ watch(
 
 </div>
 
-      <!-- Mobile/Tablet Search Input -->
+      <!-- Mobile/Tablet Search Input.
+           No `@search-submit` binding, and that is the fix rather than an
+           omission. Despite its name, the child emits that event from a watcher
+           on every keystroke - not on submit - so binding it to `searchQuery`
+           made each character re-run `filteredCatalog` over the products already
+           in memory. Those are the previous term's at-most-100 results, so a
+           half-typed search could report "No Formulation Matches" about a
+           product the catalogue holds: the third occurrence of FE-DEF-30, whose
+           first two were fixed in the mount order and the address watcher.
+           Submitting (Enter, or the "Search catalog for" row in the child's own
+           dropdown) pushes /explore?q=..., which the watcher at the bottom of
+           this file turns into a real request - the same single path the desktop
+           TopNav search uses, which binds nothing. Live feedback while typing
+           still exists and is server-backed: the child's dropdown runs its own
+           debounced searchProducts, unbounded by what this page has loaded. -->
       <div class="w-full block lg:hidden">
-        <SearchAutocompleteInput
-          :initial-query="searchQuery"
-          @search-submit="searchQuery = $event"
-        />
+        <SearchAutocompleteInput :initial-query="searchQuery" />
       </div>
 
       <!-- Control Deck Container -->

@@ -45,12 +45,39 @@ const formatMatchScore = (product: any) => {
   return 'Not scored'
 }
 
-// One line beneath the pair rather than one per product: both sides are missing
-// a score for the same reason whenever either is, because the reason is the
-// viewer's profile and not the product.
+// The sentence naming the one asymmetry this line can encounter. Kept out of
+// describeMatchAvailability because that helper answers about a single product
+// and this is a statement about the pair.
+const ONE_NOT_SCORED = 'One of these formulas could not be scored against your profile.'
+
+/**
+ * One line beneath the pair rather than one per product.
+ *
+ * The reason a score is missing is usually the viewer's profile rather than the
+ * product, and 'signed-out' and 'no-profile' are properties of the session - so
+ * whenever either applies it applies to both columns, and one sentence is
+ * correct for both. That was the whole of the original reasoning, and it read
+ * `product_a` alone on the strength of it.
+ *
+ * It is one case short. 'scored' and 'not-scored' are properties of the
+ * individual product, so a pair can genuinely split between them, and reading
+ * either column alone then describes the other one wrongly: with A scored and B
+ * not, the line explained how to read a score B has not got; with the two
+ * reversed, it announced a scoring failure directly above B's own percentage.
+ * The unscored side had nothing on the page accounting for its empty badge.
+ *
+ * Both columns are read now, and the split is named rather than averaged - the
+ * badges say which side it was.
+ */
 const matchExplanation = computed(() => {
-  const availability = matchAvailability(props.data?.product_a?.skin_match_score)
-  return availability === 'scored' ? MATCH_SCORE_BASIS : describeMatchAvailability(availability)
+  const a = matchAvailability(props.data?.product_a?.skin_match_score)
+  const b = matchAvailability(props.data?.product_b?.skin_match_score)
+
+  if (a === b) return a === 'scored' ? MATCH_SCORE_BASIS : describeMatchAvailability(a)
+
+  // The only reachable disagreement, per the session argument above. The basis
+  // still leads, because a score the viewer can read is on screen.
+  return `${MATCH_SCORE_BASIS} ${ONE_NOT_SCORED}`
 })
 
 // The share of the two full ingredient lists that appears in both - a Jaccard

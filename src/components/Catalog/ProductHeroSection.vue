@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
-import { resolveMatchBand } from '../../api/products'
+import {
+  describeMatchAvailability,
+  resolveMatchAvailability,
+  resolveMatchBand,
+} from '../../api/products'
 import { toLocalDateString } from '../../api/dates'
 import {
   resolveSafety,
@@ -98,6 +102,44 @@ const matchBand = computed(() => {
 
 const hasMatchScore = computed(() => resolveMatchBand(props.product?.skin_match_score) !== 'unavailable')
 
+// FE-DEF-31, applied here. The card below renders only for a signed-in user, so
+// it looked as though it had already caught the case CompareIdentityHeader was
+// missing - but signing in is not the same as having a profile. The backend
+// returns skin_match_score: null whenever it has no Baumann type to score
+// against, which is the ordinary state for every authenticated user who has not
+// finished the quiz, and this card reported it as "Failed to calculate score"
+// and then blamed the catalogue: "This product may have incomplete ingredient
+// metadata". Both sentences were about a product that is fine, shown to a user
+// whose profile is simply empty.
+//
+// 'signed-out' cannot occur here - the v-else branch further down owns that
+// case - so only the remaining three are worded.
+const matchAvailability = computed(() =>
+  resolveMatchAvailability(
+    props.product?.skin_match_score,
+    authStore.isAuthenticated,
+    authStore.user?.skin_type,
+  ),
+)
+
+// Short enough for the chip that sits where the score ring would be. Same
+// vocabulary as CompareIdentityHeader's badge, so the two screens name the same
+// state the same way.
+const matchBadgeLabel = computed(() =>
+  matchAvailability.value === 'no-profile' ? 'Take the skin quiz' : 'Not scored',
+)
+
+// The detail line under the rule. Only 'not-scored' may mention the catalogue:
+// a profile exists, the quiz is done, and the score still came back empty, so
+// incomplete ingredient data is a real candidate. For 'no-profile' the cause is
+// known and is not the product, so naming the product at all would be a guess
+// pointed at the wrong thing.
+const matchDetail = computed(() =>
+  matchAvailability.value === 'no-profile'
+    ? 'This score is computed against your Baumann skin type, and yours is not on file yet. Nothing about this product failed.'
+    : 'This formula could not be scored against your profile. It may have incomplete ingredient metadata in the catalog.',
+)
+
 const isConfiguringAdd = ref(false)
 const isSaving = ref(false)
 const isOpened = ref(true)
@@ -139,13 +181,27 @@ const runBackendAnalysis = async () => {
   safetyStatus.value = outcome.status
   backendDuplicates.value = showsDuplicates(outcome) ? outcome.duplicates : []
 
-  // Worded identically to AddProductModal, which runs the same check through
-  // the same resolveSafety for the same purpose. The two screens had different
-  // sentences for the same two statuses, so which explanation a user got
-  // depended on where they happened to be adding from. FE-DEF-17 is the same
-  // fault for the shelf's delete wording, and the reason it matters beyond
-  // tidiness: the use-case documents quote interface strings verbatim, so two
-  // strings for one outcome become two claims in the SRS.
+  return outcome
+}
+
+/**
+ * The two non-verdict statuses, worded for the add flow.
+ *
+ * Worded identically to AddProductModal, which runs the same check through the
+ * same resolveSafety for the same purpose. The two screens had different
+ * sentences for the same two statuses, so which explanation a user got depended
+ * on where they happened to be adding from. FE-DEF-17 is the same fault for the
+ * shelf's delete wording, and the reason it matters beyond tidiness: the
+ * use-case documents quote interface strings verbatim, so two strings for one
+ * outcome become two claims in the SRS.
+ *
+ * These sentences used to live inside runBackendAnalysis, which is shared with
+ * the manual Safety Check below - where nothing is being added. That is the
+ * whole reason they moved out: sharing a sentence is right when the purpose is
+ * shared, and these two purposes are not. The check is shared; what it is being
+ * used to decide is not.
+ */
+const reportAddBlocked = (outcome: SafetyOutcome) => {
   if (outcome.status === 'unavailable') {
     addToast('Failed to analyze product. Please try again.', 'error')
   }
@@ -157,8 +213,26 @@ const runBackendAnalysis = async () => {
   if (outcome.status === 'unassessed') {
     addToast('This product has not been assessed, so it cannot be added.', 'error')
   }
+}
 
-  return outcome
+/**
+ * The same two statuses, worded for a report the user asked to see.
+ *
+ * Nothing is being saved on this path, so the add flow's sentences were not
+ * merely imprecise here - "so it cannot be added" named a consequence that does
+ * not exist on this screen, about an action the user did not take. The panel
+ * behind the toast already says the right thing in both cases ("Evaluation
+ * Unavailable" and "Not Assessed"), and these are written to agree with it
+ * rather than to compete with it.
+ */
+const reportCheckIncomplete = (outcome: SafetyOutcome) => {
+  if (outcome.status === 'unavailable') {
+    addToast('Could not complete the safety check. Please try again.', 'error')
+  }
+
+  if (outcome.status === 'unassessed') {
+    addToast('This product has not been assessed, so it cannot be checked against your shelf.', 'error')
+  }
 }
 
 const handleTriggerSafetyCheck = async () => {
@@ -168,8 +242,9 @@ const handleTriggerSafetyCheck = async () => {
   }
   isSafetyModalOpen.value = true
   hasCheckedSafety.value = false
-  await runBackendAnalysis()
+  const outcome = await runBackendAnalysis()
   hasCheckedSafety.value = true
+  reportCheckIncomplete(outcome)
 }
 
 const handleOpenConfigurator = async () => {
@@ -178,6 +253,7 @@ const handleOpenConfigurator = async () => {
     return
   }
   const outcome = await runBackendAnalysis()
+  reportAddBlocked(outcome)
 
   // Only an explicit pass opens the configurator, and only a reported conflict
   // opens the warning modal. Written as two named statuses rather than as
@@ -284,7 +360,9 @@ const handleCommitToShelf = async () => {
               {{ hasMatchScore ? 'Skin Match Compatibility' : 'Compatibility Status' }}
             </h4>
             <p :class="['text-xs mt-0.5', matchBand.body]">
-              {{ hasMatchScore ? 'Compatibility evaluation for your active Baumann skin profile.' : 'Unable to determine personalized compatibility for this item.' }}
+              {{ hasMatchScore
+                ? 'Compatibility evaluation for your active Baumann skin profile.'
+                : describeMatchAvailability(matchAvailability) }}
             </p>
           </div>
 
@@ -301,7 +379,7 @@ const handleCommitToShelf = async () => {
               v-else
               class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-brand-surface-light dark:bg-stone-800 text-[10px] font-bold font-mono text-brand-text-muted uppercase tracking-wider text-center"
             >
-              Failed to calculate score
+              {{ matchBadgeLabel }}
             </div>
           </div>
         </div>
@@ -316,7 +394,7 @@ const handleCommitToShelf = async () => {
           </template>
 
           <div v-else class="text-brand-text-muted dark:text-stone-400 italic text-[11px]">
-            Failed to calculate matching score. This product may have incomplete ingredient metadata in the catalog.
+            {{ matchDetail }}
           </div>
         </div>
       </div>
