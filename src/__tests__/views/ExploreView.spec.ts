@@ -224,5 +224,179 @@ describe('src/views/ExploreView.vue', () => {
 
       expect(wrapper.findComponent(SkinTypeRecommendationsWidget).props('failed')).toBe(true)
     })
+
+    it('tells the widget it is on the catalogue, so it does not link back to it', async () => {
+      // The prop SkinTypeRecommendationsWidget had stopped reading. Pinned from
+      // the host side as well, because the widget's own fix is only reachable if
+      // this host keeps passing it.
+      const { wrapper } = await mountExplore('/explore', { authenticated: true })
+
+      expect(wrapper.findComponent(SkinTypeRecommendationsWidget).props('hideCatalogLink')).toBe(true)
+    })
+  })
+
+  // Appended after the three groups already cited, so adding these moves none
+  // of their IDs.
+
+  describe('filteredCatalog (category and brand)', () => {
+    const mixedCatalogue = () => [
+      catalogProduct({ id: 'c1', brand: 'CeraVe', name: 'Hydrating Cleanser', category: 'Cleanser' }),
+      catalogProduct({ id: 'c2', brand: 'La Roche-Posay', name: 'Toleriane Cleanser', category: 'Cleanser' }),
+      catalogProduct({ id: 's1', brand: 'CeraVe', name: 'Resurfacing Serum', category: 'Serum' }),
+      catalogProduct({ id: 'u1', brand: 'Beauty of Joseon', name: 'Relief Sun', category: 'Sunscreen' }),
+    ]
+
+    const shownIds = (wrapper: VueWrapper) => cards(wrapper).map((c) => c.props('product').id)
+
+    beforeEach(() => {
+      vi.mocked(searchProducts).mockResolvedValue(mixedCatalogue())
+    })
+
+    it('narrows to the category in the address', async () => {
+      const { wrapper } = await mountExplore('/explore?category=Serums')
+
+      expect(shownIds(wrapper)).toEqual(['s1'])
+    })
+
+    it('matches a plural category chip against a singular catalogue category', async () => {
+      // The chips are plural ("Cleansers") and the catalogue stores singular
+      // ("Cleanser"). cleanString strips the trailing s from both before
+      // comparing, which is the whole of what makes a chip select anything.
+      const { wrapper } = await mountExplore('/explore?category=Cleansers')
+
+      expect(shownIds(wrapper)).toEqual(['c1', 'c2'])
+    })
+
+    it('leaves a category that does not end in s as it is', async () => {
+      const { wrapper } = await mountExplore('/explore?category=Sunscreen')
+
+      expect(shownIds(wrapper)).toEqual(['u1'])
+    })
+
+    // Recorded rather than covered, because there is nothing to cover.
+    // cleanString reads `res.endsWith('s') && res !== 'sunscreen'`, and the
+    // second clause can never decide anything: "sunscreen" does not end in s,
+    // so any value equal to it has already failed the first clause. The
+    // exception is dead. A card here was first written claiming it kept
+    // "Sunscreen" from being stripped, and it passed - but it would pass with
+    // the clause deleted, which is the vacuous shape this project's register
+    // keeps recording. Separately, and not verified: the fixed chip is "Sun
+    // Care", which cleans to "sun care" and matches no category spelled
+    // "Sunscreen". Whether that chip selects anything depends on how the
+    // catalogue actually spells the category, which was not checked.
+
+    it('narrows to the brand in the address', async () => {
+      const { wrapper } = await mountExplore('/explore?brand=CeraVe')
+
+      expect(shownIds(wrapper)).toEqual(['c1', 's1'])
+    })
+
+    it('applies the category and the brand together, not either alone', async () => {
+      const { wrapper } = await mountExplore('/explore?category=Cleansers&brand=CeraVe')
+
+      expect(shownIds(wrapper)).toEqual(['c1'])
+    })
+
+    it('says nothing matched when the filters exclude everything, not that the catalogue failed', async () => {
+      const { wrapper } = await mountExplore('/explore?category=Toners')
+
+      expect(shownIds(wrapper)).toEqual([])
+      expect(wrapper.findComponent({ name: 'EmptyState' }).exists()).toBe(true)
+      expect(wrapper.text()).not.toContain('Catalog Unavailable')
+    })
+
+    it('offers the brands present in the loaded catalogue, sorted', async () => {
+      const { wrapper } = await mountExplore()
+
+      const options = wrapper.findAll('select option').map((o) => o.text())
+      expect(options).toEqual(['All Curated Brands', 'Beauty of Joseon', 'CeraVe', 'La Roche-Posay'])
+    })
+
+    it('follows the address when it changes rather than only on load', async () => {
+      const { wrapper, router } = await mountExplore('/explore?category=Serums')
+      expect(shownIds(wrapper)).toEqual(['s1'])
+
+      await router.push('/explore')
+      await flushPromises()
+
+      expect(shownIds(wrapper)).toEqual(['c1', 'c2', 's1', 'u1'])
+    })
+  })
+
+  describe('handleCategoryUpdate()', () => {
+    it('writes the chosen category into the address, keeping the rest of the query', async () => {
+      // Written to the address rather than held in component state, so a
+      // filtered view can be linked and survives a reload - and the watcher is
+      // what then applies it.
+      const { wrapper, router } = await mountExplore('/explore?q=cleanser')
+
+      wrapper.findComponent({ name: 'ExploreCategoryBar' }).vm.$emit('update:selected-category', 'Serums')
+      await flushPromises()
+
+      expect(router.currentRoute.value.query).toEqual({ q: 'cleanser', category: 'Serums' })
+    })
+
+    it('removes the category from the address when All is chosen', async () => {
+      const { wrapper, router } = await mountExplore('/explore?category=Serums')
+
+      wrapper.findComponent({ name: 'ExploreCategoryBar' }).vm.$emit('update:selected-category', 'All')
+      await flushPromises()
+
+      expect(router.currentRoute.value.query).toEqual({})
+    })
+  })
+
+  describe('handlePriceApply() and handlePriceClear()', () => {
+    it('requests the catalogue again with the new bounds', async () => {
+      // Unlike category and brand, the bounds are sent to the backend, so
+      // applying them has to re-request rather than re-filter.
+      const { wrapper } = await mountExplore('/explore?q=serum')
+
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      await flushPromises()
+
+      expect(catalogRequests()).toEqual([
+        ['serum', 0, 1500],
+        ['serum', 200, 800],
+      ])
+    })
+
+    it('passes the applied bounds back to the slider', async () => {
+      const { wrapper } = await mountExplore()
+
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      await flushPromises()
+
+      const slider = wrapper.findComponent({ name: 'PriceRangeSlider' })
+      expect(slider.props('minPrice')).toBe(200)
+      expect(slider.props('maxPrice')).toBe(800)
+    })
+
+    it('restores the default bounds and requests again when cleared', async () => {
+      const { wrapper } = await mountExplore()
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      await flushPromises()
+
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('clear')
+      await flushPromises()
+
+      expect(catalogRequests()[2]).toEqual(['', 0, 1500])
+      expect(wrapper.findComponent({ name: 'PriceRangeSlider' }).props('maxPrice')).toBe(1500)
+    })
+
+    it('clears the grid rather than keeping the previous bounds’ results when a re-request fails', async () => {
+      // The trade fetchCatalog's catch makes. Keeping the old results would show
+      // products from the previous bounds while the slider shows the new ones -
+      // stale data presented as current, with only a toast to say otherwise.
+      const { wrapper } = await mountExplore()
+      expect(cards(wrapper)).toHaveLength(1)
+
+      vi.mocked(searchProducts).mockRejectedValue(new Error('network down'))
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      await flushPromises()
+
+      expect(cards(wrapper)).toHaveLength(0)
+      expect(wrapper.text()).toContain('Catalog Unavailable')
+    })
   })
 })

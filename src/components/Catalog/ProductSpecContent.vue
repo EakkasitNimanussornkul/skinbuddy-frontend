@@ -82,7 +82,15 @@ const sortedIngredientsList = computed(() => {
 
 const awarenessStats = computed(() => {
   const total = sortedIngredientsList.value.length
-  if (total === 0) return { lowPct: 100, medPct: 0, highPct: 0, lowCount: 0, medCount: 0, highCount: 0 }
+  // All zero, which draws an empty track. This returned `lowPct: 100`, so a
+  // product with no ingredient list on record drew a bar that was entirely
+  // green and titled "Safe / Low Awareness (0)" - a width saying everything in
+  // the formula is safe, over a count saying there is nothing in it. No data
+  // read as a clean result: FE-DEF-03's fault, drawn in FE-DEF-12's confident
+  // green. The state is real rather than defensive - the backend defaults a
+  // missing join to an empty list, and the compare screen already words "no
+  // ingredient list on record" as its own case.
+  if (total === 0) return { lowPct: 0, medPct: 0, highPct: 0, lowCount: 0, medCount: 0, highCount: 0 }
 
   const lowCount = sortedIngredientsList.value.filter((i: any) => i.awareness_tier === 'low').length
   const medCount = sortedIngredientsList.value.filter((i: any) => i.awareness_tier === 'medium').length

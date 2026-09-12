@@ -122,12 +122,22 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
       </div>
     </div>
 
-    <!-- Clean Empty State Render Block -->
+    <!-- Clean Empty State Render Block.
+         The action is withheld under `hideCatalogLink`, which is what that prop
+         was declared for and had stopped doing. Its comment says it suppresses a
+         catalogue link that "would navigate back to the page the user is already
+         on" - but the per-card link it once hid is gone from this template, and
+         the prop was left reading nothing. The one catalogue link that survived
+         is this button, and ExploreView is the only host that passes the prop,
+         so on Explore an empty ranking offered "Explore Global Catalog" as a way
+         to reach the page it was drawn on. EmptyState draws no button when it is
+         given no label, and the message still points at the catalogue, which on
+         that host is directly below. -->
     <div v-else class="py-8 flex justify-center items-center w-full">
       <EmptyState
         title="No Curated Items Ready"
         message="There are currently no products indexed matching your exact diagnostic profile properties. Use our catalog search tool to explore alternative formulas manually."
-        action-label="Explore Global Catalog"
+        :action-label="hideCatalogLink ? undefined : 'Explore Global Catalog'"
         @action="router.push('/explore')"
       />
     </div>
