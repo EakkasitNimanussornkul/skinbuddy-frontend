@@ -232,7 +232,7 @@ const SPEC_MAP = [
     module: 'views/ExploreView',
     prerequisite:
       'The view mounted with @vue/test-utils at an address on a vue-router memory history, because the address is this screen\'s input. Every child is stubbed: none is the subject, and several fetch on their own - the search input debounces its own searchProducts and would put its requests into the mock these cards count calls on. searchProducts is mocked; resolveCatalogState and pickTopRecommendations stay real. The catalogue cards mount as a guest deliberately, so that loadRecommendations returns before requesting anything and every recorded call is fetchCatalog\'s own. No network access.',
-    note: 'The search cards pin the third occurrence of FE-DEF-30, whose first two were fixed in the mount order and the address watcher. Despite its name, SearchAutocompleteInput emits `search-submit` from a watcher on every keystroke rather than on submit, so binding it to this page\'s searchQuery re-ran filteredCatalog over whatever was already in memory - the previous term\'s at-most-100 results - and a half-typed search could report "No Formulation Matches" about a product the catalogue holds. The binding is gone, and the card asserts both halves: no request, and no silent narrowing of the grid. Note what this was NOT: mobile search did reach the server, on submit. What bypassed it was the live-typing preview. The two watcher cards are a matched pair - one requires a refetch when the address term changes, the other forbids one for a category change, since category and brand are applied client-side over the same response and only `q` and the price bounds are sent. Neither card alone would catch a guard rewritten to fire always or never.',
+    note: 'The search cards pin the third occurrence of FE-DEF-30, whose first two were fixed in the mount order and the address watcher. Despite its name, SearchAutocompleteInput emits `search-submit` from a watcher on every keystroke rather than on submit, so binding it to this page\'s searchQuery re-ran filteredCatalog over whatever was already in memory - the previous term\'s at-most-100 results - and a half-typed search could report "No Formulation Matches" about a product the catalogue holds. The binding is gone, and the card asserts both halves: no request, and no silent narrowing of the grid. Note what this was NOT: mobile search did reach the server, on submit. What bypassed it was the live-typing preview. The two watcher cards are a matched pair - one requires a refetch when the address term changes, the other forbids one for a category change, since category and brand are applied client-side over the same response and only `q` and the price bounds are sent. Neither card alone would catch a guard rewritten to fire always or never. The groups appended after those three cover the address-driven category and brand filters, the category writer and the price controls. Two findings from them. First, a card of mine was vacuous when first written: it asserted the grid was empty after a failed price re-request, and passed with the clearing line deleted, because the grid is not rendered in the failed state at all. It now reads ProductShowcaseMarquee, which takes the catalogue as a prop and renders in every state - the same repair the ShelfView card needed. Two lines in already-cited cards had the related flaw of asserting the title of a stubbed EmptyState as text, which a stub never renders; both now check the component, and UTC-FE-79-TC-02 was retitled because a first load that fails has nothing to clear. Second, the sunscreen exception in cleanString is dead: a value equal to "sunscreen" does not end in s, so it has already failed the endsWith test before the exception is reached. Removing the clause changes nothing, which mutation confirmed, so there is nothing for a card to cover.',
   },
   {
     file: 'src/__tests__/views/ProductDetailView.spec.ts',
@@ -248,7 +248,7 @@ const SPEC_MAP = [
     module: 'components/Catalog/ProductSpecContent',
     prerequisite:
       'The component mounted with @vue/test-utils on a vue-router memory history with a fresh Pinia and cleared localStorage. ProductHeroSection is stubbed - it has its own spec, mounts its own router and runs its own safety check, none of which the overlay cards are about. The auth store is real, so the popup reason is read back off the store the application uses. No network access.',
-    note: 'The guest overlay and the popup it opens do not contradict each other - the popup is a condensed restatement of the overlay - so the reported item here was an inconsistency rather than a defect, and is recorded as one. What was wrong: this was the only triggerLoginPopup reason in the codebase phrased as a question, and the question it asked ("Want to know more about this product?") is the one the user had just answered by clicking the overlay that asks it. The six other call sites and the guard\'s own default are all imperative. The safetyChecks card asserts all six labels render rather than only the satisfied ones, because a checklist that hid its failures would read as a clean bill of health.',
+    note: 'The guest overlay and the popup it opens do not contradict each other - the popup is a condensed restatement of the overlay - so the reported item here was an inconsistency rather than a defect, and is recorded as one. What was wrong: this was the only triggerLoginPopup reason in the codebase phrased as a question, and the question it asked ("Want to know more about this product?") is the one the user had just answered by clicking the overlay that asks it. The six other call sites and the guard\'s own default are all imperative. The safetyChecks card asserts all six labels render rather than only the satisfied ones, because a checklist that hid its failures would read as a clean bill of health. The tri-state cards read the state of each label rather than its marker glyph, deliberately: the markers are drawn with the text characters for a tick and a cross, where CompareFlagMarker uses SVG for the same three states, and pinning the glyphs would cement both a departure from the SVG-only icon rule of the project and a third copy of the rule that marker was extracted to hold. A defect found while writing this coverage, and fixed: awarenessStats returned lowPct 100 for a product with no ingredients, so the legend drew an entirely green bar titled "Safe / Low Awareness (0)" - no data read as a clean result. Recorded rather than covered: an ingredient with no awareness_tier sorts with the medium tier and is labelled medium in the list, but awarenessStats counts tiers by exact value, so the bar counts it as nothing and the list and the bar disagree about it. Whether that is reachable depends on a database column not visible from the API schema, which was not checked.',
   },
   {
     file: 'src/__tests__/views/CompareView.spec.ts',
@@ -267,12 +267,80 @@ const SPEC_MAP = [
     note: 'The shared explanation line read product_a alone. The argument for that was sound and one case short, which is the part worth recording: signed-out and no-profile are properties of the session, so whenever either applies it applies to both columns and one sentence is correct for both - but scored and not-scored are properties of the individual product, so a pair can genuinely split between them. With A scored and B not, the line explained how to read a score B has not got; with the two reversed it announced a scoring failure directly above B\'s own percentage, and the unscored side had nothing on the page accounting for its empty badge. Both orderings are covered, because reading either column alone fixes one and leaves the other. The four-way availability reading is FE-DEF-31 and is covered here in full: a null score is the ordinary state for a signed-out visitor and for anyone who has not taken the quiz, and only the residual case is a failure.',
   },
   {
+    file: 'src/__tests__/components/CompareFlagMarker.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Compare/CompareFlagMarker',
+    prerequisite: 'The component mounted with @vue/test-utils with a state prop passed directly. No store, no router, no network.',
+    note: 'The third state is the reason this component exists. `safety_flags` can omit a key, and drawing that as the red cross would state a fact about a formulation nobody recorded, so null draws a question mark and neither of the other two palettes.',
+  },
+  {
+    file: 'src/__tests__/components/CompareSafetyChecklist.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Compare/CompareSafetyChecklist',
+    prerequisite:
+      'The component mounted with @vue/test-utils with CompareFlagMarker rendered and its state read off its own props. The CompareResponse comes from src/__tests__/fixtures/compare.ts, which the four panels that render one share, so their specs cannot disagree about what a comparison looks like. No store, no router, no network.',
+    note: 'Two properties carry the panel. An omitted flag reads as unknown rather than as false, and the check is `!== undefined` rather than truthiness, so a recorded false is kept distinct from a missing key - a mutation to truthiness failed the card that separates them. And every row puts product A on the left and B on the right, which is what lets the page read without a legend per line; swapping the two sides failed three cards.',
+  },
+  {
+    file: 'src/__tests__/components/CompareIngredientsGrid.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Compare/CompareIngredientsGrid',
+    prerequisite: 'The component mounted with @vue/test-utils with the shared compare fixture, whose two products share Water and Glycerin - a base and a humectant rather than an active, which is the ordinary shape of a real comparison. No store, no router, no network.',
+    note: 'A defect found while writing this coverage, and fixed. Both columns were headed "Unique Components Deck" directly under a banner listing what the two products share, while each iterated the product\'s whole product_ingredients; the backend builds shared_ingredients as the intersection of those same unfiltered id sets, so every shared ingredient appeared in the banner and in both "unique" decks at once. Relabelled "Full Ingredient List" rather than filtered, since filtering to the true set difference would change what the screen shows and that is the owner\'s decision. One card deliberately pins that shared ingredients appear in both columns, so the choice between the two cannot drift in with an unrelated edit. The empty-overlap sentence says "no identical active ingredients", which understates an empty list over all ingredients but is not false, and was left.',
+  },
+  {
+    file: 'src/__tests__/components/CompareActivesMatrix.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Compare/CompareActivesMatrix',
+    prerequisite:
+      'The component mounted with @vue/test-utils with the shared compare fixture and KeyActivesGrid rendered. resolvePairConflictState and resolvePairConflicts stay real. No store, no router, no network.',
+    note: 'The pair panel\'s three states are FE-DEF-32\'s: conflicts the engine found between these two products, a clear result scoped explicitly to the pair, and a panel that refuses to call an empty list clear when either product has no ingredients to check. One card here was vacuous when first written and the reason is worth recording. It asserted that "High" did not appear for a null severity, and forcing the chip to always render still passed it, because a null severity renders an empty chip rather than the word. It now asserts no chip is drawn, with the selector narrowed after it was found to match KeyActivesGrid\'s functional-group chips too. Recorded rather than covered: the per-product concerns keep the first four and drop the rest without saying so, which is a display choice rather than a defect.',
+  },
+  {
+    file: 'src/__tests__/components/CompareSelectorModal.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Compare/CompareSelectorModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils on a vue-router memory history. searchProducts is mocked; buildComparePath stays real, so the routed address is the one the application builds. No network access.',
+    note: 'A defect found while writing this coverage, and fixed. The load caught and logged and did nothing else, so a failed request left a blank list under a footer asking the user to pick from it, and a search matching nothing was the same blank - empty by failure and empty by result on one screen, FE-DEF-09\'s shape in a third place. There is now a failed state with a retry and an empty state named after what was typed. The id fallback in the routed pair looks dead and is covered because it is not: a CompareResponse product carries no slug, so the id is what keeps this working the day a comparison result is passed back in as the base (FE-DEF-35).',
+  },
+  {
+    file: 'src/__tests__/components/SkinTypeRecommendationsWidget.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/SkinTypeRecommendationsWidget',
+    prerequisite:
+      'The component mounted with @vue/test-utils on a vue-router memory history, with EmptyState and router-link rendered rather than stubbed. Both hosts\' specs assert only which props reach this widget, so its own DOM - the exact empty and failed sentences, the card metadata and where a card goes - is observable only here. No network access.',
+    note: 'A defect found while writing this coverage, and fixed. The widget declares hideCatalogLink to suppress a catalogue link that would navigate back to the page the user is already on, and read it nowhere: the per-card link it once hid had been removed, and the one catalogue link left - the empty state\'s button - ignored it. ExploreView is the only host that passes it, so an empty ranking there offered "Explore Global Catalog" as the way to reach the page it was drawn on. The button is now withheld under the prop, and ExploreView\'s spec pins that it keeps passing it. Recorded rather than changed: userSkinType is declared and read nowhere either; both hosts pass it, and nothing renders wrongly for it. The failure panel is ordered ahead of the empty one, and a card covers both conditions holding at once, since a failed request also leaves the list empty.',
+  },
+  {
+    file: 'src/__tests__/components/SimilarProductsWidget.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/SimilarProductsWidget',
+    prerequisite: 'The component mounted with @vue/test-utils on a vue-router memory history. buildComparePath stays real. No network access.',
+    note: 'Hidden entirely rather than drawn empty when there are no similar products, since a heading promising products similar to this over none would be a claim with nothing under it. The compare card routes base first, and a slug containing & and = is covered because the template used to write the query by hand with no encoding, which would have split it.',
+  },
+  {
+    file: 'src/__tests__/components/IngredientAwarenessLegend.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/IngredientAwarenessLegend',
+    prerequisite: 'The component mounted with @vue/test-utils with tier statistics passed directly - they are computed by ProductSpecContent and covered there. No store, no router, no network.',
+    note: 'The bar is read left to right with the high tier first, and a tier with no ingredients is omitted rather than drawn as a zero-width segment. All-zero statistics draw an empty track, which is what ProductSpecContent now passes for a product with no ingredients on record.',
+  },
+  {
     file: 'src/__tests__/api/safety.spec.ts',
     feature: '#3 Skincare storage',
     module: 'api/safety',
     prerequisite:
       'Pure decision logic called directly with plain objects. No component mounting and no network access.',
     note: 'Pins FE-DEF-01, FE-DEF-02 and FE-DEF-03 from FRONTEND_DEFECTS.md: three call sites each treated a failed compatibility check as a passed one. blocksAction() must never return false for an unavailable outcome.',
+  },
+  {
+    file: 'src/__tests__/components/SafetyCheckModal.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shared/SafetyCheckModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils with its <Teleport> stubbed and every input passed as a prop, so each panel state is set directly. resolveSeverityBand and describeDuplicateOverlap stay real. Warning fixtures use the three alert types the backend emits and no others (app/core/services/compatibility_service.py lines 416, 477 and 509). No store, no router, no network.',
+    note: 'The report the manual Safety Check opens, which ProductHeroSection\'s own spec stubs out entirely. Five panel states, each asserted against the other three headings so no two can render at once. isSafe reads the status rather than the list length, and a card holds that an empty warnings list with an unavailable status is not reported clean - FE-DEF-03 at the component. A modal that has checked but holds no status folds into the unavailable panel, the one that claims least, the same choice blocksAction makes. Recorded rather than covered: the skin-type line prints "Severity: High" without reading the warning\'s severity. That is accurate today, since the backend hardcodes High for that alert type, but it is the shape FE-DEF-25 removed from the chemical line. A warning whose alert type is none of the three would fall into neither group and render the risk header over no body; no such type exists today.',
   },
   {
     file: 'src/__tests__/router/guard.spec.ts',
