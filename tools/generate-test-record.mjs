@@ -211,6 +211,14 @@ const SPEC_MAP = [
     note: 'Guards the skin profile page. Without it the page renders a substitute skin type\'s real routine and actives for a user who has never been classified.',
   },
   {
+    file: 'src/__tests__/views/AuthCallbackView.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'views/AuthCallbackView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case. The shared axios client is mocked - this view posts to /auth/line inline rather than through authApi - and Vitest fake timers drive the three-second delay on the failure path. No network access.',
+    note: 'authApi.spec.ts covers exchangeLineCode, which nothing in src/ calls; this screen is where the LINE exchange actually happens, and until now neither of its two redirect branches was exercised. The two differ only by whether the returned user carries a skin_type, so both are pinned: inverting that condition would send established users to a setup page and new users to a home screen personalised against nothing.',
+  },
+  {
     file: 'src/__tests__/stores/auth.spec.ts',
     feature: '#1 Authentication (supplementary)',
     module: 'stores/auth',

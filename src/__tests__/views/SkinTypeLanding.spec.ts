@@ -156,6 +156,12 @@ describe('src/views/SkinTypeLanding.vue', () => {
       expect(toasts.value[0]!.message).toBe(SAVE_FAILED_TOAST)
       expect(toasts.value[0]!.type).toBe('error')
       expect(modalIsOpen(wrapper)).toBe(true)
+      // Both routes onward are still offered. "No navigation happened" implies
+      // the page is intact but does not say the quiz is still reachable from
+      // it, and a failed save that left the user on a screen with only the
+      // failing option would be a dead end.
+      expect(buttonWith(wrapper, 'Find my skin type').exists()).toBe(true)
+      expect(buttonWith(wrapper, 'I already know').exists()).toBe(true)
     })
   })
 
