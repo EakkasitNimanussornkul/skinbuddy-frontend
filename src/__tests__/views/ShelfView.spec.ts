@@ -437,6 +437,28 @@ describe('src/views/ShelfView.vue', () => {
       expect(wrapper.findComponent(ItemDetailsModal).exists()).toBe(false)
     })
 
+    it('abandons the removal entirely when the confirmation is refused', async () => {
+      // STC-28-TC-10. The confirmation is the only thing between the card's
+      // delete control and an irreversible write, and nothing showed that its
+      // refusal actually refuses: itemToDelete is already set by this point, so
+      // a cancel wired to executeDelete would destroy the row the user had just
+      // declined to destroy.
+      vi.mocked(getMyShelf).mockResolvedValue([shelfItem(), shelfItem({ id: 'item-2' })])
+      const wrapper = await mountShelf()
+      await wrapper.findAll('.card-delete')[0]!.trigger('click')
+      await flushPromises()
+      expect(wrapper.findComponent(ConfirmDeleteModal).exists()).toBe(true)
+
+      wrapper.findComponent(ConfirmDeleteModal).vm.$emit('cancel')
+      await flushPromises()
+
+      expect(removeFromShelf).not.toHaveBeenCalled()
+      expect(wrapper.findComponent(ConfirmDeleteModal).exists()).toBe(false)
+      expect(shownIds(wrapper)).toEqual(['item-1', 'item-2'])
+      // And no toast either: nothing happened, so there is nothing to report.
+      expect(toasts.value).toHaveLength(0)
+    })
+
     it('keeps the item on screen and reports the failure when the delete is rejected', async () => {
       vi.mocked(removeFromShelf).mockRejectedValue(new Error('network down'))
       vi.mocked(getMyShelf).mockResolvedValue([shelfItem()])

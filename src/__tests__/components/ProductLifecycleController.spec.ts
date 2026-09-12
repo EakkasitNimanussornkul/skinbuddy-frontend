@@ -162,6 +162,17 @@ describe('src/components/Shelf/ProductLifecycleController.vue', () => {
 
     const NOTE = 'Periods that would already have ended are unavailable.'
 
+    /** The period currently selected in the editor, by its highlight. */
+    const activePeriod = (wrapper: VueWrapper) =>
+      wrapper
+        .findAll('.horizontal-pao-track button')
+        .find((b) => b.classes().includes('bg-brand-primary'))
+        ?.text()
+
+    /** The pencil control that opens the editor - the only textless button. */
+    const editControl = (wrapper: VueWrapper) =>
+      wrapper.findAll('button').find((b) => b.text() === '')
+
     it('disables the periods that would land on a past date and offers the rest', async () => {
       // Opened ten months ago, so 1, 3, 6 and 9 months after opening are all
       // behind us and 12 onwards are not. FE-DEF-19: the calendar beside these
@@ -291,6 +302,75 @@ describe('src/components/Shelf/ProductLifecycleController.vue', () => {
       expect(emitted.expiration_date).toBe(addMonthsAsDateString(new Date(), 12))
       // Editor closed: Save Date is gone from the panel.
       expect(wrapper.findAll('button').some((b) => b.text().includes('Save Date'))).toBe(false)
+    })
+
+    it('writes nothing and closes the editor when the cancel is taken', async () => {
+      const wrapper = mountController(openedToday())
+      await openEditor(wrapper)
+      await buttonWith(wrapper, '12M').trigger('click')
+
+      await buttonWith(wrapper, 'Cancel').trigger('click')
+
+      // The existing cards cover a save that fails and a save that succeeds.
+      // Neither showed that abandoning the edit abandons it: the chosen period
+      // is already held in component state by this point, so a cancel that fell
+      // through to the write would store a period the user had just declined.
+      expect(markItemOpened).not.toHaveBeenCalled()
+      expect(wrapper.emitted('updated')).toBeUndefined()
+      expect(wrapper.findAll('button').some((b) => b.text().includes('Save Date'))).toBe(false)
+      // Back to the read-only panel rather than to nothing.
+      expect(wrapper.text()).toContain('Expiration Date')
+    })
+
+    it('discards the abandoned selection rather than carrying it into the next edit', async () => {
+      // startEditingExpiration re-seeds from the prop every time it runs, which
+      // is what makes a cancel a real cancel. Without that, reopening the editor
+      // would present the declined period as though it were the stored one, and
+      // a subsequent Save Date would commit it without the user choosing it
+      // again.
+      const wrapper = mountController(openedToday())
+      await openEditor(wrapper)
+      await buttonWith(wrapper, '12M').trigger('click')
+      expect(activePeriod(wrapper)).toBe('12M')
+
+      await buttonWith(wrapper, 'Cancel').trigger('click')
+      await openEditor(wrapper)
+
+      expect(activePeriod(wrapper)).toBe('6M')
+    })
+
+    it('offers no edit control at all for a product that has not been opened', async () => {
+      // The opened panel is the only place the control lives, and an unopened
+      // product has no opened date to count a period from - which is also why
+      // handleUpdateExpiration guards on opened_date for the type rather than
+      // for a reachable branch.
+      const wrapper = mountController(shelfItem({ usage_state: 'unopened' }))
+
+      expect(wrapper.text()).not.toContain('Expiration Date')
+      expect(editControl(wrapper)).toBeUndefined()
+      expect(buttonWith(wrapper, 'Start Product Life')).toBeTruthy()
+    })
+
+    it('shows an archived product its dates without offering to change them', async () => {
+      // The record stays readable - the expiry is part of the history - but an
+      // archived product is finished, and editing the expiry of something no
+      // longer in the routine would write a fact about a product nobody is
+      // using. ItemDetailsModal renders ArchiveLogSummary instead of this
+      // component once an item is archived, so this condition is the second
+      // line of the same defence rather than the only one.
+      const wrapper = mountController(
+        shelfItem({
+          usage_state: 'archived',
+          opened_date: toLocalDateString(),
+          expiration_date: addMonthsAsDateString(new Date(), 6),
+          pao: 6,
+          archived_at: toLocalDateString(),
+        }),
+      )
+
+      expect(wrapper.text()).toContain('Expiration Date')
+      expect(wrapper.text()).toContain('6M PAO')
+      expect(editControl(wrapper)).toBeUndefined()
     })
 
     it('reports the failure, emits nothing and keeps the editor open when the write is rejected', async () => {
