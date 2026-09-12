@@ -195,6 +195,14 @@ const SPEC_MAP = [
       'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage cleared per test so the token branch is controlled. No network access.',
   },
   {
+    file: 'src/__tests__/views/ExploreView.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/ExploreView',
+    prerequisite:
+      'The view mounted with @vue/test-utils at an address on a vue-router memory history, because the address is this screen\'s input. Every child is stubbed: none is the subject, and several fetch on their own - the search input debounces its own searchProducts and would put its requests into the mock these cards count calls on. searchProducts is mocked; resolveCatalogState and pickTopRecommendations stay real. The catalogue cards mount as a guest deliberately, so that loadRecommendations returns before requesting anything and every recorded call is fetchCatalog\'s own. No network access.',
+    note: 'The search cards pin the third occurrence of FE-DEF-30, whose first two were fixed in the mount order and the address watcher. Despite its name, SearchAutocompleteInput emits `search-submit` from a watcher on every keystroke rather than on submit, so binding it to this page\'s searchQuery re-ran filteredCatalog over whatever was already in memory - the previous term\'s at-most-100 results - and a half-typed search could report "No Formulation Matches" about a product the catalogue holds. The binding is gone, and the card asserts both halves: no request, and no silent narrowing of the grid. Note what this was NOT: mobile search did reach the server, on submit. What bypassed it was the live-typing preview. The two watcher cards are a matched pair - one requires a refetch when the address term changes, the other forbids one for a category change, since category and brand are applied client-side over the same response and only `q` and the price bounds are sent. Neither card alone would catch a guard rewritten to fire always or never.',
+  },
+  {
     file: 'src/__tests__/views/ProductDetailView.spec.ts',
     feature: '#4 Search and compare',
     module: 'views/ProductDetailView',
@@ -203,12 +211,28 @@ const SPEC_MAP = [
     note: 'Covers the header back control only. It sits in the sticky bar that renders in every state - loading, resolved and not-found alike - so these cards do not depend on which body branch is showing.',
   },
   {
+    file: 'src/__tests__/components/ProductSpecContent.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/ProductSpecContent',
+    prerequisite:
+      'The component mounted with @vue/test-utils on a vue-router memory history with a fresh Pinia and cleared localStorage. ProductHeroSection is stubbed - it has its own spec, mounts its own router and runs its own safety check, none of which the overlay cards are about. The auth store is real, so the popup reason is read back off the store the application uses. No network access.',
+    note: 'The guest overlay and the popup it opens do not contradict each other - the popup is a condensed restatement of the overlay - so the reported item here was an inconsistency rather than a defect, and is recorded as one. What was wrong: this was the only triggerLoginPopup reason in the codebase phrased as a question, and the question it asked ("Want to know more about this product?") is the one the user had just answered by clicking the overlay that asks it. The six other call sites and the guard\'s own default are all imperative. The safetyChecks card asserts all six labels render rather than only the satisfied ones, because a checklist that hid its failures would read as a clean bill of health.',
+  },
+  {
     file: 'src/__tests__/views/CompareView.spec.ts',
     feature: '#4 Search and compare',
     module: 'views/CompareView',
     prerequisite:
       'The view mounted with @vue/test-utils on a vue-router memory history with the four compare panels stubbed, at the address with no pair on it - that branch sets the error copy without issuing a request, so both back controls are on screen at once. getProductComparison is mocked. Navigation is asserted by spying on the real router. No network access.',
     note: 'Two distinct controls, not one. The header control is the same one the other two views carry. The error panel\'s is labelled "Return to Registry", which reads like it should push /explore - it does not, it unwinds, so a user who arrived from a product page is returned there rather than to a catalogue they were never on. It has its own card because the header cards cannot reach it.',
+  },
+  {
+    file: 'src/__tests__/components/CompareIdentityHeader.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Compare/CompareIdentityHeader',
+    prerequisite:
+      'The component mounted with @vue/test-utils with a fresh Pinia, cleared localStorage and a CompareResponse passed directly - no router, no network. resolveMatchAvailability and describeMatchAvailability are the real shared readings, so these cards exercise the same helpers the product page and the explore card use. The session is set up per card, because whether a missing score is a failure is a fact about the viewer rather than the response.',
+    note: 'The shared explanation line read product_a alone. The argument for that was sound and one case short, which is the part worth recording: signed-out and no-profile are properties of the session, so whenever either applies it applies to both columns and one sentence is correct for both - but scored and not-scored are properties of the individual product, so a pair can genuinely split between them. With A scored and B not, the line explained how to read a score B has not got; with the two reversed it announced a scoring failure directly above B\'s own percentage, and the unscored side had nothing on the page accounting for its empty badge. Both orderings are covered, because reading either column alone fixes one and leaves the other. The four-way availability reading is FE-DEF-31 and is covered here in full: a null score is the ordinary state for a signed-out visitor and for anyone who has not taken the quiz, and only the residual case is a failure.',
   },
   {
     file: 'src/__tests__/api/safety.spec.ts',
