@@ -188,6 +188,38 @@ const SPEC_MAP = [
     note: 'Pins FE-DEF-26 and FE-DEF-27: two components decided whether to offer a "Read more" control without measuring anything - one always offered it, the other offered it only for messages over 90 characters, which hid the control on safety warnings that really were cut off. Only the comparison is covered, so these cards are not evidence that the control appears and disappears correctly on screen; that was verified in the browser. Earlier revisions of this note said the project had no layer for mounting components. That is no longer true - the two Feature #2 component groups above mount their subjects - but it does not help here: the measurement feeds exceedsClamp with el.scrollHeight and el.clientHeight, and jsdom reports both as 0 because it performs no layout. Every paragraph would test as non-overflowing regardless of its text. Covering that needs a real browser, not a mount.',
   },
   {
+    file: 'src/__tests__/components/CustomDatePicker.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shared/CustomDatePicker',
+    prerequisite:
+      'The component mounted with @vue/test-utils and opened by clicking its input, the way a user opens it. No clock is faked: every date is passed in as a string, so the grid is deterministic. Day buttons are found by number, which is safe for any day up to 22 because the grid pads its front with the tail of the previous month and does not pad its back. No network access.',
+    note: 'Two limitations, both stated rather than implied. First, these cards do NOT pin FE-DEF-22, although the opening card looks as though it should: the bug read the stored string with new Date(), which is UTC midnight and lands on the previous day behind UTC - but at or ahead of UTC, where this project is marked, both readings give the same calendar day. Verified by substituting the old expression and watching every card pass. parseLocalDate is pinned where the difference is observable, in api/dates.spec.ts, by asserting the parsed hour is zero. Second, handleDateSelect repeats the floor check internally and that repeat is not covered, for the reason setEditPAO\'s is not: jsdom does not dispatch clicks on disabled controls, so such a case would pass with the guard deleted. What is covered: the floor day itself stays selectable, which is the boundary paoPeriodHasElapsed draws for the period buttons beside this control, and FE-DEF-18\'s readonly field is pinned both as an attribute and as the fact that no value reaching the field emits anything.',
+  },
+  {
+    file: 'src/__tests__/components/ShelfCard.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/ShelfCard',
+    prerequisite:
+      'The component mounted with @vue/test-utils with ItemBadge rendered, and the badge read off its own props rather than its palette. No clock is faked: expiry dates are built as today plus n days in the local calendar, which puts local midnight of that day between n-1 and n days away at any hour in any zone, so daysUntilExpiry\'s ceiling is n. resolveExpiryDate and daysUntilExpiry stay real. No network access.',
+    note: 'All seven rendered states of expirationInfo. The <=30 and <0 boundaries are asserted as pairs - day 30 warns and day 31 does not; day 0 warns and day -1 has expired - because either card alone holds with the comparison moved by one. Day 0 lands on the warning branch rather than the expired one because daysUntilExpiry normalises the -0 an expiry later today produces. Archived is checked first and covered with an expiry already long past, since labelling a finished product "Expired" would describe a problem already dealt with. A correction to a comment first written here: the delete control\'s @click.stop is defensive rather than load-bearing, because the delete button and the open-details handler are siblings rather than nested. Removing .stop changed nothing, which was confirmed by doing it.',
+  },
+  {
+    file: 'src/__tests__/components/ArchiveLogSummary.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/ArchiveLogSummary',
+    prerequisite:
+      'The component mounted with @vue/test-utils with an archived ShelfItem and a usageLifespan passed directly - the lifespan is computed and frozen by the parent, and covered there. No store, no router, no network.',
+    note: 'The outcome mapping in the read direction; ArchiveLogForm covers it in the write direction. The pair that differs in wording - stored `discarded`, shown "Abandoned" - is pinned on both sides, because nothing else in the codebase states that they are the same thing and a drift on either half would archive a product under one word and read it back under another. The lookup is indexed by the stored string, so an unrecognised outcome is covered too: without the fallback it rendered undefined and took the colour class with it.',
+  },
+  {
+    file: 'src/__tests__/components/ConfirmDeleteModal.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shared/ConfirmDeleteModal',
+    prerequisite:
+      'The component mounted with @vue/test-utils with a ShelfItem passed directly. No store, no router, no network.',
+    note: 'The emit contract, with the direction of an accidental dismissal asserted explicitly: a click on the backdrop refuses and never confirms. For a destructive dialogue that is the only acceptable direction, since a backdrop wired to confirm would let a stray tap outside the card delete a shelf record. ShelfView\'s handling of the cancel is covered in that view\'s own spec (STC-28-TC-10).',
+  },
+  {
     file: 'src/__tests__/api/products.spec.ts',
     feature: '#4 Search and compare',
     module: 'api/products',

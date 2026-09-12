@@ -197,9 +197,13 @@ describe('src/components/Shelf/ShelfCard.vue', () => {
     })
 
     it('asks to delete without also opening the details', async () => {
-      // The delete control sits inside the card, and its handler is @click.stop.
-      // Without that, removing a product would open the modal for the product
-      // being removed on the way out.
+      // The two controls are siblings, not nested: the delete button sits in the
+      // badge row and the open-details handler is on the body below it. So the
+      // `.stop` on the delete handler is defensive rather than load-bearing -
+      // removing it changes nothing, which was confirmed by doing so and
+      // watching every card here still pass. What this card pins is the
+      // separation itself, which would matter if the handler ever moved up to
+      // the card root.
       const wrapper = mountCard(shelfItem())
 
       await wrapper.findAll('button')[0]!.trigger('click')

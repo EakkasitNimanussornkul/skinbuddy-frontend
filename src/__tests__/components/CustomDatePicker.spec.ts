@@ -38,11 +38,19 @@ const day = (wrapper: VueWrapper, n: number) =>
 
 describe('src/components/Shared/CustomDatePicker.vue', () => {
   describe('calendarGrid (render)', () => {
-    it('opens on the month of the stored date, read as a calendar day', async () => {
-      // FE-DEF-22's shape. `new Date("2026-09-06")` is UTC midnight, which is
-      // the 5th in any zone behind UTC, so the picker used to open on and
-      // highlight a day either side of the one stored depending on where it was
-      // being read.
+    it('opens on the month of the stored date', async () => {
+      // This card does NOT pin FE-DEF-22, and the distinction is worth stating
+      // because it looks as though it should. The bug was `new Date(newVal)`,
+      // which reads "2026-09-06" as UTC midnight and so lands on the 5th in any
+      // zone behind UTC - but in a zone at or ahead of UTC, which is where this
+      // project is marked, the two readings give the same calendar day and no
+      // assertion here can separate them. Verified by substituting the old
+      // expression: every card in this file still passed.
+      //
+      // parseLocalDate's own semantics are pinned where they are observable, in
+      // api/dates.spec.ts, by asserting the parsed hour is zero - which is 7 in
+      // Bangkok under the UTC reading. What this card establishes is only that
+      // the panel opens on the stored month rather than on today.
       const wrapper = await mountPicker({ modelValue: '2026-09-06' })
 
       expect(monthLabel(wrapper)).toBe('September 2026')
