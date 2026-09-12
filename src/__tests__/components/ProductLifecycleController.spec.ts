@@ -99,7 +99,26 @@ describe('src/components/Shelf/ProductLifecycleController.vue', () => {
       // it here is what the clone in the component exists to avoid.
       expect(item.opened_date).toBeNull()
       expect(item.usage_state).toBe('unopened')
+    })
+
+    it('reports the opening in the words the use case quotes', async () => {
+      const wrapper = mountController(shelfItem({ pao: 6 }))
+
+      await buttonWith(wrapper, 'Start Product Life').trigger('click')
+      await flushPromises()
+
+      // Both success toasts in this component were previously asserted by type
+      // only, so the sentence itself was unverified while the two failure
+      // sentences were pinned. UC-08 and STC-08 quote this one verbatim, and the
+      // documents copy interface strings rather than paraphrase them - the same
+      // reason the delete toast is pinned in ItemDetailsModal (FE-DEF-17).
+      expect(lastToast()!.message).toBe('Product opened! Clock started.')
       expect(lastToast()!.type).toBe('success')
+
+      // Asserted once rather than in both PAO branches above: the toast is
+      // raised on a single line after the branch, so a second case would be two
+      // tests of one statement. What the branches differ in is the payload, and
+      // that is what those two cases assert.
     })
 
     it('reports the failure and emits nothing when the write is rejected', async () => {
@@ -235,6 +254,11 @@ describe('src/components/Shelf/ProductLifecycleController.vue', () => {
         'active',
         12,
       )
+      // The other unpinned success sentence, and the pair has to stay distinct:
+      // this one reports a changed expiry on a product already in use, the other
+      // reports a clock starting. Telling the user the clock just started when
+      // they only edited a date would misdescribe what they did.
+      expect(lastToast()!.message).toBe('Expiration date & PAO updated!')
       expect(lastToast()!.type).toBe('success')
     })
 

@@ -13,6 +13,7 @@ vi.mock('../../api/shelfapi', async (importOriginal) => ({
 
 import { removeFromShelf, analyzeProduct } from '../../api/shelfapi'
 import ItemDetailsModal from '../../components/Shelf/ItemDetailsModal.vue'
+import ProductLifecycleController from '../../components/Shelf/ProductLifecycleController.vue'
 import { useToast } from '../../composables/useToast'
 import type { ShelfItem, ShelfProduct } from '../../stores/shelfStore'
 
@@ -97,9 +98,17 @@ const buttonLabelled = (wrapper: VueWrapper, text: string) =>
 /** The dialogue itself, which `isVisible` mounts and unmounts. */
 const dialogue = (wrapper: VueWrapper) => wrapper.find('.fixed.inset-0')
 
-/** The Active Lifespan figure in the left pane. */
-const lifespan = (wrapper: VueWrapper) =>
-  wrapper.findAll('span.font-mono').map((s) => s.text())[0]
+/**
+ * The two figures in the left pane, in order: Active Lifespan then PAO Window.
+ *
+ * Narrower than `span.font-mono`, which also matches the counters in the actives
+ * grid and the warning header. The cards that read these assert the pair's
+ * length, so the positional assumption is checked rather than trusted.
+ */
+const tiles = (wrapper: VueWrapper) =>
+  wrapper.findAll('span.text-lg.font-mono').map((s) => s.text())
+
+const lifespan = (wrapper: VueWrapper) => tiles(wrapper)[0]
 
 /**
  * Walk the two-step confirmation the way a user does. The destructive action is
@@ -451,6 +460,77 @@ describe('src/components/Shelf/ItemDetailsModal.vue', () => {
       expect(dialogue(wrapper).exists()).toBe(true)
       expect(wrapper.emitted('close')).toBeUndefined()
       expect(wrapper.get('h2').text()).toBe('Hydrating Facial Cleanser')
+    })
+  })
+
+  /**
+   * What makes the tiles move when the user presses "Start Product Life"
+   * without the modal being torn down and rebuilt.
+   *
+   * The write, the date arithmetic and the emit-on-success are covered at the
+   * ProductLifecycleController level; what is only observable here is that the
+   * parent takes the emitted row into its own copy, so the left pane updates
+   * before any refetch lands.
+   *
+   * Two branches of handleChildUpdate are deliberately not covered, because
+   * neither has a caller: the optional payload (`updated` is the only binding
+   * and always carries one) and the merge being a merge rather than an
+   * assignment (the single emitter sends a full clone, so `{ ...local,
+   * ...update }` and `update` cannot be told apart from outside). Asserting
+   * either would be describing a contract nothing exercises.
+   */
+  describe('handleChildUpdate()', () => {
+    /**
+     * The shape ProductLifecycleController emits on a successful open: the whole
+     * row, with the four fields the write changed.
+     *
+     * The opened date is a fixed UTC instant rather than today's local date.
+     * The component's own opened date is genuinely local (FE-DEF-21), but that
+     * is the child's concern and is asserted there - pinning an instant here
+     * keeps the day count in this file identical in every timezone.
+     */
+    const openedClone = (item: ShelfItem) => ({
+      ...item,
+      opened_date: '2026-01-01T00:00:00Z',
+      expiration_date: '2026-07-01',
+      usage_state: 'active' as const,
+      pao: 6,
+    })
+
+    it('moves the lifespan and PAO tiles onto the newly opened item', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-01-11T06:00:00Z'))
+      const item = shelfItem({ usage_state: 'unopened', opened_date: null, pao: null })
+      const wrapper = await mountModal(item)
+
+      expect(tiles(wrapper)).toEqual(['Unopened', 'Not Set'])
+      expect(wrapper.text()).toContain('Start Product Life')
+
+      wrapper.findComponent(ProductLifecycleController).vm.$emit('updated', openedClone(item))
+      await nextTick()
+
+      expect(tiles(wrapper)).toEqual(['11 Days', '6M'])
+      // And the child has swapped panels off the same merged copy: the control
+      // that starts the clock is gone, because the clock is running.
+      expect(wrapper.text()).not.toContain('Start Product Life')
+      expect(wrapper.text()).toContain('Expiration Date')
+    })
+
+    it('tells the parent to refresh without writing through to the prop', async () => {
+      const item = shelfItem({ usage_state: 'unopened', opened_date: null, pao: null })
+      const wrapper = await mountModal(item)
+
+      wrapper.findComponent(ProductLifecycleController).vm.$emit('updated', openedClone(item))
+      await nextTick()
+
+      expect(wrapper.emitted('refresh')).toHaveLength(1)
+      // The shelf row belongs to the parent. The modal keeps its own copy so the
+      // tiles can move immediately, and the refresh is what reconciles the list
+      // behind it - mutating the prop instead would update the list silently and
+      // leave the two disagreeing about who owns the row.
+      expect(item.opened_date).toBeNull()
+      expect(item.pao).toBeNull()
+      expect(item.usage_state).toBe('unopened')
     })
   })
 })
