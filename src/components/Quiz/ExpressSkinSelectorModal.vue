@@ -76,6 +76,18 @@ const handleConfirm = () => {
             />
           </div>
 
+          <!-- No matches. Previously the list was simply not rendered, which
+               left the search looking unresponsive rather than answered: the
+               user typed, nothing appeared, and nothing said the search had run
+               at all. Same rule the shelf and the catalogue already follow - an
+               empty result is a result and has to say so. -->
+          <div
+            v-if="isDropdownOpen && filteredTypes.length === 0"
+            class="absolute left-0 right-0 mt-2 bg-brand-surface-light dark:bg-brand-surface-dark border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-30 px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400"
+          >
+            No matching skin types found.
+          </div>
+
           <!-- Dropdown List -->
           <ul v-if="isDropdownOpen && filteredTypes.length > 0" class="absolute left-0 right-0 mt-2 bg-brand-surface-light dark:bg-brand-surface-dark border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto hide-scrollbar z-30">
             <li
