@@ -53,6 +53,14 @@ const SPEC_MAP = [
     prerequisite: 'Shared axios client (src/api/index.ts) replaced with a mock. No network access.',
   },
   {
+    file: 'src/__tests__/views/SkinQuizView.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinQuizView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case. saveSkinType is mocked; the quiz store, auth store and toast composable are all real. Vitest fake timers drive the 1400ms calculating beat that gates the results panel. No network access.',
+    note: 'Every answer is given zero points, so finalSkinType resolves deterministically to DRNT and the saved payload can be asserted exactly. The quiz cannot be seeded as already finished instead: onMounted resets a store whose index is past the last question, so a pre-finished fixture is wiped before the first assertion - the cases answer all sixteen questions through the child component. The LIFF card is the only place in the codebase that exercises window.liff.',
+  },
+  {
     file: 'src/__tests__/components/ExpressSkinSelectorModal.spec.ts',
     feature: '#2 Take skinquiz',
     module: 'components/Quiz/ExpressSkinSelectorModal',
