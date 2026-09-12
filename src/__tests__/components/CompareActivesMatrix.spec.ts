@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 
 import CompareActivesMatrix from '../../components/Compare/CompareActivesMatrix.vue'
 import type { CompareResponse } from '../../api/products'
@@ -52,13 +52,35 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
       expect(wrapper.text()).toContain('and BHA Liquid Exfoliant, not against your shelf.')
     })
 
-    it('omits the severity badge rather than defaulting it when none was sent', () => {
+    /**
+     * The severity chip in a conflict card.
+     *
+     * Not `span.text-[9px]` alone: the KeyActivesGrid higher up this panel draws
+     * its functional-group chips at the same size, so that selector found them
+     * too. The severity chip is the one that is both widest-tracked and
+     * rounded-md; the grid's chips are wider-tracked and rounded-lg.
+     */
+    const severityChips = (wrapper: VueWrapper) =>
+      wrapper.findAll('span.text-\\[9px\\].tracking-widest.rounded-md')
+
+    it('shows the severity the engine sent', () => {
+      const wrapper = mountMatrix(compareData({}, {}, { conflicts: [CLASH] }))
+
+      expect(severityChips(wrapper).map((s) => s.text())).toEqual(['High'])
+    })
+
+    it('omits the severity chip rather than defaulting it when none was sent', () => {
+      // Asserted on the element, not on the text. The first version of this
+      // card checked only that "High" did not appear - and forcing the chip to
+      // always render still passed it, because a null severity renders an
+      // empty chip rather than the word. The property is that no chip is drawn
+      // at all: an empty coloured badge still reads as a graded warning.
       const wrapper = mountMatrix(
         compareData({}, {}, { conflicts: [{ ...CLASH, severity: null as unknown as string }] }),
       )
 
       expect(wrapper.text()).toContain(CLASH.message)
-      expect(wrapper.text()).not.toContain('High')
+      expect(severityChips(wrapper)).toHaveLength(0)
     })
   })
 
