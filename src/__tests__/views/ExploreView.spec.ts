@@ -112,7 +112,13 @@ describe('src/views/ExploreView.vue', () => {
       expect(catalogRequests()).toEqual([['retinol', 0, 1500]])
     })
 
-    it('clears the grid and reports a catalogue that could not be reached', async () => {
+    it('reports a catalogue that could not be reached in place of the grid', async () => {
+      // Retitled from "clears the grid and reports...". Nothing is cleared on
+      // a first load that fails - the list starts empty - and the grid is not
+      // rendered in the failed state, so the old title claimed something this
+      // card could not observe. Clearing is covered where it can be seen, by
+      // the price re-request card below, which reads the always-rendered
+      // marquee instead.
       vi.mocked(searchProducts).mockRejectedValue(new Error('network down'))
       const { wrapper } = await mountExplore()
 
@@ -120,7 +126,9 @@ describe('src/views/ExploreView.vue', () => {
       // empty by result or empty by failure, and the empty state's action would
       // only rerun the same failing request.
       expect(wrapper.text()).toContain('Catalog Unavailable')
-      expect(cards(wrapper)).toHaveLength(0)
+      // By component, not by its title text: EmptyState is stubbed here, so its
+      // title never renders as text and a text assertion would hold either way.
+      expect(wrapper.findComponent({ name: 'EmptyState' }).exists()).toBe(false)
       expect(toasts.value[0]!.message).toBe('Failed to load product catalog.')
     })
 
@@ -156,7 +164,9 @@ describe('src/views/ExploreView.vue', () => {
       // no silent narrowing of the grid either.
       expect(catalogRequests()).toHaveLength(1)
       expect(cards(wrapper)).toHaveLength(1)
-      expect(wrapper.text()).not.toContain('No Formulation Matches')
+      // By component rather than by title text, which a stubbed EmptyState
+      // never renders - the text form of this line held either way.
+      expect(wrapper.findComponent({ name: 'EmptyState' }).exists()).toBe(false)
     })
 
     it('requests the catalogue again when a submitted term reaches the address', async () => {
@@ -389,13 +399,20 @@ describe('src/views/ExploreView.vue', () => {
       // products from the previous bounds while the slider shows the new ones -
       // stale data presented as current, with only a toast to say otherwise.
       const { wrapper } = await mountExplore()
-      expect(cards(wrapper)).toHaveLength(1)
+      const marquee = () => wrapper.findComponent({ name: 'ProductShowcaseMarquee' })
+      expect(marquee().props('products')).toHaveLength(1)
 
       vi.mocked(searchProducts).mockRejectedValue(new Error('network down'))
       wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
       await flushPromises()
 
-      expect(cards(wrapper)).toHaveLength(0)
+      // Read off the header marquee, not the grid. The first version of this
+      // card asserted the grid was empty, and passed with the clearing line
+      // deleted: in the failed state the grid is not rendered at all, so it is
+      // empty whatever `catalog` holds. The marquee takes :products="catalog"
+      // and renders in every state, so it is the one place the list is
+      // observable here - the same repair the ShelfView card needed.
+      expect(marquee().props('products')).toEqual([])
       expect(wrapper.text()).toContain('Catalog Unavailable')
     })
   })
