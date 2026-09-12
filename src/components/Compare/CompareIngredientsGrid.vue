@@ -53,13 +53,27 @@ const SIMILARITY_STYLES: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Master Side-by-Side Grid Columns -->
+    <!-- Master Side-by-Side Grid Columns.
+         Each column is headed "Full Ingredient List" and that is the fix. It was
+         "Unique Components Deck", directly beneath a banner listing the shared
+         ingredients - so the reader was told, twice, that everything in these
+         two columns was unique to its product. It never was. Both columns
+         iterate the product's whole `product_ingredients`, and the backend
+         builds `shared_ingredients` as the intersection of those same two
+         unfiltered id sets (app/api/products.py), so every shared ingredient
+         appeared in the banner and in both "unique" decks at once.
+
+         Relabelled rather than filtered. Filtering to the true set difference
+         would make the label correct, but it is a change to what the compare
+         screen shows, and that is the owner's decision to make - a full list per
+         product is also a legitimate thing for this panel to be. The label now
+         says what the data is. -->
     <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
 
       <!-- Product A Ingredient Deck Track -->
       <div class="space-y-4">
         <div class="flex items-center justify-between pl-1 border-b border-brand-surface-border dark:border-stone-800 pb-2">
-          <h5 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">Unique Components Deck</h5>
+          <h5 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">Full Ingredient List</h5>
           <span class="text-[10px] bg-brand-bg-light dark:bg-stone-900 px-2.5 py-1 rounded-lg border border-brand-surface-border dark:border-stone-800 font-bold text-brand-primary font-mono">
             {{ data?.product_a?.brand || 'Product A' }}
           </span>
@@ -82,7 +96,7 @@ const SIMILARITY_STYLES: Record<string, string> = {
       <!-- Product B Ingredient Deck Track -->
       <div class="space-y-4">
         <div class="flex items-center justify-between pl-1 border-b border-brand-surface-border dark:border-stone-800 pb-2">
-          <h5 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">Unique Components Deck</h5>
+          <h5 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">Full Ingredient List</h5>
           <span class="text-[10px] bg-brand-bg-light dark:bg-stone-900 px-2.5 py-1 rounded-lg border border-brand-surface-border dark:border-stone-800 font-bold text-brand-primary font-mono">
             {{ data?.product_b?.brand || 'Product B' }}
           </span>

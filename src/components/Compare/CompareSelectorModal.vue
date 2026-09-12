@@ -16,19 +16,30 @@ const searchQuery = ref('')
 const allProducts = ref<any[]>([])
 const selectedTarget = ref<any | null>(null)
 const isLoading = ref(true)
+// Tracked separately from `allProducts` because the array alone cannot say
+// whether it is empty by result or empty by failure - FE-DEF-09, and FE-DEF-13
+// for the shelf. The catch here used to only log, so a request that never
+// completed left an empty list under "Select a product above", with a footer
+// asking the user to pick from a list that was not coming.
+const loadFailed = ref(false)
 
-onMounted(async () => {
+const loadSuggestions = async () => {
   isLoading.value = true
+  loadFailed.value = false
   try {
     const data = await searchProducts('')
     // Filter out the base product itself
     allProducts.value = (data || []).filter((p: any) => p.id !== props.baseProduct.id)
   } catch (error) {
     console.error("Failed to load compare suggestions:", error)
+    allProducts.value = []
+    loadFailed.value = true
   } finally {
     isLoading.value = false
   }
-})
+}
+
+onMounted(loadSuggestions)
 
 // Prioritize same-category products (e.g. Cleanser vs Cleanser)
 const sortedSuggestions = computed(() => {
@@ -115,6 +126,29 @@ const handleConfirmCompare = () => {
       <!-- Suggestions List -->
       <div class="flex-1 overflow-y-auto p-4 space-y-2.5 hide-scrollbar">
         <div v-if="isLoading" class="p-12 text-center text-brand-text-muted animate-pulse text-xs font-bold uppercase tracking-widest">Loading recommendations...</div>
+
+        <!-- The list could not be loaded. Ahead of the empty-result branch below,
+             because a request that never completed says nothing about how many
+             products there are to compare against. -->
+        <div v-else-if="loadFailed" class="py-10 flex flex-col items-center text-center gap-3">
+          <p class="text-xs font-bold text-brand-text dark:text-stone-200">Products Unavailable</p>
+          <p class="text-[11px] text-brand-text-muted max-w-xs leading-relaxed">
+            We couldn't load products to compare against. Nothing here reflects the catalogue.
+          </p>
+          <button
+            @click="loadSuggestions"
+            class="px-4 py-2 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer transition-all active:scale-95"
+          >
+            Try Again
+          </button>
+        </div>
+
+        <!-- Loaded, and nothing matches. Named after what the user typed so the
+             empty list reads as an answer to their search rather than as a
+             blank. -->
+        <div v-else-if="sortedSuggestions.length === 0" class="py-10 text-center text-xs text-brand-text-muted font-medium">
+          {{ searchQuery.trim() ? `No products match "${searchQuery.trim()}".` : 'There are no other products to compare against.' }}
+        </div>
 
         <div
           v-else

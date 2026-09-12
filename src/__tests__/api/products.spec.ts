@@ -21,6 +21,7 @@ import {
   resolveMatchAvailability,
   describeMatchAvailability,
   resolveSimilarityBand,
+  describeSimilarityBand,
   resolveComparisonSimilarity,
   resolveProductLabel,
   resolvePairConflictState,
@@ -722,5 +723,55 @@ describe('src/api/products.ts', () => {
 
       await expect(getProductComparison('a-1', 'b-2')).rejects.toThrow('compare failed')
     })
+  })
+
+  // Appended after the request groups rather than beside resolveSimilarityBand,
+  // so that adding it moves no group ID already cited in this file.
+  describe('describeSimilarityBand()', () => {
+    it('says there was nothing to compare when the figure is unavailable', () => {
+      // Pinned as the sentence, not only as the band. The band was covered; the
+      // words the user reads for it were not, at any level.
+      expect(describeSimilarityBand('unavailable')).toBe(
+        'Neither formula has an ingredient list on record, so there was nothing to compare.',
+      )
+    })
+
+    it('warns of redundancy for a high overlap', () => {
+      expect(describeSimilarityBand('high')).toBe(
+        'These two list most of the same ingredients. Owning both may be redundant.',
+      )
+    })
+
+    it('describes a moderate overlap without judging it', () => {
+      expect(describeSimilarityBand('moderate')).toBe(
+        'These two share a noticeable part of their ingredient lists.',
+      )
+    })
+
+    it('describes a low overlap as different lists rather than as different products', () => {
+      // "Different ingredient lists", not "different products": two
+      // moisturisers can share most of their base and behave nothing alike, so
+      // the sentence says what was measured and stops there.
+      expect(describeSimilarityBand('low')).toBe(
+        'These two are built from largely different ingredient lists.',
+      )
+    })
+
+    it('gives four different sentences, so no two bands read alike', () => {
+      const sentences = (['unavailable', 'high', 'moderate', 'low'] as const).map(describeSimilarityBand)
+
+      expect(new Set(sentences).size).toBe(4)
+    })
+
+    // A limit on the unavailable sentence, recorded rather than covered.
+    // resolveSimilarityBand returns 'unavailable' for two different reasons -
+    // both ingredient lists empty, or a score that is not a finite number - and
+    // this sentence is true only of the first. It is accurate for every response
+    // the backend can currently send, because compute_ingredient_similarity
+    // always returns a float (0.0 for an empty union) and never null. If
+    // similarity_score ever became nullable - which is exactly the change the
+    // resolveSimilarityBand comment names as the right fix for a filtered basis -
+    // a null score beside two populated lists would be described as having no
+    // ingredient list on record.
   })
 })
