@@ -155,6 +155,22 @@ const SPEC_MAP = [
       'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage cleared per test so the token branch is controlled. No network access.',
   },
   {
+    file: 'src/__tests__/views/ProductDetailView.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/ProductDetailView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, its <Teleport> and three child components stubbed. getProductBySlug is mocked; resolveRequestFailure is left real. Navigation is asserted by spying on the real router rather than replacing it, so the call under test is the one the component makes. No network access.',
+    note: 'Covers the header back control only. It sits in the sticky bar that renders in every state - loading, resolved and not-found alike - so these cards do not depend on which body branch is showing.',
+  },
+  {
+    file: 'src/__tests__/views/CompareView.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/CompareView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history with the four compare panels stubbed, at the address with no pair on it - that branch sets the error copy without issuing a request, so both back controls are on screen at once. getProductComparison is mocked. Navigation is asserted by spying on the real router. No network access.',
+    note: 'Two distinct controls, not one. The header control is the same one the other two views carry. The error panel\'s is labelled "Return to Registry", which reads like it should push /explore - it does not, it unwinds, so a user who arrived from a product page is returned there rather than to a catalogue they were never on. It has its own card because the header cards cannot reach it.',
+  },
+  {
     file: 'src/__tests__/api/safety.spec.ts',
     feature: '#3 Skincare storage',
     module: 'api/safety',
