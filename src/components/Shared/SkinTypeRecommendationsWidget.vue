@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useId } from 'vue'
+import { computed, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '../Shared/EmptyState.vue'
 
@@ -33,25 +33,46 @@ const emit = defineEmits(['retry'])
 
 const router = useRouter()
 
-const isCollapsed = ref(false)
+// A model rather than private state, so a host can shrink the frame it draws
+// around the widget when the widget is folded - the frame is the host's, and
+// most of a folded section's height was that frame's padding. A host that does
+// not bind it still gets a working fold: defineModel keeps a local value.
+const isCollapsed = defineModel<boolean>('collapsed', { default: false })
 const contentId = useId()
 
 // A fold only exists where the host asked for one, so a non-collapsible widget
 // can never end up hidden.
 const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value)
+const isFolded = computed(() => !isContentVisible.value)
 
 // The padding goes with the rule. It is there to hold the heading off the line,
 // so keeping it once the line is gone leaves a gap with nothing above it.
+//
+// No vertical rhythm while folded. The hidden region is display:none, but the
+// spacing utility still puts its gap under the heading block, which would
+// leave the folded bar taller than the one line it is.
 const rootClass = computed(() => [
   'w-full',
-  props.compact ? 'space-y-4' : 'space-y-6',
+  isFolded.value ? '' : props.compact ? 'space-y-4' : 'space-y-6',
   props.hideDivider ? '' : 'pt-8 border-t border-brand-surface-border dark:border-stone-800',
 ])
 
-const headingClass = computed(() =>
-  props.compact
+// Folded, the heading drops from a serif title to a single small label, so the
+// bar is one line the user can pass over on the way to the filtered grid.
+const headingClass = computed(() => {
+  if (isFolded.value) return 'text-xs sm:text-sm font-bold text-brand-text dark:text-stone-200'
+  return props.compact
     ? 'text-base sm:text-lg font-serif font-bold text-brand-text dark:text-white'
-    : 'text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white',
+    : 'text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white'
+})
+
+// How many picks are behind the fold, shown only while folded and only when
+// that number is a result. A count during loading or after a failure would be
+// a figure nobody computed.
+const foldedCount = computed(() =>
+  isFolded.value && !props.loading && !props.failed && props.products?.length
+    ? props.products.length
+    : null,
 )
 
 const gridClass = computed(() => [
@@ -81,7 +102,15 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
           class="w-full flex items-center justify-between gap-3 text-left cursor-pointer group"
           @click="isCollapsed = !isCollapsed"
         >
-          <span>{{ heading || 'Recommended products for you' }}</span>
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="truncate">{{ heading || 'Recommended products for you' }}</span>
+            <span
+              v-if="foldedCount !== null"
+              class="shrink-0 font-sans text-[10px] font-bold px-2 py-0.5 rounded-md bg-brand-primary/10 text-brand-primary border border-brand-primary/20"
+            >
+              {{ foldedCount }}
+            </span>
+          </span>
           <span class="flex items-center gap-1.5 shrink-0 font-sans text-[11px] font-bold text-brand-primary group-hover:underline">
             {{ isCollapsed ? 'Show' : 'Hide' }}
             <svg

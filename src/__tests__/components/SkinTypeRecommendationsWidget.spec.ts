@@ -198,6 +198,51 @@ describe('src/components/Shared/SkinTypeRecommendationsWidget.vue', () => {
       expect(buttonLabelled(wrapper, 'Try Again')!.isVisible()).toBe(false)
     })
 
+    it('tells the host when it folds, so the host can shrink its own frame', async () => {
+      const { wrapper } = await mountWidget({ collapsible: true, products: [recommendation()] })
+
+      await toggle(wrapper).trigger('click')
+      await toggle(wrapper).trigger('click')
+
+      expect(wrapper.emitted('update:collapsed')).toEqual([[true], [false]])
+    })
+
+    it('follows a folded state the host passes in', async () => {
+      const { wrapper } = await mountWidget({ collapsible: true, collapsed: true, products: [recommendation()] })
+
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('false')
+      expect(wrapper.get('h4').isVisible()).toBe(false)
+    })
+
+    it('shrinks to a one-line label while folded, showing how many picks are behind it', async () => {
+      // The owner's follow-up: a folded section that kept the serif title and
+      // its vertical rhythm was still too tall to pass over on the way to the
+      // filtered grid.
+      const { wrapper } = await mountWidget({
+        collapsible: true,
+        compact: true,
+        products: [recommendation(), recommendation({ id: 'p-2', slug: 'b' })],
+      })
+      expect(wrapper.get('h3').classes()).toContain('font-serif')
+
+      await toggle(wrapper).trigger('click')
+
+      const heading = wrapper.get('h3')
+      expect(heading.classes()).not.toContain('font-serif')
+      expect(heading.classes()).toContain('text-xs')
+      expect(wrapper.classes()).not.toContain('space-y-4')
+      expect(toggle(wrapper).text()).toMatch(/Recommended products for you\s*2\s*Show/)
+    })
+
+    it('shows no count while the ranking is loading or has failed', async () => {
+      // A number there would be a figure nobody computed.
+      const { wrapper: loading } = await mountWidget({ collapsible: true, collapsed: true, loading: true })
+      const { wrapper: failed } = await mountWidget({ collapsible: true, collapsed: true, failed: true, products: [recommendation()] })
+
+      expect(toggle(loading).text()).not.toMatch(/\d/)
+      expect(toggle(failed).text()).not.toMatch(/\d/)
+    })
+
     it('offers no toggle and cannot be folded on a host that did not ask for it', async () => {
       // SkinProfileView's case, where the recommendations are part of the
       // report rather than a section to put away.

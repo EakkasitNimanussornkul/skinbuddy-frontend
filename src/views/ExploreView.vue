@@ -137,6 +137,9 @@ const handlePriceClear = () => {
 const recommendedProducts = ref<ScoredProduct[]>([])
 const recommendationsLoading = ref(false)
 const recommendationsFailed = ref(false)
+// Owned here so the frame around the widget can shrink with it. Open by
+// default; the user folds it to get to the filtered grid faster.
+const recommendationsCollapsed = ref(false)
 
 const showRecommendations = computed(
   () => authStore.isAuthenticated && !!authStore.user?.skin_type,
@@ -396,11 +399,17 @@ watch(
              default, folded on request. `hide-divider` because this host already
              draws its own bordered card, so the widget's rule was a line inside
              a box. -->
+        <!-- Folded, the frame shrinks to a slim bar: most of a folded section's
+             height was this card's padding and large radius, not the widget. -->
         <div
           v-if="showRecommendations"
-          class="bg-brand-surface-light dark:bg-brand-surface-dark p-5 sm:p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm"
+          :class="[
+            'bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 shadow-sm transition-all duration-200',
+            recommendationsCollapsed ? 'px-4 sm:px-5 py-2.5 rounded-2xl' : 'p-5 sm:p-6 rounded-[2.5rem]',
+          ]"
         >
           <SkinTypeRecommendationsWidget
+            v-model:collapsed="recommendationsCollapsed"
             :user-skin-type="authStore.user?.skin_type || ''"
             :products="recommendedProducts"
             :loading="recommendationsLoading"

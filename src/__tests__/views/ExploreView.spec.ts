@@ -255,6 +255,30 @@ describe('src/views/ExploreView.vue', () => {
       expect(wrapper.findComponent(SkinTypeRecommendationsWidget).props('collapsible')).toBe(true)
     })
 
+    it('shrinks its frame to a slim bar when the widget folds, and restores it when it opens', async () => {
+      // Most of a folded section's height was this card's padding and large
+      // radius, which belong to the host - so the host has to follow the fold.
+      // Measured in the browser at 1280px: 543px open, 42px folded.
+      const { wrapper } = await mountExplore('/explore', { authenticated: true })
+      const widget = () => wrapper.findComponent(SkinTypeRecommendationsWidget)
+      const frame = () => widget().element.parentElement!
+
+      expect(widget().props('collapsed')).toBe(false)
+      expect(frame().classList).toContain('p-5')
+
+      widget().vm.$emit('update:collapsed', true)
+      await flushPromises()
+
+      expect(widget().props('collapsed')).toBe(true)
+      expect(frame().classList).toContain('py-2.5')
+      expect(frame().classList).not.toContain('p-5')
+
+      widget().vm.$emit('update:collapsed', false)
+      await flushPromises()
+
+      expect(frame().classList).toContain('p-5')
+    })
+
     it('tells the widget it is on the catalogue, so it does not link back to it', async () => {
       // The prop SkinTypeRecommendationsWidget had stopped reading. Pinned from
       // the host side as well, because the widget's own fix is only reachable if
