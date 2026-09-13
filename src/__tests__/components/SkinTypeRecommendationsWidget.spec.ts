@@ -144,4 +144,68 @@ describe('src/components/Shared/SkinTypeRecommendationsWidget.vue', () => {
       expect(buttonLabelled(wrapper, 'Try Again')).toBeTruthy()
     })
   })
+
+  // Appended after the groups already cited, so adding it moves none of their IDs.
+  describe('collapsible', () => {
+    /** The fold toggle, which is the button inside the heading. */
+    const toggle = (wrapper: VueWrapper) => wrapper.find('h3 button')
+
+    /** The region the toggle controls, found by the id it points at. */
+    // An attribute selector rather than `#id`: useId can produce characters an
+    // id selector would need escaped, and jsdom provides no CSS.escape.
+    const region = (wrapper: VueWrapper) =>
+      wrapper.get(`[id="${toggle(wrapper).attributes('aria-controls')}"]`)
+
+    it('starts open, with the products showing and the toggle offering to hide them', async () => {
+      const { wrapper } = await mountWidget({ collapsible: true, products: [recommendation()] })
+
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('true')
+      expect(toggle(wrapper).text()).toContain('Hide')
+      expect(region(wrapper).isVisible()).toBe(true)
+      expect(wrapper.get('h4').isVisible()).toBe(true)
+    })
+
+    it('folds the products away when the heading is pressed, and keeps the heading', async () => {
+      const { wrapper } = await mountWidget({ collapsible: true, products: [recommendation()] })
+
+      await toggle(wrapper).trigger('click')
+
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('false')
+      expect(toggle(wrapper).text()).toContain('Show')
+      expect(region(wrapper).isVisible()).toBe(false)
+      // Still findable to unfold: the heading is the control, so it must stay.
+      expect(toggle(wrapper).text()).toContain('Recommended products for you')
+    })
+
+    it('unfolds on a second press without losing the cards it had', async () => {
+      // v-show rather than v-if, so the cards survive the fold and nothing asks
+      // the host to fetch again.
+      const { wrapper } = await mountWidget({ collapsible: true, products: [recommendation()] })
+
+      await toggle(wrapper).trigger('click')
+      await toggle(wrapper).trigger('click')
+
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('true')
+      expect(wrapper.get('h4').isVisible()).toBe(true)
+      expect(wrapper.emitted('retry')).toBeUndefined()
+    })
+
+    it('folds the loading and failed states too, not only the cards', async () => {
+      const { wrapper } = await mountWidget({ collapsible: true, failed: true })
+
+      await toggle(wrapper).trigger('click')
+
+      expect(buttonLabelled(wrapper, 'Try Again')!.isVisible()).toBe(false)
+    })
+
+    it('offers no toggle and cannot be folded on a host that did not ask for it', async () => {
+      // SkinProfileView's case, where the recommendations are part of the
+      // report rather than a section to put away.
+      const { wrapper } = await mountWidget({ products: [recommendation()] })
+
+      expect(toggle(wrapper).exists()).toBe(false)
+      expect(wrapper.get('h3').text()).toBe('Recommended products for you')
+      expect(wrapper.get('h4').isVisible()).toBe(true)
+    })
+  })
 })

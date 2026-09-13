@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '../Shared/EmptyState.vue'
 
@@ -23,11 +23,22 @@ const props = defineProps<{
   // is the host's business, not the widget's: a host that already draws its own
   // container gets a line inside a box, which is what this exists to turn off.
   hideDivider?: boolean
+  // Lets the user fold the section away. Opt-in, so a host where the widget is
+  // the page's subject keeps it permanently open. Starts expanded: folding is
+  // something the user chooses, not a default that hides what they came for.
+  collapsible?: boolean
 }>()
 
 const emit = defineEmits(['retry'])
 
 const router = useRouter()
+
+const isCollapsed = ref(false)
+const contentId = useId()
+
+// A fold only exists where the host asked for one, so a non-collapsible widget
+// can never end up hidden.
+const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value)
 
 // The padding goes with the rule. It is there to hold the heading off the line,
 // so keeping it once the line is gone leaves a gap with nothing above it.
@@ -58,13 +69,45 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
 <template>
   <div :class="rootClass">
     <div>
-      <h3 :class="headingClass">
+      <!-- Collapsible: the heading itself is the toggle, so the target is the
+           whole title row rather than a small icon. The button sits inside the
+           h3 rather than around it - a heading is not valid content for a
+           button - which keeps the section in the document outline either way. -->
+      <h3 v-if="collapsible" :class="headingClass">
+        <button
+          type="button"
+          :aria-expanded="!isCollapsed"
+          :aria-controls="contentId"
+          class="w-full flex items-center justify-between gap-3 text-left cursor-pointer group"
+          @click="isCollapsed = !isCollapsed"
+        >
+          <span>{{ heading || 'Recommended products for you' }}</span>
+          <span class="flex items-center gap-1.5 shrink-0 font-sans text-[11px] font-bold text-brand-primary group-hover:underline">
+            {{ isCollapsed ? 'Show' : 'Hide' }}
+            <svg
+              :class="['w-4 h-4 stroke-[2.5] transition-transform duration-200', isCollapsed ? '' : 'rotate-180']"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </span>
+        </button>
+      </h3>
+      <h3 v-else :class="headingClass">
         {{ heading || 'Recommended products for you' }}
       </h3>
-      <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
+      <p v-show="isContentVisible" class="text-xs sm:text-sm text-brand-text-muted mt-1">
         {{ subheading || 'Biocompatible skincare curation optimized to reinforce your current barrier profile metrics.' }}
       </p>
     </div>
+
+    <!-- v-show rather than v-if, so folding and unfolding keeps the loaded
+         recommendations rather than tearing the cards down and rebuilding them.
+         The request is the host's and is not repeated either way. -->
+    <div v-show="isContentVisible" :id="contentId" :class="compact ? 'space-y-4' : 'space-y-6'">
 
     <!-- Loading State: a real pending request, not a decorative delay. Without
          this the empty state renders for the duration of the fetch and reads as
@@ -140,6 +183,7 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
         :action-label="hideCatalogLink ? undefined : 'Explore Global Catalog'"
         @action="router.push('/explore')"
       />
+    </div>
     </div>
   </div>
 </template>

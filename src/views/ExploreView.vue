@@ -371,33 +371,7 @@ watch(
 
       </div>
 
-      <!-- 2. Recommended products for you.
-           Hidden entirely for guests and for users with no skin type: an
-           anonymous catalogue response carries no match score, so there would
-           be nothing to rank and an empty state would say nothing useful. -->
-      <div
-        v-if="showRecommendations"
-        class="bg-brand-surface-light dark:bg-brand-surface-dark p-5 sm:p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm"
-      >
-        <!-- Compact and without the rule. This is a signpost on the way to the
-             catalogue rather than the subject of the page, and at full size it
-             pushed "All Formulations" - what the user came to Explore for -
-             below the fold. `hide-divider` because this host already draws its
-             own bordered card, so the widget's rule was a line inside a box. -->
-        <SkinTypeRecommendationsWidget
-          :user-skin-type="authStore.user?.skin_type || ''"
-          :products="recommendedProducts"
-          :loading="recommendationsLoading"
-          :failed="recommendationsFailed"
-          hide-catalog-link
-          compact
-          hide-divider
-          subheading="Ranked against your Baumann profile. Browse the full registry below."
-          @retry="loadRecommendations"
-        />
-      </div>
-
-      <!-- 3. The full catalogue -->
+      <!-- 2. The full catalogue -->
       <div class="space-y-6">
         <div>
           <span class="text-[11px] font-bold uppercase tracking-widest text-brand-primary">Complete Registry</span>
@@ -407,6 +381,37 @@ watch(
           <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
             Every product in the catalog, filtered by your selections above.
           </p>
+        </div>
+
+        <!-- Recommended products for you, directly under the catalogue heading
+             and above its grid, so "All Formulations" is the first thing the
+             page announces and the recommendations read as a shortlist within it.
+
+             Hidden entirely for guests and for users with no skin type: an
+             anonymous catalogue response carries no match score, so there would
+             be nothing to rank and an empty state would say nothing useful.
+
+             Compact, without the rule, and collapsible. It sits between the
+             heading and the grid the user came for, so it is foldable - open by
+             default, folded on request. `hide-divider` because this host already
+             draws its own bordered card, so the widget's rule was a line inside
+             a box. -->
+        <div
+          v-if="showRecommendations"
+          class="bg-brand-surface-light dark:bg-brand-surface-dark p-5 sm:p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm"
+        >
+          <SkinTypeRecommendationsWidget
+            :user-skin-type="authStore.user?.skin_type || ''"
+            :products="recommendedProducts"
+            :loading="recommendationsLoading"
+            :failed="recommendationsFailed"
+            hide-catalog-link
+            compact
+            hide-divider
+            collapsible
+            subheading="Ranked against your Baumann profile. Browse the full registry below."
+            @retry="loadRecommendations"
+          />
         </div>
 
       <!-- Loading Tracker -->

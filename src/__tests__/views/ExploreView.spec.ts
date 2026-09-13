@@ -235,6 +235,26 @@ describe('src/views/ExploreView.vue', () => {
       expect(wrapper.findComponent(SkinTypeRecommendationsWidget).props('failed')).toBe(true)
     })
 
+    it('places the recommendations directly under the catalogue heading, above the grid', async () => {
+      const { wrapper } = await mountExplore('/explore', { authenticated: true })
+
+      const heading = wrapper.findAll('h3').find((h) => h.text() === 'All Formulations')!
+      const widget = wrapper.findComponent(SkinTypeRecommendationsWidget)
+      const firstCard = cards(wrapper)[0]!
+
+      // Document order: heading, then recommendations, then the grid.
+      const follows = (a: Element, b: Element) =>
+        !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(follows(heading.element, widget.element)).toBe(true)
+      expect(follows(widget.element, firstCard.element)).toBe(true)
+    })
+
+    it('asks the widget to be foldable here', async () => {
+      const { wrapper } = await mountExplore('/explore', { authenticated: true })
+
+      expect(wrapper.findComponent(SkinTypeRecommendationsWidget).props('collapsible')).toBe(true)
+    })
+
     it('tells the widget it is on the catalogue, so it does not link back to it', async () => {
       // The prop SkinTypeRecommendationsWidget had stopped reading. Pinned from
       // the host side as well, because the widget's own fix is only reachable if
