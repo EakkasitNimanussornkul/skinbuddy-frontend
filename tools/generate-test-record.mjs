@@ -407,7 +407,7 @@ const SPEC_MAP = [
     feature: '#3 Skincare storage',
     module: 'components/Shelf/TargetedConcernsSection',
     prerequisite: 'The component mounted with @vue/test-utils with a shelf item passed directly. No store, no router, no network.',
-    note: 'Covers the tag extraction and the stepping. What the section means is recorded separately, because its heading is ambiguous: on the shelf its chips come from the good_for field of each ingredient, which is what the product helps with - the opposite sense to "concerns" on the product page, which are warnings. The component also reads ingredient_concerns titles into the same chips; the shelf join does not select that relation today, so those never appear, but they would read as benefits if it ever did.',
+    note: 'The section was headed "Targeted Skin Concerns" and renamed "Best Suited For" at the owner request, because on the product page "concerns" means warnings while these chips come from the good_for field of each ingredient - what the product helps with. The same change stopped the component reading ingredient_concerns titles into the chips: those are warnings, and one would have rendered as a benefit under the new heading. The shelf join does not select that relation today, so none ever appeared, but a card now pins that they never can. The catalogue placeholder "None" is skipped rather than listed. The file keeps its old name so imports and this module path hold.',
   },
   {
     file: 'src/__tests__/components/SafetyInspectionCard.spec.ts',

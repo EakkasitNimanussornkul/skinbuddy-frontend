@@ -176,7 +176,7 @@ const handleExecuteDelete = async () => {
                 <p class="text-xs sm:text-sm font-medium text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
               </div>
 
-              <!-- 🌟 3. Targeted Skin Concerns Section (Positioned under Description) -->
+              <!-- 3. Best Suited For: what the ingredients support (positioned under Description) -->
               <TargetedConcernsSection :item="localItem" />
 
               <!-- 🌟 4. Lifecycle Controller -->
