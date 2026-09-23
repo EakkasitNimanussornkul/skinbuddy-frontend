@@ -38,11 +38,13 @@ export const useStepList = <T>(source: MaybeRefOrGetter<readonly T[] | null | un
   const remaining = computed(() => Math.max(total.value - shown.value, 0))
   const nextCount = computed(() => Math.min(options.step, remaining.value))
   const canShowMore = computed(() => remaining.value > 0)
-  // Only once something beyond the first slice is actually on screen - a list
-  // shorter than `initial` has nothing to fold back.
-  const canShowLess = computed(() => shown.value > options.initial && total.value > options.initial)
+  // Only once something beyond the first slice is on screen. `shown` can pass
+  // `initial` only through showMore, which refuses to run on a list with
+  // nothing left, so a list shorter than `initial` never offers this.
+  const canShowLess = computed(() => shown.value > options.initial)
 
   const showMore = () => {
+    if (!canShowMore.value) return
     shown.value = Math.min(shown.value + options.step, total.value)
   }
 

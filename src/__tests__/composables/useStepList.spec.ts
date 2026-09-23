@@ -73,6 +73,20 @@ describe('src/composables/useStepList.ts', () => {
       expect(list.canShowLess.value).toBe(false)
     })
 
+    it('ignores a showMore on a list with nothing left, rather than shrinking it', () => {
+      // Unguarded, the press would cap the shown count at the list's current
+      // length - three, below the first slice of five - and a list that then
+      // grew in place would stay stuck at three instead of showing five.
+      const source = ref(letters(3))
+      const list = useStepList(source, { initial: 5, step: 4 })
+
+      list.showMore()
+      source.value.push('D', 'E', 'F')
+
+      expect(list.visible.value).toEqual(['A', 'B', 'C', 'D', 'E'])
+      expect(list.canShowLess.value).toBe(false)
+    })
+
     it('treats an absent list as empty', () => {
       const list = useStepList(ref<string[] | null>(null), { initial: 5, step: 4 })
 

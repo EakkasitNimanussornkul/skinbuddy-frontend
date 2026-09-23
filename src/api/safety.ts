@@ -179,19 +179,15 @@ const SEVERITY_ORDER: Record<SeverityBand, number> = { high: 0, medium: 1, low: 
  *
  * Lists that show only their first few warnings put the worst one on screen by
  * construction, so a High clash can never be the one behind "Show more".
- * Stable: warnings of equal severity keep the order the backend sent them in.
+ * Warnings of equal severity keep the order the backend sent them in, because
+ * Array.prototype.sort is stable (ES2019) - no index tiebreak is needed.
  * Unknown severities sort last rather than first - an unbanded warning is not
  * more alarming for having no grade (FE-DEF-25).
  */
 export const sortBySeverity = <T extends { severity?: string | null }>(warnings: readonly T[] | null | undefined): T[] =>
-  [...(warnings ?? [])]
-    .map((warning, index) => ({ warning, index }))
-    .sort(
-      (a, b) =>
-        SEVERITY_ORDER[resolveSeverityBand(a.warning.severity)] -
-          SEVERITY_ORDER[resolveSeverityBand(b.warning.severity)] || a.index - b.index,
-    )
-    .map(({ warning }) => warning)
+  [...(warnings ?? [])].sort(
+    (a, b) => SEVERITY_ORDER[resolveSeverityBand(a.severity)] - SEVERITY_ORDER[resolveSeverityBand(b.severity)],
+  )
 
 /**
  * Round a similarity percentage for display, or return null when the backend
