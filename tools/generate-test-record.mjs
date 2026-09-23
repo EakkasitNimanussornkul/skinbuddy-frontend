@@ -424,6 +424,14 @@ const SPEC_MAP = [
       'The component mounted with @vue/test-utils with details passed directly. Fixtures in src/__tests__/fixtures/conflicts.ts follow the grouped warning shape from backend commit 88733e9 on feat/group-conflicts-by-product: one warning per clashing product, its ingredient pairs in details, most severe first. No store, no router, no network.',
     note: 'The inside of a merged conflict card. The backend now sends one warning per clashing product instead of one per ingredient pair - on live data one exfoliant produced eight near-identical cards against a single serum. This lists the pairs with their own explanations, two at a time, and names the product and the pair count. Skin-type alerts, which the backend leaves one per ingredient, are grouped the same way on the frontend by groupSkinTypeConflicts. In the Proceed Anyway dialogue nothing is folded, because the owner decided the consent screen never hides a conflict. A response without details renders exactly as before, so the frontend does not depend on the backend branch being merged first.',
   },
+  {
+    file: 'src/__tests__/components/SkinTypeReasons.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shared/SkinTypeReasons',
+    prerequisite:
+      'The component mounted with @vue/test-utils with reasons passed directly. Fixtures follow the SkinTypeReason shape from backend commit b4c7e66 on feat/skin-type-explanations: one reason per matched trait of the user code, in code order, each with the concern title and description when one exists. No store, no router, no network.',
+    note: 'Why a skin-type alert fired. It used to say only that an ingredient triggers the user type, with no reason and no indication which letter matched. Each reason shows the concern and always the trait as a Flagged for label, so the twelve live triggers with no concern written yet still say which trait they are flagged for. A per-reason grade appears only with two or more reasons, since the backend grades the alert by its worst reason and one reason would only repeat the badge. The same change fixed the Safety Check report printing Severity High on every skin-type alert, which was accurate only while the backend graded them all High.',
+  },
 ]
 
 function runSuite() {

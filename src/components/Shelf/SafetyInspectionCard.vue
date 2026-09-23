@@ -2,9 +2,10 @@
 import { computed, useId, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
 import { useStepList } from '../../composables/useStepList'
-import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, type ConflictDetail, type SafetyStatus } from '../../api/safety'
+import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, type ConflictDetail, type SafetyStatus, type SkinTypeReason } from '../../api/safety'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
+import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
 
 export interface WarningAlert {
   alert_type: string
@@ -14,6 +15,8 @@ export interface WarningAlert {
   // Optional - an older response carries neither. See api/safety.ts.
   conflicting_product?: string | null
   details?: ConflictDetail[]
+  // On a Skin Type Conflict: why it fired, per trait. See api/safety.ts.
+  reasons?: SkinTypeReason[]
 }
 
 const props = defineProps<{
@@ -187,6 +190,8 @@ const severityBadgeClass = (severity: string | null | undefined) =>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
+
+        <SkinTypeReasons v-if="!hasConflictDetails(warning) && warning.reasons?.length" :reasons="warning.reasons" />
       </div>
     </div>
 

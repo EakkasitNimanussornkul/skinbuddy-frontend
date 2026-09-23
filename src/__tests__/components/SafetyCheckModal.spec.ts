@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import SafetyCheckModal from '../../components/Shared/SafetyCheckModal.vue'
-import { mergedBuffet } from '../fixtures/conflicts'
+import { explainedNiacinamide, mergedBuffet } from '../fixtures/conflicts'
 import type { DuplicateMatch, SafetyStatus } from '../../api/safety'
 
 type Warning = { alert_type: string; severity: string; message: string }
@@ -331,6 +331,31 @@ describe('src/components/Shared/SafetyCheckModal.vue', () => {
 
       await more.trigger('click')
       expect(names()).toHaveLength(4)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('skin-type grade and explanations', () => {
+    it('prints the alert real grade rather than High for every skin-type alert', () => {
+      // This line was hardcoded "Severity: High". Accurate while the backend
+      // graded every skin-type alert High; it now grades by the concern.
+      const wrapper = mountModal({ scanStatus: 'warned', warnings: [explainedNiacinamide() as never] })
+
+      expect(wrapper.get('.skin-grade').text()).toBe('Severity: Medium • Skin Type Conflict')
+      expect(wrapper.get('.skin-grade').classes()).toContain('text-semantic-warning')
+    })
+
+    it('omits the grade it cannot band instead of defaulting to High', () => {
+      const wrapper = mountModal({ scanStatus: 'warned', warnings: [{ ...explainedNiacinamide(), severity: 'Critical' } as never] })
+
+      expect(wrapper.get('.skin-grade').text()).toBe('Skin Type Conflict')
+    })
+
+    it('explains the alert beneath its message', () => {
+      const wrapper = mountModal({ scanStatus: 'warned', warnings: [explainedNiacinamide() as never] })
+
+      expect(wrapper.text()).toContain('Flush & Stinging Flare')
+      expect(wrapper.text()).toContain('Flagged for: Highly Sensitive Skin (S)')
     })
   })
 })

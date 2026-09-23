@@ -4,7 +4,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import CompareActivesMatrix from '../../components/Compare/CompareActivesMatrix.vue'
 import type { CompareResponse } from '../../api/products'
 import { compareData, ingredient } from '../fixtures/compare'
-import { mergedBuffet } from '../fixtures/conflicts'
+import { explainedNiacinamide, mergedBuffet } from '../fixtures/conflicts'
 
 describe('src/components/Compare/CompareActivesMatrix.vue', () => {
   const CLASH = {
@@ -158,6 +158,15 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
 
       expect(wrapper.text()).toContain('7 ingredient clashes')
       expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('skin-type explanations', () => {
+    it('explains a skin-type alert between the pair', () => {
+      const wrapper = mountMatrix(compareData({}, {}, { conflicts: [explainedNiacinamide()] }))
+
+      expect(wrapper.text()).toContain('Flush & Stinging Flare')
     })
   })
 })

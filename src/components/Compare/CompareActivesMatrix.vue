@@ -4,6 +4,7 @@ import KeyActivesGrid from '../Shelf/KeyActivesGrid.vue'
 import { resolvePairConflictState, resolvePairConflicts, resolveProductLabel, type CompareResponse } from '../../api/products'
 import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity } from '../../api/safety'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
+import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
 import { useClampedText } from '../../composables/useClampedText'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
@@ -181,6 +182,8 @@ const concernListIdB = useId()
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
+
+          <SkinTypeReasons v-if="!hasConflictDetails(warning) && warning.reasons?.length" :reasons="warning.reasons" />
         </div>
         </div>
 

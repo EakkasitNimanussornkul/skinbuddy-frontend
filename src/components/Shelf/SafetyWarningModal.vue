@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
 import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity } from '../../api/safety'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
+import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
 
 const props = defineProps<{
   warnings: any[]
@@ -93,6 +94,8 @@ const getSeverityBadge = (severity?: string) =>
               {{ expanded[index] ? 'Show less' : 'Read more' }}
               <svg :class="['w-3 h-3 transition-transform', expanded[index] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
             </button>
+
+            <SkinTypeReasons v-if="warning.reasons?.length" :reasons="warning.reasons" class="mt-2.5" />
           </div>
 
         </div>

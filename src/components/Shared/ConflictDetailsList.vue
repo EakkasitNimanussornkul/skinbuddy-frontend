@@ -17,6 +17,7 @@ import { computed, useId } from 'vue'
 import { SKIN_TYPE_CONFLICT, groupSimilarDetails, resolveSeverityBand, type ConflictDetail } from '../../api/safety'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from './ShowMoreControl.vue'
+import SkinTypeReasons from './SkinTypeReasons.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -77,6 +78,7 @@ const CHIP: Record<string, string> = {
         <p class="text-xs font-medium text-brand-text-muted dark:text-stone-300 leading-relaxed">
           {{ detail.message }}
         </p>
+        <SkinTypeReasons v-if="detail.reasons.length" :reasons="detail.reasons" />
         <!-- The ingredients a grouped line covers, named individually. -->
         <div v-if="detail.ingredients.length > 1" class="flex flex-wrap gap-1">
           <span

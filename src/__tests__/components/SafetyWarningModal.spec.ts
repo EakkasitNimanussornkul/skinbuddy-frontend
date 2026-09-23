@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import SafetyWarningModal from '../../components/Shelf/SafetyWarningModal.vue'
-import { mergedBuffet, skinAlert } from '../fixtures/conflicts'
+import { explainedAlcohol, mergedBuffet, skinAlert } from '../fixtures/conflicts'
 
 type Warning = { alert_type: string; severity?: string | null; message: string }
 
@@ -239,6 +239,16 @@ describe('src/components/Shelf/SafetyWarningModal.vue', () => {
 
       expect(wrapper.text()).toContain('Poorly suited to your skin type · 2 ingredients')
       expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('skin-type explanations', () => {
+    it('explains a skin-type alert on the consent screen too', () => {
+      const wrapper = mount(SafetyWarningModal, { props: { warnings: [explainedAlcohol()] } })
+
+      expect(wrapper.findAll('.reason-trait')).toHaveLength(2)
+      expect(wrapper.text()).toContain('Barrier Stripping')
     })
   })
 })

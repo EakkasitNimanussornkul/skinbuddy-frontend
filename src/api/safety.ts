@@ -10,6 +10,24 @@ export interface ConflictDetail {
   conflicting_ingredient: string | null
   // The full sentence for this one pair, including why it clashes.
   message: string
+  // Carried from a Skin Type Conflict when groupSkinTypeConflicts folds it
+  // into a detail, so the explanation survives the merge. Never set by the
+  // backend on a product-pair detail.
+  reasons?: SkinTypeReason[]
+}
+
+/**
+ * Why one ingredient suits the user's skin type poorly, for one trait of their
+ * Baumann code (SkinTypeReason in the backend's app/schemas.py).
+ */
+export interface SkinTypeReason {
+  // The bad_for entry that matched, e.g. "Extremely Dry Skin (D)".
+  trait: string
+  // From ingredient_concerns when a concern covers this trait; null otherwise.
+  title: string | null
+  description: string | null
+  // That concern's grade; "High" when there is no concern.
+  severity: string
 }
 
 export interface WarningAlert {
@@ -23,6 +41,11 @@ export interface WarningAlert {
   // explanation - in `details`, most severe first.
   conflicting_product?: string | null
   details?: ConflictDetail[]
+  // On a Skin Type Conflict only: one entry per trait of the user's code the
+  // ingredient is flagged for, in code order, each with its explanation when
+  // one exists. The alert's severity is the worst of these - so a skin-type
+  // alert can be Medium or Low, not always High as it used to be.
+  reasons?: SkinTypeReason[]
 }
 
 /**
@@ -43,6 +66,9 @@ export interface ConflictDetailGroup {
   // The shared sentence, the product prefix removed when the card already
   // names the product, and the ingredient replaced by a count when grouped.
   message: string
+  // A folded skin-type alert's explanations. Such a detail has no
+  // conflicting_ingredient, so it never folds with another and keeps its own.
+  reasons: SkinTypeReason[]
 }
 
 const PLACEHOLDER = '\u0000'
@@ -109,6 +135,7 @@ export const groupSimilarDetails = (
         severity: detail.severity,
         ingredients: other ? [other] : [],
         message,
+        reasons: detail.reasons ?? [],
         key,
         templated,
       })
@@ -156,6 +183,9 @@ export const groupSkinTypeConflicts = (warnings: readonly WarningAlert[] | null 
       ingredient: '',
       conflicting_ingredient: null,
       message: w.message,
+      // Carried through, or the explanation would be lost the moment there
+      // were two or more skin-type alerts to merge.
+      reasons: w.reasons ?? [],
     })),
   }
 

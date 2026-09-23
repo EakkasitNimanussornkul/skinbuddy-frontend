@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import SafetyInspectionCard, { type WarningAlert } from '../../components/Shelf/SafetyInspectionCard.vue'
-import { mergedBuffet, singlePair, skinAlert } from '../fixtures/conflicts'
+import { explainedAlcohol, explainedNiacinamide, mergedBuffet, singlePair, skinAlert } from '../fixtures/conflicts'
 
 const warning = (severity: string, message: string): WarningAlert => ({
   alert_type: 'Chemical Interaction Warning',
@@ -163,6 +163,27 @@ describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
       expect(wrapper.text()).not.toContain('3 Warnings')
       expect(wrapper.text()).toContain('Poorly suited to your skin type · 3 ingredients')
       expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('skin-type explanations', () => {
+    it('explains a single skin-type alert under its message', () => {
+      const wrapper = mountCard([explainedNiacinamide() as never])
+
+      expect(wrapper.text()).toContain('Flush & Stinging Flare')
+      expect(wrapper.text()).toContain('Flagged for: Highly Sensitive Skin (S)')
+    })
+
+    it('keeps each alert explanation when several are merged into one card', () => {
+      const wrapper = mountCard([explainedAlcohol() as never, explainedNiacinamide() as never])
+
+      expect(wrapper.text()).toContain('Poorly suited to your skin type · 2 ingredients')
+      expect(wrapper.findAll('.reason-title').map((t) => t.text())).toEqual([
+        'Barrier Stripping',
+        'Stinging on Application',
+        'Flush & Stinging Flare',
+      ])
     })
   })
 })

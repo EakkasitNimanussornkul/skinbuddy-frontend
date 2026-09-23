@@ -16,7 +16,17 @@ import {
   groupSkinTypeConflicts,
   groupSimilarDetails,
 } from '../../api/safety'
-import { BUFFET, PEPTIDES, distinctPair, mergedBuffet, peptidePair, singlePair, skinAlert } from '../fixtures/conflicts'
+import {
+  BUFFET,
+  PEPTIDES,
+  distinctPair,
+  explainedAlcohol,
+  explainedNiacinamide,
+  mergedBuffet,
+  peptidePair,
+  singlePair,
+  skinAlert,
+} from '../fixtures/conflicts'
 
 const conflict = {
   alert_type: 'conflict',
@@ -552,6 +562,34 @@ describe('src/api/safety.ts', () => {
 
     it('treats an absent list as empty', () => {
       expect(groupSimilarDetails(undefined)).toEqual([])
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('skin-type reasons through the merge', () => {
+    it('carries each alert reasons into its merged detail', () => {
+      // Without this the explanation was lost the moment there were two or
+      // more skin-type alerts, since the merge used to keep the message only.
+      const merged = groupSkinTypeConflicts([explainedAlcohol(), explainedNiacinamide()])[0]!
+
+      expect(merged.details!.map((d) => d.reasons!.map((r) => r.title))).toEqual([
+        ['Barrier Stripping', 'Stinging on Application'],
+        ['Flush & Stinging Flare'],
+      ])
+    })
+
+    it('keeps them through the line grouping as well', () => {
+      const merged = groupSkinTypeConflicts([explainedAlcohol(), explainedNiacinamide()])[0]!
+      const groups = groupSimilarDetails(merged.details)
+
+      expect(groups).toHaveLength(2)
+      expect(groups[1]!.reasons[0]!.title).toBe('Flush & Stinging Flare')
+    })
+
+    it('grades the merged card by the worst alert, which may now be below High', () => {
+      const merged = groupSkinTypeConflicts([explainedNiacinamide(), { ...explainedNiacinamide(), severity: 'Low' }])[0]!
+
+      expect(merged.severity).toBe('Medium')
     })
   })
 })

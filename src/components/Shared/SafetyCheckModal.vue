@@ -3,6 +3,7 @@ import { computed, useId } from 'vue'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from './ShowMoreControl.vue'
 import ConflictDetailsList from './ConflictDetailsList.vue'
+import SkinTypeReasons from './SkinTypeReasons.vue'
 import {
   describeDuplicateOverlap,
   groupSkinTypeConflicts,
@@ -203,9 +204,21 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
               <div v-if="skinConflicts.length" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-warning/10 text-semantic-warning rounded-md border border-semantic-warning/20">Skin Type Contraindications</span>
                 <div v-for="(warn, i) in skinCards" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
-                  <span class="text-[10px] font-bold text-semantic-warning tracking-wide">Severity: High &bull; Skin Type Conflict</span>
+                  <!-- The alert's own grade. This read "Severity: High" for every
+                       skin-type alert, which was accurate only while the backend
+                       graded them all High; it now grades each by its worst
+                       explained trait, so Medium and Low arrive too. -->
+                  <span
+                    class="skin-grade text-[10px] font-bold tracking-wide"
+                    :class="SEVERITY_TEXT[resolveSeverityBand(warn.severity)]"
+                  >
+                    <template v-if="resolveSeverityBand(warn.severity) !== 'unknown'">Severity: {{ warn.severity }} &bull; </template>Skin Type Conflict
+                  </span>
                   <ConflictDetailsList v-if="hasConflictDetails(warn)" :details="warn.details!" />
-                  <p v-else>{{ warn.message }}</p>
+                  <template v-else>
+                    <p>{{ warn.message }}</p>
+                    <SkinTypeReasons v-if="warn.reasons?.length" :reasons="warn.reasons" />
+                  </template>
                 </div>
               </div>
             </div>

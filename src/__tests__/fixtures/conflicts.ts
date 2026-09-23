@@ -81,3 +81,58 @@ export const skinAlert = (message: string, severity = 'High'): WarningAlert => (
   conflicting_product: null,
   details: [],
 })
+
+/**
+ * A skin-type alert in the shape of backend feat/skin-type-explanations
+ * (b4c7e66): one reason per matched trait of the user's code, in code order,
+ * the alert graded by its worst reason. Modelled on the backend's own example -
+ * Alcohol Denat. for a DSPT user, flagged for (D) and (S).
+ */
+export const explainedAlcohol = (): WarningAlert => ({
+  alert_type: 'Skin Type Conflict',
+  severity: 'High',
+  message: 'Personalized Alert: Alcohol Denat. is known to trigger adverse reactions for Baumann Type DSPT.',
+  conflicting_product: null,
+  details: [],
+  reasons: [
+    {
+      trait: 'Extremely Dry Skin (D)',
+      title: 'Barrier Stripping',
+      description: 'Drying alcohols dissolve surface lipids and worsen water loss on dry skin.',
+      severity: 'High',
+    },
+    {
+      trait: 'Highly Sensitive Skin (S)',
+      title: 'Stinging on Application',
+      description: 'Can sting reactive skin, especially over a compromised barrier.',
+      severity: 'Medium',
+    },
+  ],
+})
+
+/** One explained reason graded Medium, so the whole alert is Medium. */
+export const explainedNiacinamide = (): WarningAlert => ({
+  alert_type: 'Skin Type Conflict',
+  severity: 'Medium',
+  message: 'Personalized Alert: Niacinamide is known to trigger adverse reactions for Baumann Type OSPW.',
+  conflicting_product: null,
+  details: [],
+  reasons: [
+    {
+      trait: 'Highly Sensitive Skin (S)',
+      title: 'Flush & Stinging Flare',
+      description: 'High concentrations can cause temporary flushing on sensitive skin.',
+      severity: 'Medium',
+    },
+  ],
+})
+
+/** A trigger with no concern written yet: the trait alone, graded High. */
+export const unexplainedPreservative = (): WarningAlert => ({
+  alert_type: 'Skin Type Conflict',
+  severity: 'High',
+  message: 'Personalized Alert: Methylisothiazolinone is known to trigger adverse reactions for Baumann Type OSPW.',
+  conflicting_product: null,
+  details: [],
+  reasons: [{ trait: 'Highly Sensitive Skin (S)', title: null, description: null, severity: 'High' }],
+})
