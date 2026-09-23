@@ -39,7 +39,7 @@ const statuses = ['All', 'Unopened', 'Active', 'In Routine', 'Expiring Soon', 'E
 // The routine, read only for which shelf items it uses. Loaded beside the shelf
 // rather than inside it, so a routine that fails to load costs the In Routine
 // markers and nothing else - the shelf itself still shows.
-const routineSteps = ref<any[]>([])
+const routineSteps = ref<Parameters<typeof resolveRoutineShelfIds>[0]>([])
 const routineFailed = ref(false)
 
 const fetchRoutine = async () => {
