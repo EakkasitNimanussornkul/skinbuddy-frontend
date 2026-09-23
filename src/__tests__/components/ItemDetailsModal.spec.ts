@@ -630,5 +630,27 @@ describe('src/components/Shelf/ItemDetailsModal.vue', () => {
       // Checked once while active; archiving does not ask again.
       expect(analyzeProduct).toHaveBeenCalledTimes(1)
     })
+
+    it('folds, and checks afresh, when pointed at another archived product', async () => {
+      // One archived item's result must not be shown as another's.
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: false, warnings: [CONFLICT], duplicates: [] })
+      const wrapper = await mountModal(shelfItem({ ...ARCHIVED, id: 'item-a' }))
+      await toggle(wrapper).trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).toContain(CONFLICT.message)
+
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: true, warnings: [], duplicates: [] })
+      await wrapper.setProps({ item: shelfItem({ ...ARCHIVED, id: 'item-b' }) })
+      await flushPromises()
+
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('false')
+      expect(wrapper.text()).not.toContain(CONFLICT.message)
+
+      await toggle(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(analyzeProduct).toHaveBeenCalledTimes(2)
+      expect(wrapper.text()).toContain('No Conflicts Found')
+    })
   })
 })

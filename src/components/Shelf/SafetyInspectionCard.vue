@@ -39,7 +39,8 @@ const props = defineProps<{
 
 const folded = ref(false)
 
-const warningsVisible = computed(() => !props.foldable || !folded.value)
+// Only the fold button changes `folded`, and it renders only when foldable.
+const warningsVisible = computed(() => !folded.value)
 const warningRegionId = useId()
 
 // FE-DEF-26: the toggle below used to render for every warning. A one-line
