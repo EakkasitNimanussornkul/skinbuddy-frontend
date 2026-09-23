@@ -107,7 +107,7 @@ const menuGroups = [
                 {{ authStore.user?.name || 'Guest User' }}
               </h2>
               <div class="flex items-start gap-1.5 mt-1 text-brand-text-muted text-sm flex-col">
-                <div class="flex items-center gap-1 bg-[#00C300]/10 text-[#00C300] px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">
+                <div class="flex items-center gap-1 bg-[#06C755]/10 text-[#06C755] px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.298.077.763.036 1.066l-.167 1.011c-.053.33-.243 1.189 1.042.646 1.284-.543 6.924-4.053 9.422-6.953A9.123 9.123 0 0024 10.304z"/>
                   </svg>
@@ -232,7 +232,7 @@ const menuGroups = [
                 </div>
                 <div class="flex-1">
                   <h2 class="text-2xl font-serif font-bold text-brand-text dark:text-white">{{ authStore.user?.name || 'Guest User' }}</h2>
-                  <div class="mt-2 flex items-center gap-2 bg-[#00C300]/10 text-[#00C300] px-3 py-1.5 rounded-lg w-fit">
+                  <div class="mt-2 flex items-center gap-2 bg-[#06C755]/10 text-[#06C755] px-3 py-1.5 rounded-lg w-fit">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.298.077.763.036 1.066l-.167 1.011c-.053.33-.243 1.189 1.042.646 1.284-.543 6.924-4.053 9.422-6.953A9.123 9.123 0 0024 10.304z"/>
                     </svg>

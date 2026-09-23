@@ -43,40 +43,40 @@ const executeArchive = async () => {
 <template>
   <div class="p-6 overflow-y-auto flex-grow hide-scrollbar">
     <div class="flex items-center gap-2 mb-4">
-      <button @click="emit('back')" class="p-1 -ml-1 text-slate-400 hover:text-brand-text rounded-full transition-colors cursor-pointer">
+      <button @click="emit('back')" class="p-1 -ml-1 text-stone-400 hover:text-brand-text rounded-full transition-colors cursor-pointer">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
       </button>
       <h3 class="text-base font-serif font-bold text-brand-text dark:text-white">Archive Skin Diary</h3>
     </div>
 
-    <div v-if="usageLifespan !== null" class="mb-5 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 text-center">
-      <p class="text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500">Total Lifespan</p>
+    <div v-if="usageLifespan !== null" class="mb-5 bg-stone-50 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-200/60 dark:border-stone-800 text-center">
+      <p class="text-[10px] uppercase font-black tracking-widest text-stone-400 dark:text-stone-500">Total Lifespan</p>
       <p class="text-2xl font-mono font-bold text-brand-primary mt-1">{{ usageLifespan }} Days</p>
       <p class="text-xs text-brand-text-muted mt-0.5">from open date to shelf removal log.</p>
     </div>
 
     <div class="mb-5">
-      <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Product Outcome</label>
+      <label class="block text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-2">Product Outcome</label>
       <div class="grid grid-cols-3 gap-2">
-        <button @click="archiveOutcome = 'empty'" :class="archiveOutcome === 'empty' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'" class="py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer">
+        <button @click="archiveOutcome = 'empty'" :class="archiveOutcome === 'empty' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer">
           <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Finished
         </button>
-        <button @click="archiveOutcome = 'discarded'" :class="archiveOutcome === 'discarded' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'" class="py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer">
+        <button @click="archiveOutcome = 'discarded'" :class="archiveOutcome === 'discarded' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer">
           <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Abandoned
         </button>
-        <button @click="archiveOutcome = 'expired'" :class="archiveOutcome === 'expired' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'" class="py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer">
+        <button @click="archiveOutcome = 'expired'" :class="archiveOutcome === 'expired' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'" class="py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer">
           <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Expired
         </button>
       </div>
     </div>
 
     <div class="mb-4">
-      <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Skin Performance Notes</label>
+      <label class="block text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-2">Skin Performance Notes</label>
       <textarea
         v-model="archiveNotes"
         rows="4"
         placeholder="Did this product break you out, fix irritation, or did you absolutely love it? Record your notes..."
-        class="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-brand-text dark:text-white p-3.5 rounded-2xl focus:outline-none focus:border-brand-primary text-sm shadow-sm transition-colors resize-none leading-relaxed placeholder:text-slate-400 dark:placeholder:text-slate-600"
+        class="w-full bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-700 text-brand-text dark:text-white p-3.5 rounded-2xl focus:outline-none focus:border-brand-primary text-sm shadow-sm transition-colors resize-none leading-relaxed placeholder:text-stone-400 dark:placeholder:text-stone-600"
       ></textarea>
     </div>
   </div>

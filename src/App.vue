@@ -19,7 +19,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-[#121217] min-h-screen text-slate-900 dark:text-white transition-colors duration-300">
+  <!-- Brand background and text, the same tokens body already uses
+       (assets/style.css). This root painted pure white and a bluish #121217
+       over them, so the one view that does not draw its own background -
+       SkinTypeLanding - sat on a different white and black from every other
+       page. -->
+  <div class="bg-brand-bg-light dark:bg-brand-bg-dark min-h-screen text-brand-text dark:text-white transition-colors duration-300">
     <LoginPopup />
     <LogoutModal />
 
