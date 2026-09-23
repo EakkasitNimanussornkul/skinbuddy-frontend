@@ -14,6 +14,7 @@ vi.mock('../../api/shelfapi', async (importOriginal) => ({
 import { removeFromShelf, analyzeProduct } from '../../api/shelfapi'
 import ItemDetailsModal from '../../components/Shelf/ItemDetailsModal.vue'
 import ProductLifecycleController from '../../components/Shelf/ProductLifecycleController.vue'
+import KeyActivesGrid from '../../components/Shelf/KeyActivesGrid.vue'
 import { useToast } from '../../composables/useToast'
 import type { ShelfItem, ShelfProduct } from '../../stores/shelfStore'
 
@@ -531,6 +532,20 @@ describe('src/components/Shelf/ItemDetailsModal.vue', () => {
       expect(item.opened_date).toBeNull()
       expect(item.pao).toBeNull()
       expect(item.usage_state).toBe('unopened')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('key actives (fold)', () => {
+    it('asks the actives grid to be foldable here, and leaves it open', async () => {
+      // Owner request: the actives sit among several other sections in this
+      // modal, so the user can fold them away.
+      const wrapper = await mountModal()
+      const grid = wrapper.findComponent(KeyActivesGrid)
+
+      expect(grid.props('collapsible')).toBe(true)
+      expect(grid.get('h3 button').attributes('aria-expanded')).toBe('true')
+      expect(wrapper.text()).toContain('Hyaluronic Acid')
     })
   })
 })

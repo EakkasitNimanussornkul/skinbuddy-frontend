@@ -55,41 +55,49 @@ describe('src/components/Catalog/IngredientAwarenessLegend.vue', () => {
   })
 
   describe('showAwarenessGuide (legend text)', () => {
-    it('keeps the explanations collapsed until asked for', () => {
+    it('shows the explanations on load, with the control offering to hide them', () => {
+      // Owner decision: open by default. The explanations are what make the
+      // coloured bar and the tier labels readable, so they come first.
       const wrapper = mountLegend()
 
       expect(toggle(wrapper).text()).toContain('Understanding Safety & Awareness Tiers')
-      expect(toggle(wrapper).text()).toContain('Show Details')
-      expect(wrapper.text()).not.toContain('High Awareness (Red)')
+      expect(toggle(wrapper).text()).toContain('Hide Details')
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('true')
+      expect(wrapper.text()).toContain('High Awareness (Red)')
     })
 
-    it('explains all three tiers in order once opened, naming each colour', async () => {
+    it('explains all three tiers in order, naming each colour', () => {
       const wrapper = mountLegend()
-
-      await toggle(wrapper).trigger('click')
 
       const headings = wrapper.findAll('.space-y-1 > div').map((d) => d.text())
       expect(headings).toEqual(['High Awareness (Red)', 'Medium Awareness (Grey)', 'Low Awareness (Green)'])
-      expect(toggle(wrapper).text()).toContain('Hide Details')
     })
 
-    it('says what puts an ingredient in each tier', async () => {
+    it('says what puts an ingredient in each tier', () => {
       const wrapper = mountLegend()
-
-      await toggle(wrapper).trigger('click')
 
       expect(wrapper.text()).toContain('Requires careful routine planning to avoid clashing.')
       expect(wrapper.text()).toContain('Safe and necessary structural elements to stabilize the active formula.')
       expect(wrapper.text()).toContain('soothe the lipid barrier and deliver gentle nourishment.')
     })
 
-    it('collapses again on a second press', async () => {
+    it('folds the explanations away when the user hides them, and brings them back', async () => {
       const wrapper = mountLegend()
 
       await toggle(wrapper).trigger('click')
-      await toggle(wrapper).trigger('click')
-
       expect(wrapper.text()).not.toContain('High Awareness (Red)')
+      expect(toggle(wrapper).text()).toContain('Show Details')
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('false')
+
+      await toggle(wrapper).trigger('click')
+      expect(wrapper.text()).toContain('High Awareness (Red)')
+    })
+
+    it('points its control at the region it folds', () => {
+      const wrapper = mountLegend()
+
+      const id = toggle(wrapper).attributes('aria-controls')
+      expect(wrapper.find(`[id="${id}"]`).text()).toContain('High Awareness (Red)')
     })
   })
 })

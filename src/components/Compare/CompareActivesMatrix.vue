@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, useId, watch } from 'vue'
 import KeyActivesGrid from '../Shelf/KeyActivesGrid.vue'
 import { resolvePairConflictState, resolvePairConflicts, resolveProductLabel, type CompareResponse } from '../../api/products'
-import { resolveSeverityBand } from '../../api/safety'
+import { resolveSeverityBand, sortBySeverity } from '../../api/safety'
 import { useClampedText } from '../../composables/useClampedText'
+import { useStepList } from '../../composables/useStepList'
+import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 
 const props = defineProps<{ data: CompareResponse }>()
 
@@ -14,7 +16,12 @@ const props = defineProps<{ data: CompareResponse }>()
 // product on its own and say nothing about the pair. A retinol serum compared
 // against a BHA exfoliant produced the clash, returned it in this field, and
 // showed the user two columns of unrelated boilerplate.
-const pairConflicts = computed(() => resolvePairConflicts(props.data))
+// Most severe first, then shown two at a time - the same treatment as the
+// shelf inspection card, so the worst clash between the pair is always on
+// screen.
+const pairConflicts = computed(() => sortBySeverity(resolvePairConflicts(props.data)))
+const conflictSteps = useStepList(pairConflicts, { initial: 2, step: 2 })
+const conflictListId = useId()
 const pairState = computed(() => resolvePairConflictState(props.data))
 
 // Measured, not guessed - the same rule the shelf's warning cards use. A
@@ -24,6 +31,7 @@ const pairState = computed(() => resolvePairConflictState(props.data))
 const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
 watch(pairConflicts, remeasure)
+watch(() => conflictSteps.visible.value.length, remeasure)
 
 // Banded through the shared rule so this screen cannot colour severity
 // differently from the three that already render it (FE-DEF-25). The palette is
@@ -64,7 +72,9 @@ const formulaBreakdowns = computed(() => {
       })
     })
 
-    return concernsList.slice(0, 4)
+    // No longer cut to four here. The slice dropped the fifth concern onwards
+    // without saying so; stepping below keeps them reachable.
+    return concernsList
   }
 
   return {
@@ -72,6 +82,12 @@ const formulaBreakdowns = computed(() => {
     b: { concerns: extractSkinTypeWarnings(props.data?.product_b) }
   }
 })
+
+// Four concerns per product, then four more at a time.
+const concernStepsA = useStepList(() => formulaBreakdowns.value.a.concerns, { initial: 4, step: 4 })
+const concernStepsB = useStepList(() => formulaBreakdowns.value.b.concerns, { initial: 4, step: 4 })
+const concernListIdA = useId()
+const concernListIdB = useId()
 </script>
 
 <template>
@@ -118,8 +134,9 @@ const formulaBreakdowns = computed(() => {
 
       <!-- Conflicts found -->
       <div v-if="pairState === 'conflicts'" class="space-y-2.5">
+        <div :id="conflictListId" class="space-y-2.5">
         <div
-          v-for="(warning, idx) in pairConflicts"
+          v-for="(warning, idx) in conflictSteps.visible.value"
           :key="idx"
           class="p-4 rounded-2xl bg-semantic-error/5 border border-semantic-error/15 space-y-2"
         >
@@ -155,6 +172,18 @@ const formulaBreakdowns = computed(() => {
             </svg>
           </button>
         </div>
+        </div>
+
+        <ShowMoreControl
+          :next-count="conflictSteps.nextCount.value"
+          :remaining="conflictSteps.remaining.value"
+          :can-show-more="conflictSteps.canShowMore.value"
+          :can-show-less="conflictSteps.canShowLess.value"
+          noun="conflicts"
+          :controls="conflictListId"
+          @more="conflictSteps.showMore"
+          @less="conflictSteps.showLess"
+        />
       </div>
 
       <!-- Checked, nothing found. A real result, and stated as one. -->
@@ -204,28 +233,48 @@ const formulaBreakdowns = computed(() => {
       <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-brand-surface-border dark:divide-stone-800/60 items-start gap-6 md:gap-0">
 
         <!-- Left Concerns: Product A -->
-        <div class="space-y-3 md:pr-4 w-full">
-          <div v-for="(con, i) in formulaBreakdowns.a.concerns" :key="i" class="flex items-start gap-3 bg-semantic-error/5 border border-semantic-error/10 p-3.5 rounded-2xl animate-fade-in">
+        <div :id="concernListIdA" class="space-y-3 md:pr-4 w-full">
+          <div v-for="(con, i) in concernStepsA.visible.value" :key="i" class="flex items-start gap-3 bg-semantic-error/5 border border-semantic-error/10 p-3.5 rounded-2xl animate-fade-in">
             <div class="w-7 h-7 rounded-full bg-semantic-error/10 border border-semantic-error/20 flex items-center justify-center text-semantic-error shrink-0 font-mono font-bold text-xs">!</div>
             <div>
               <h5 class="text-xs font-black text-brand-text dark:text-stone-200 uppercase tracking-wide">{{ con.title }}</h5>
               <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-relaxed">{{ con.msg }}</p>
             </div>
           </div>
+          <ShowMoreControl
+            :next-count="concernStepsA.nextCount.value"
+            :remaining="concernStepsA.remaining.value"
+            :can-show-more="concernStepsA.canShowMore.value"
+            :can-show-less="concernStepsA.canShowLess.value"
+            noun="concerns"
+            :controls="concernListIdA"
+            @more="concernStepsA.showMore"
+            @less="concernStepsA.showLess"
+          />
           <p v-if="!formulaBreakdowns.a.concerns.length" class="text-xs font-medium text-brand-text-muted italic pl-1 py-2">
             No active profile contraindications detected for this formula.
           </p>
         </div>
 
         <!-- Right Concerns: Product B -->
-        <div class="space-y-3 md:pl-6 pt-4 md:pt-0 w-full">
-          <div v-for="(con, i) in formulaBreakdowns.b.concerns" :key="i" class="flex items-start gap-3 bg-semantic-error/5 border border-semantic-error/10 p-3.5 rounded-2xl animate-fade-in">
+        <div :id="concernListIdB" class="space-y-3 md:pl-6 pt-4 md:pt-0 w-full">
+          <div v-for="(con, i) in concernStepsB.visible.value" :key="i" class="flex items-start gap-3 bg-semantic-error/5 border border-semantic-error/10 p-3.5 rounded-2xl animate-fade-in">
             <div class="w-7 h-7 rounded-full bg-semantic-error/10 border border-semantic-error/20 flex items-center justify-center text-semantic-error shrink-0 font-mono font-bold text-xs">!</div>
             <div>
               <h5 class="text-xs font-black text-brand-text dark:text-stone-200 uppercase tracking-wide">{{ con.title }}</h5>
               <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-relaxed">{{ con.msg }}</p>
             </div>
           </div>
+          <ShowMoreControl
+            :next-count="concernStepsB.nextCount.value"
+            :remaining="concernStepsB.remaining.value"
+            :can-show-more="concernStepsB.canShowMore.value"
+            :can-show-less="concernStepsB.canShowLess.value"
+            noun="concerns"
+            :controls="concernListIdB"
+            @more="concernStepsB.showMore"
+            @less="concernStepsB.showLess"
+          />
           <p v-if="!formulaBreakdowns.b.concerns.length" class="text-xs font-medium text-brand-text-muted italic pl-1 py-2">
             No active profile contraindications detected for this formula.
           </p>

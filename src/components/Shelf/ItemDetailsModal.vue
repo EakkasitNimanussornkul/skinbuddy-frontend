@@ -185,7 +185,7 @@ const handleExecuteDelete = async () => {
 
               <!-- 🌟 5. Key Active Ingredients Grid -->
               <div class="pt-2 border-t border-brand-surface-border dark:border-stone-800/60">
-                <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" />
+                <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" collapsible />
               </div>
 
             </div>

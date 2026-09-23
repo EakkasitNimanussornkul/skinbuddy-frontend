@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, useId } from 'vue'
+import { useStepList } from '../../composables/useStepList'
+import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 
 const props = defineProps<{
   item: any
 }>()
 
-const showAllConcerns = ref(false)
 
 // 🌟 Strict badge parser that excludes full sentences/descriptions
 const targetedConcerns = computed(() => {
@@ -59,6 +60,10 @@ const targetedConcerns = computed(() => {
 
   return Array.from(list)
 })
+
+// Five chips, then five more at a time rather than every remaining one at once.
+const concernSteps = useStepList(targetedConcerns, { initial: 5, step: 5 })
+const concernListId = useId()
 </script>
 
 <template>
@@ -71,9 +76,9 @@ const targetedConcerns = computed(() => {
     </div>
 
     <!-- Clean Badges Only -->
-    <div class="flex flex-wrap gap-1.5">
+    <div :id="concernListId" class="flex flex-wrap gap-1.5">
       <span
-        v-for="(concern, idx) in (showAllConcerns ? targetedConcerns : targetedConcerns.slice(0, 5))"
+        v-for="(concern, idx) in concernSteps.visible.value"
         :key="idx"
         class="text-[11px] font-bold bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent px-3 py-1 rounded-xl border border-brand-primary/20 shadow-2xs"
       >
@@ -81,13 +86,15 @@ const targetedConcerns = computed(() => {
       </span>
     </div>
 
-    <!-- View More / View Less Toggle -->
-    <button
-      v-if="targetedConcerns.length > 5"
-      @click="showAllConcerns = !showAllConcerns"
-      class="text-[11px] font-bold text-brand-primary hover:underline cursor-pointer pt-0.5 block"
-    >
-      {{ showAllConcerns ? 'Show Fewer Concerns' : `+${targetedConcerns.length - 5} More Targeted Concerns` }}
-    </button>
+    <ShowMoreControl
+      :next-count="concernSteps.nextCount.value"
+      :remaining="concernSteps.remaining.value"
+      :can-show-more="concernSteps.canShowMore.value"
+      :can-show-less="concernSteps.canShowLess.value"
+      noun="concerns"
+      :controls="concernListId"
+      @more="concernSteps.showMore"
+      @less="concernSteps.showLess"
+    />
   </div>
 </template>

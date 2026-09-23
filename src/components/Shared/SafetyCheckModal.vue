@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
+import { useStepList } from '../../composables/useStepList'
+import ShowMoreControl from './ShowMoreControl.vue'
 import {
   describeDuplicateOverlap,
   resolveSeverityBand,
+  sortBySeverity,
   type DuplicateMatch,
   type SafetyStatus,
 } from '../../api/safety'
@@ -43,7 +46,17 @@ const SEVERITY_TEXT: Record<string, string> = {
 }
 
 const skinConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Skin Type Conflict'))
-const chemicalConflicts = computed(() => props.warnings.filter(w => w.alert_type === 'Chemical Interaction Warning' || w.alert_type === 'Active Routine Clash'))
+// Most severe first within the group, so the two shown before "Show more" are
+// always the worst two.
+const chemicalConflicts = computed(() => sortBySeverity(props.warnings.filter(w => w.alert_type === 'Chemical Interaction Warning' || w.alert_type === 'Active Routine Clash')))
+
+// Two per group, then two more at a time. The report opens over the product
+// page, and a product clashing with a full shelf produced a column of warnings
+// taller than the dialogue. Each group keeps its own count in view.
+const chemicalSteps = useStepList(chemicalConflicts, { initial: 2, step: 2 })
+const skinSteps = useStepList(skinConflicts, { initial: 2, step: 2 })
+const chemicalListId = useId()
+const skinListId = useId()
 // Reads the verdict rather than reconstructing it from an empty list. `cleared`
 // is the only status the backend affirms, so this cannot drift back toward
 // "no warnings, therefore safe" - the reading FE-DEF-03 recorded.
@@ -142,9 +155,9 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
               </div>
 
               <!-- Pass 1 & Pass 2 Chemistry Errors -->
-              <div v-if="chemicalConflicts.length" class="space-y-2">
+              <div v-if="chemicalConflicts.length" :id="chemicalListId" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-error/10 text-semantic-error rounded-md border border-semantic-error/20">Chemical Interaction Risks</span>
-                <div v-for="(warn, i) in chemicalConflicts" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
+                <div v-for="(warn, i) in chemicalSteps.visible.value" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
                   <!-- FE-DEF-25: was a two-way test that drew Low in the same
                        amber as Medium. Banded by the shared rule now; the
                        colours stay this component's own. -->
@@ -157,15 +170,35 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
                   </span>
                   <p>{{ warn.message }}</p>
                 </div>
+                <ShowMoreControl
+                  :next-count="chemicalSteps.nextCount.value"
+                  :remaining="chemicalSteps.remaining.value"
+                  :can-show-more="chemicalSteps.canShowMore.value"
+                  :can-show-less="chemicalSteps.canShowLess.value"
+                  noun="conflicts"
+                  :controls="chemicalListId"
+                  @more="chemicalSteps.showMore"
+                  @less="chemicalSteps.showLess"
+                />
               </div>
 
               <!-- Pass 3 Skin Type Warnings -->
-              <div v-if="skinConflicts.length" class="space-y-2">
+              <div v-if="skinConflicts.length" :id="skinListId" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-warning/10 text-semantic-warning rounded-md border border-semantic-warning/20">Skin Type Contraindications</span>
-                <div v-for="(warn, i) in skinConflicts" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
+                <div v-for="(warn, i) in skinSteps.visible.value" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
                   <span class="text-[10px] font-bold text-semantic-warning tracking-wide">Severity: High &bull; Skin Type Conflict</span>
                   <p>{{ warn.message }}</p>
                 </div>
+                <ShowMoreControl
+                  :next-count="skinSteps.nextCount.value"
+                  :remaining="skinSteps.remaining.value"
+                  :can-show-more="skinSteps.canShowMore.value"
+                  :can-show-less="skinSteps.canShowLess.value"
+                  noun="conflicts"
+                  :controls="skinListId"
+                  @more="skinSteps.showMore"
+                  @less="skinSteps.showLess"
+                />
               </div>
             </div>
 

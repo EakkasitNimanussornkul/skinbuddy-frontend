@@ -111,11 +111,42 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
       ).toBe(2)
     })
 
-    // Recorded rather than covered: extractSkinTypeWarnings keeps the first
-    // four concerns per product and drops the rest without saying so. That is
-    // a display choice rather than a defect, and it is flagged to the owner
-    // rather than pinned here, because a card asserting "exactly four" would
-    // make a reasonable future change - showing a count of the hidden ones -
-    // look like a regression.
+    // extractSkinTypeWarnings used to keep the first four concerns per product
+    // and drop the rest without saying so. It now returns them all and the
+    // panel steps through them - covered in the stepping group below.
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('stepping', () => {
+    const clash = (severity: string, message: string) => ({ alert_type: 'Chemical Interaction Warning', severity, message })
+
+    it('lists pair conflicts most severe first, two at a time', async () => {
+      const wrapper = mountMatrix(
+        compareData({}, {}, { conflicts: [clash('Low', 'low one'), clash('High', 'high one'), clash('Medium', 'medium one')] }),
+      )
+
+      expect(wrapper.text()).toContain('high one')
+      expect(wrapper.text()).toContain('medium one')
+      expect(wrapper.text()).not.toContain('low one')
+
+      await wrapper.get('button.show-more').trigger('click')
+      expect(wrapper.text()).toContain('low one')
+    })
+
+    it('keeps a fifth concern reachable instead of silently dropping it', async () => {
+      // This list was cut to four with no indication. Stepping keeps the rest.
+      const concerns = Array.from({ length: 6 }, (_, i) => ({ concern_title: `Concern ${i + 1}`, concern_description: 'x' }))
+      const wrapper = mountMatrix(
+        compareData({ product_ingredients: [ingredient('i-ret', 'Retinol', { ingredient_concerns: concerns })] }),
+      )
+
+      expect(wrapper.text()).toContain('Concern 4')
+      expect(wrapper.text()).not.toContain('Concern 5')
+
+      const more = wrapper.findAll('button.show-more').find((b) => b.text().includes('concerns'))!
+      await more.trigger('click')
+
+      expect(wrapper.text()).toContain('Concern 6')
+    })
   })
 })

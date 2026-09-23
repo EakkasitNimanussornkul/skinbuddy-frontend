@@ -254,4 +254,47 @@ describe('src/components/Shared/SafetyCheckModal.vue', () => {
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('stepping (most severe first)', () => {
+    const chem = (severity: string, message: string) => ({ ...CHEMICAL, severity, message })
+
+    it('orders chemical risks most severe first and shows two', () => {
+      const wrapper = mountModal({
+        scanStatus: 'warned',
+        warnings: [chem('Low', 'low one'), chem('Medium', 'medium one'), chem('High', 'high one')],
+      })
+
+      expect(wrapper.text()).toContain('high one')
+      expect(wrapper.text()).toContain('medium one')
+      expect(wrapper.text()).not.toContain('low one')
+      expect(wrapper.get('button.show-more').text()).toContain('Show 1 more conflict')
+    })
+
+    it('reveals the rest of the group on request', async () => {
+      const wrapper = mountModal({
+        scanStatus: 'warned',
+        warnings: [chem('Low', 'low one'), chem('Medium', 'medium one'), chem('High', 'high one')],
+      })
+
+      await wrapper.get('button.show-more').trigger('click')
+
+      expect(wrapper.text()).toContain('low one')
+      expect(wrapper.find('button.show-more').exists()).toBe(false)
+    })
+
+    it('steps each group on its own, so one long group cannot bury the other', () => {
+      const wrapper = mountModal({
+        scanStatus: 'warned',
+        warnings: [
+          chem('High', 'c1'), chem('High', 'c2'), chem('High', 'c3'),
+          { ...SKIN_TYPE, message: 's1' }, { ...SKIN_TYPE, message: 's2' }, { ...SKIN_TYPE, message: 's3' },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('s1')
+      expect(wrapper.text()).not.toContain('s3')
+      expect(wrapper.findAll('button.show-more')).toHaveLength(2)
+    })
+  })
 })

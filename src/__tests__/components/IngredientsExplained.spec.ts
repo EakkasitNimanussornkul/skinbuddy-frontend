@@ -1,0 +1,85 @@
+import { describe, it, expect } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
+
+import IngredientsExplained from '../../components/Catalog/IngredientsExplained.vue'
+
+const ingredient = (name: string, overrides: Record<string, unknown> = {}) => ({
+  id: `i-${name}`,
+  name,
+  functional_group: 'Humectant',
+  awareness_tier: 'low',
+  benefits: `${name} benefit.`,
+  ...overrides,
+})
+
+const many = (n: number) => Array.from({ length: n }, (_, i) => ingredient(`Ingredient ${i + 1}`))
+
+const mountExplained = (ingredientsList: unknown[]) =>
+  mount(IngredientsExplained, { props: { ingredientsList } })
+
+const shown = (wrapper: VueWrapper) => wrapper.findAll('h4').map((h) => h.text())
+const more = (wrapper: VueWrapper) => wrapper.find('button.show-more')
+
+describe('src/components/Catalog/IngredientsExplained.vue', () => {
+  describe('explanations (render)', () => {
+    it('explains each ingredient with its group and benefit', () => {
+      const wrapper = mountExplained([ingredient('Glycerin')])
+
+      expect(wrapper.text()).toContain('Glycerin')
+      expect(wrapper.text()).toContain('Humectant')
+      expect(wrapper.text()).toContain('Glycerin benefit.')
+      expect(wrapper.text()).toContain('1 Total')
+    })
+
+    it('falls back to a base-formula explanation when no benefit is recorded', () => {
+      const wrapper = mountExplained([ingredient('Water', { benefits: null, functional_group: null })])
+
+      expect(wrapper.text()).toContain('Formulation Base')
+      expect(wrapper.text()).toContain('Supports the overall formula')
+    })
+  })
+
+  describe('stepping', () => {
+    it('shows five explanations, then four more at a time', () => {
+      // Owner request: this jumped from five to every explanation at once.
+      const wrapper = mountExplained(many(12))
+
+      expect(shown(wrapper)).toHaveLength(5)
+      expect(more(wrapper).text()).toContain('Show 4 more explanations')
+    })
+
+    it('reveals the next four, then exactly what is left', async () => {
+      const wrapper = mountExplained(many(12))
+
+      await more(wrapper).trigger('click')
+      expect(shown(wrapper)).toHaveLength(9)
+      expect(more(wrapper).text()).toContain('Show 3 more explanations')
+
+      await more(wrapper).trigger('click')
+      expect(shown(wrapper)).toHaveLength(12)
+      expect(more(wrapper).exists()).toBe(false)
+    })
+
+    it('folds back to five', async () => {
+      const wrapper = mountExplained(many(12))
+      await more(wrapper).trigger('click')
+
+      await wrapper.get('button.show-less').trigger('click')
+
+      expect(shown(wrapper)).toHaveLength(5)
+    })
+
+    it('offers no control for five or fewer', () => {
+      const wrapper = mountExplained(many(5))
+
+      expect(shown(wrapper)).toHaveLength(5)
+      expect(wrapper.findAll('button')).toHaveLength(0)
+    })
+
+    it('keeps the total visible whatever is folded', () => {
+      const wrapper = mountExplained(many(12))
+
+      expect(wrapper.text()).toContain('12 Total')
+    })
+  })
+})

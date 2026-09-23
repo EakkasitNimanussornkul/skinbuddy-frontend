@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, useId } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { useStepList } from '../../composables/useStepList'
+import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import ProductHeroSection from './ProductHeroSection.vue'
 import IngredientAwarenessLegend from './IngredientAwarenessLegend.vue'
 import IngredientsExplained from './IngredientsExplained.vue'
@@ -13,8 +15,6 @@ const props = defineProps<{
 const emit = defineEmits(['open-compare-selector', 'shelf-updated', 'close'])
 const authStore = useAuthStore()
 
-const showAllIngredients = ref(false)
-const showAllBenefits = ref(false)
 
 // 🌟 Dynamically compute flags from product payload
 const safetyChecks = computed(() => {
@@ -66,10 +66,9 @@ const sortedRawIngredients = computed(() => {
   })
 })
 
-const displayedIngredients = computed(() => {
-  if (showAllIngredients.value) return sortedRawIngredients.value
-  return sortedRawIngredients.value.slice(0, 5)
-})
+// Five, then four more at a time, rather than five then everything.
+const ingredientSteps = useStepList(sortedRawIngredients, { initial: 5, step: 4 })
+const ingredientListId = useId()
 
 const sortedIngredientsList = computed(() => {
   const extracted = rawIngredients.value.map((pi: any) => pi.ingredients).filter(Boolean)
@@ -115,10 +114,11 @@ const activeBenefits = computed(() => {
   )
 })
 
-const displayedBenefits = computed(() => {
-  if (showAllBenefits.value) return activeBenefits.value
-  return activeBenefits.value.slice(0, 4)
-})
+// This had a showAllBenefits flag and no control that ever set it, so the
+// fifth benefit onwards - and on mobile, the third onwards, through a
+// `hidden sm:flex` class - could never be seen. Stepped now, with a button.
+const benefitSteps = useStepList(activeBenefits, { initial: 4, step: 4 })
+const benefitListId = useId()
 
 const getTierBgColor = (tier: string) => {
   if (tier === 'low') return 'bg-emerald-500'
@@ -186,8 +186,8 @@ const handleGuestTrigger = () => {
 
           <IngredientAwarenessLegend :stats="awarenessStats" />
 
-          <div class="divide-y divide-brand-surface-border dark:divide-stone-800 border-t border-b border-brand-surface-border dark:border-stone-800">
-            <div v-for="(item, idx) in displayedIngredients" :key="idx" class="py-4 flex items-center justify-between gap-4">
+          <div :id="ingredientListId" class="divide-y divide-brand-surface-border dark:divide-stone-800 border-t border-b border-brand-surface-border dark:border-stone-800">
+            <div v-for="(item, idx) in ingredientSteps.visible.value" :key="idx" class="py-4 flex items-center justify-between gap-4">
               <div class="flex items-center gap-3">
                 <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0 shadow-sm" :class="getTierBgColor(item.ingredients?.awareness_tier)"></span>
                 <div>
@@ -209,13 +209,16 @@ const handleGuestTrigger = () => {
             </div>
           </div>
 
-          <button
-            v-if="rawIngredients.length > 5"
-            @click="showAllIngredients = !showAllIngredients"
-            class="w-full sm:w-auto px-6 py-3 bg-brand-bg-light dark:bg-stone-800/80 hover:bg-brand-surface-border dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 dark:hover:text-white font-bold text-xs rounded-xl border border-brand-surface-border dark:border-stone-700 transition-all cursor-pointer shadow-2xs active:scale-95"
-          >
-            {{ showAllIngredients ? 'Show less' : `Show all ${rawIngredients.length} ingredients` }}
-          </button>
+          <ShowMoreControl
+            :next-count="ingredientSteps.nextCount.value"
+            :remaining="ingredientSteps.remaining.value"
+            :can-show-more="ingredientSteps.canShowMore.value"
+            :can-show-less="ingredientSteps.canShowLess.value"
+            noun="ingredients"
+            :controls="ingredientListId"
+            @more="ingredientSteps.showMore"
+            @less="ingredientSteps.showLess"
+          />
         </div>
 
         <!-- Section 4: Active Benefits & Dynamic Concerns -->
@@ -227,17 +230,16 @@ const handleGuestTrigger = () => {
               <span class="text-xs font-bold text-brand-text-muted font-mono">{{ activeBenefits.length }} Actives Identified</span>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div :id="benefitListId" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div
-                v-for="(ing, idx) in displayedBenefits"
+                v-for="ing in benefitSteps.visible.value"
                 :key="ing.id"
-                :class="[
-                  'p-5 bg-brand-bg-light dark:bg-stone-900/50 rounded-2xl border border-brand-surface-border dark:border-stone-800 shadow-2xs transition-all justify-between items-start flex',
-                  (!showAllBenefits && idx >= 2) ? 'hidden sm:flex' : 'flex'
-                ]"
+                class="p-5 bg-brand-bg-light dark:bg-stone-900/50 rounded-2xl border border-brand-surface-border dark:border-stone-800 shadow-2xs transition-all justify-between items-start flex"
               >
                 <div class="flex items-start gap-3.5">
-                  <span class="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5 shadow-2xs border border-emerald-500/20 dark:border-emerald-800/50">✓</span>
+                  <span class="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs border border-emerald-500/20 dark:border-emerald-800/50">
+                    <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  </span>
                   <div>
                     <h5 class="text-sm font-bold text-brand-text dark:text-white">{{ ing.name }}</h5>
                     <p class="text-xs text-brand-text-muted mt-1 leading-relaxed font-medium">{{ ing.benefits }}</p>
@@ -245,6 +247,17 @@ const handleGuestTrigger = () => {
                 </div>
               </div>
             </div>
+
+            <ShowMoreControl
+              :next-count="benefitSteps.nextCount.value"
+              :remaining="benefitSteps.remaining.value"
+              :can-show-more="benefitSteps.canShowMore.value"
+              :can-show-less="benefitSteps.canShowLess.value"
+              noun="benefits"
+              :controls="benefitListId"
+              @more="benefitSteps.showMore"
+              @less="benefitSteps.showLess"
+            />
           </div>
 
           <!-- Formula Concerns -->

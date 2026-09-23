@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, useId } from 'vue'
 
 defineProps<{
   stats: {
@@ -12,7 +12,11 @@ defineProps<{
   }
 }>()
 
-const showAwarenessGuide = ref(false)
+// Open by default, owner decision: the three tier explanations are what make
+// the coloured bar and the per-ingredient tier labels readable, so they are
+// shown first and the user folds them away if they do not need them.
+const showAwarenessGuide = ref(true)
+const guideId = useId()
 </script>
 
 <template>
@@ -27,6 +31,9 @@ const showAwarenessGuide = ref(false)
     <!-- Interactive Safety / Awareness Legend Explainer Guide -->
     <div class="bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 rounded-2xl p-4 sm:p-5">
       <button
+        type="button"
+        :aria-expanded="showAwarenessGuide"
+        :aria-controls="guideId"
         @click="showAwarenessGuide = !showAwarenessGuide"
         class="flex items-center justify-between w-full text-xs font-bold text-brand-text dark:text-stone-200 cursor-pointer group"
       >
@@ -39,7 +46,7 @@ const showAwarenessGuide = ref(false)
         </span>
       </button>
 
-      <div v-if="showAwarenessGuide" class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 mt-3 border-t border-brand-surface-border dark:border-stone-800/80 animate-fade-in">
+      <div v-if="showAwarenessGuide" :id="guideId" class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 mt-3 border-t border-brand-surface-border dark:border-stone-800/80 animate-fade-in">
         <div class="space-y-1">
           <div class="flex items-center gap-2 text-xs font-bold text-rose-500">
             <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>

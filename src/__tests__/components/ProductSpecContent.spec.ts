@@ -186,15 +186,24 @@ describe('src/components/Catalog/ProductSpecContent.vue', () => {
       expect(listed(wrapper)).toEqual(['Water', 'Glycerin', 'Squalane'])
     })
 
-    it('shows five ingredients until asked for the rest', async () => {
-      const seven = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((n) => tiered(n, 'low'))
-      const { wrapper } = await mountSpec(true, { product_ingredients: seven })
+    it('shows five ingredients, then four more at a time rather than all at once', async () => {
+      // Owner request. This jumped from five straight to every ingredient,
+      // which on a long formula was several screens for one click.
+      const twelve = 'ABCDEFGHIJKL'.split('').map((n) => tiered(n, 'low'))
+      const { wrapper } = await mountSpec(true, { product_ingredients: twelve })
+      const more = () => wrapper.findAll('button.show-more').find((b) => b.text().includes('ingredients'))
 
       expect(listed(wrapper)).toHaveLength(5)
+      expect(more()!.text()).toContain('Show 4 more ingredients')
 
-      await wrapper.findAll('button').find((b) => b.text() === 'Show all 7 ingredients')!.trigger('click')
+      await more()!.trigger('click')
+      expect(listed(wrapper)).toHaveLength(9)
 
-      expect(listed(wrapper)).toHaveLength(7)
+      // The last step says exactly what is left rather than "4".
+      expect(more()!.text()).toContain('Show 3 more ingredients')
+      await more()!.trigger('click')
+      expect(listed(wrapper)).toHaveLength(12)
+      expect(more()).toBeUndefined()
     })
 
     // Recorded rather than covered: an ingredient with no awareness_tier sorts
@@ -234,6 +243,35 @@ describe('src/components/Catalog/ProductSpecContent.vue', () => {
 
       expect(barSegments(wrapper)).toEqual([])
       expect(wrapper.text()).toContain('0 Items')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('activeBenefits (stepping)', () => {
+    const benefit = (n: number) => ({
+      ingredients: { id: `b-${n}`, name: `Benefit Active ${n}`, awareness_tier: 'low', functional_group: 'Humectant', benefits: `does ${n}` },
+    })
+
+    it('reaches every benefit, which the old flag with no button never could', async () => {
+      // The defect: showAllBenefits existed and nothing set it, so benefits past
+      // the fourth - past the second on mobile - were unreachable.
+      const { wrapper } = await mountSpec(true, { product_ingredients: Array.from({ length: 7 }, (_, i) => benefit(i + 1)) })
+      const shown = () => wrapper.findAll('h5').filter((h) => h.text().startsWith('Benefit Active')).length
+      const more = () => wrapper.findAll('button.show-more').find((b) => b.text().includes('benefits'))
+
+      expect(shown()).toBe(4)
+      expect(wrapper.text()).toContain('7 Actives Identified')
+
+      await more()!.trigger('click')
+
+      expect(shown()).toBe(7)
+      expect(more()).toBeUndefined()
+    })
+
+    it('no longer hides benefits past the second on narrow screens', async () => {
+      const { wrapper } = await mountSpec(true, { product_ingredients: Array.from({ length: 4 }, (_, i) => benefit(i + 1)) })
+
+      expect(wrapper.html()).not.toContain('hidden sm:flex')
     })
   })
 })

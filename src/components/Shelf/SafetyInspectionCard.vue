@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, useId, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
-import { resolveSeverityBand, type SafetyStatus } from '../../api/safety'
+import { useStepList } from '../../composables/useStepList'
+import { resolveSeverityBand, sortBySeverity, type SafetyStatus } from '../../api/safety'
+import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 
 export interface WarningAlert {
   alert_type: string
@@ -29,7 +31,18 @@ const props = defineProps<{
 // the message, so it is measured.
 const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
 
+// Most severe first, two at a time. A product can clash with several items on
+// the shelf, and a column of long warnings buried the rest of the details
+// modal. Sorting first is what makes folding safe here: the worst warning is
+// always among the two on screen, and the header count still states the total.
+// The measurement indices stay valid because stepping only appends - an item
+// already on screen never changes position.
+const sortedWarnings = computed(() => sortBySeverity(props.warnings))
+const warningSteps = useStepList(sortedWarnings, { initial: 2, step: 2 })
+const warningListId = useId()
+
 watch(() => props.warnings, remeasure)
+watch(() => warningSteps.visible.value.length, remeasure)
 
 // FE-DEF-25: this badge was a hardcoded rose, so a Low warning was drawn in the
 // same alarm red as a High one. The band is shared with the two other
@@ -117,9 +130,9 @@ const severityBadgeClass = (severity: string | null | undefined) =>
       </span>
     </div>
 
-    <div class="space-y-2.5">
+    <div :id="warningListId" class="space-y-2.5">
       <div
-        v-for="(warning, idx) in warnings"
+        v-for="(warning, idx) in warningSteps.visible.value"
         :key="idx"
         class="p-4 rounded-2xl bg-stone-800/60 dark:bg-stone-900/80 border border-stone-700/60 space-y-2 shadow-sm"
       >
@@ -158,6 +171,17 @@ const severityBadgeClass = (severity: string | null | undefined) =>
         </button>
       </div>
     </div>
+
+    <ShowMoreControl
+      :next-count="warningSteps.nextCount.value"
+      :remaining="warningSteps.remaining.value"
+      :can-show-more="warningSteps.canShowMore.value"
+      :can-show-less="warningSteps.canShowLess.value"
+      noun="conflicts"
+      :controls="warningListId"
+      @more="warningSteps.showMore"
+      @less="warningSteps.showLess"
+    />
   </div>
 
   <!-- Cleared: the check ran, returned a verdict, and the verdict was a pass.

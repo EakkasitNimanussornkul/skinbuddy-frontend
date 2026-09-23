@@ -11,6 +11,7 @@ import {
   formatSharedActives,
   describeDuplicateOverlap,
   resolveSeverityBand,
+  sortBySeverity,
 } from '../../api/safety'
 
 const conflict = {
@@ -348,6 +349,51 @@ describe('src/api/safety.ts', () => {
 
     it('reports a severity it does not recognise as unknown rather than guessing', () => {
       expect(resolveSeverityBand('critical')).toBe('unknown')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sortBySeverity()', () => {
+    const w = (severity: string | null, message: string) => ({ alert_type: 'Interaction', severity, message })
+
+    it('orders High, then Medium, then Low', () => {
+      const sorted = sortBySeverity([w('Low', 'l'), w('High', 'h'), w('Medium', 'm')])
+
+      expect(sorted.map((x) => x.message)).toEqual(['h', 'm', 'l'])
+    })
+
+    it('reads the severity however the backend cased it', () => {
+      const sorted = sortBySeverity([w('low', 'l'), w('  HIGH ', 'h')])
+
+      expect(sorted.map((x) => x.message)).toEqual(['h', 'l'])
+    })
+
+    it('puts an unbanded warning last rather than first', () => {
+      // A missing severity is not more alarming for having no grade - the
+      // mistake FE-DEF-25 recorded ran the other way.
+      const sorted = sortBySeverity([w(null, 'none'), w('Low', 'l'), w('catastrophic', 'odd')])
+
+      expect(sorted.map((x) => x.message)).toEqual(['l', 'none', 'odd'])
+    })
+
+    it('keeps backend order within one severity', () => {
+      const sorted = sortBySeverity([w('High', 'first'), w('Low', 'x'), w('High', 'second'), w('High', 'third')])
+
+      expect(sorted.map((x) => x.message)).toEqual(['first', 'second', 'third', 'x'])
+    })
+
+    it('returns a new array and leaves the input as it was', () => {
+      const input = [w('Low', 'l'), w('High', 'h')]
+
+      const sorted = sortBySeverity(input)
+
+      expect(sorted).not.toBe(input)
+      expect(input.map((x) => x.message)).toEqual(['l', 'h'])
+    })
+
+    it('treats an absent list as empty', () => {
+      expect(sortBySeverity(null)).toEqual([])
+      expect(sortBySeverity(undefined)).toEqual([])
     })
   })
 })

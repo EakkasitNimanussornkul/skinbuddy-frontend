@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
-import { resolveSeverityBand } from '../../api/safety'
+import { resolveSeverityBand, sortBySeverity } from '../../api/safety'
 
 const props = defineProps<{
   warnings: any[]
@@ -16,6 +16,12 @@ const emit = defineEmits(['cancel', 'proceed'])
 // toggle hidden, so half of a safety warning could not be reached at all. The
 // same measurement the inspection card uses now decides it.
 const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText()
+
+// Most severe first, and deliberately NOT folded. Every other warning list in
+// the app shows two and offers "Show more"; this one is the consent screen in
+// front of "Proceed Anyway", so the user must be able to see every conflict
+// they are proceeding past without having to ask for it.
+const sortedWarnings = computed(() => sortBySeverity(props.warnings))
 
 watch(() => props.warnings, remeasure)
 
@@ -50,7 +56,7 @@ const getSeverityBadge = (severity?: string) =>
       </div>
 
       <div class="px-6 py-6 overflow-y-auto space-y-3 hide-scrollbar bg-brand-bg-light/50 dark:bg-brand-bg-dark/20">
-        <div v-for="(warning, index) in warnings" :key="index" class="bg-brand-surface-light dark:bg-stone-800/60 p-4 rounded-2xl border border-brand-surface-border dark:border-stone-700 shadow-sm">
+        <div v-for="(warning, index) in sortedWarnings" :key="index" class="bg-brand-surface-light dark:bg-stone-800/60 p-4 rounded-2xl border border-brand-surface-border dark:border-stone-700 shadow-sm">
 
           <span
             class="text-[9px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-lg border inline-block mb-2.5"

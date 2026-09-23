@@ -190,4 +190,33 @@ describe('src/components/Shelf/SafetyWarningModal.vue', () => {
       expect(wrapper.emitted('proceed')).toBeUndefined()
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sortedWarnings', () => {
+    const many = [
+      warning({ severity: 'Low', message: 'low one' }),
+      warning({ severity: 'High', message: 'high one' }),
+      warning({ severity: 'Medium', message: 'medium one' }),
+      warning({ severity: 'Low', message: 'low two' }),
+      warning({ severity: 'High', message: 'high two' }),
+    ]
+
+    it('lists the most severe conflict first', () => {
+      const wrapper = mountModal(many)
+
+      expect(wrapper.findAll('p.text-sm').map((p) => p.text())).toEqual([
+        'high one', 'high two', 'medium one', 'low one', 'low two',
+      ])
+    })
+
+    it('shows every conflict, with nothing folded behind a control', () => {
+      // Owner decision. This is the consent screen in front of Proceed Anyway,
+      // so it must not hide a conflict the user is proceeding past - unlike every
+      // other warning list, which shows two and offers more.
+      const wrapper = mountModal(many)
+
+      expect(wrapper.findAll('p.text-sm')).toHaveLength(5)
+      expect(wrapper.find('button.show-more').exists()).toBe(false)
+    })
+  })
 })

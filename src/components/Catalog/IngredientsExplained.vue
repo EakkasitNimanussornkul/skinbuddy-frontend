@@ -1,21 +1,17 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { useId } from 'vue'
+import { useStepList } from '../../composables/useStepList'
+import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 
 const props = defineProps<{
   ingredientsList: any[]
 }>()
 
-const showAll = ref(false)
-
-// Determine how many items to show based on the toggle state
-const displayedIngredients = computed(() => {
-  if (showAll.value) return props.ingredientsList
-  return props.ingredientsList.slice(0, 5)
-})
-
-const hiddenCount = computed(() => {
-  return props.ingredientsList.length - 5
-})
+// Five, then four more at a time. This used to jump from five straight to the
+// whole list, which on a 30-ingredient formula was several screens of
+// explanations for one click.
+const explanations = useStepList(() => props.ingredientsList, { initial: 5, step: 4 })
+const listId = useId()
 
 // Dynamic Theme Mapper based on the Database Awareness Tier
 const getThemeClasses = (tier?: string) => {
@@ -52,9 +48,9 @@ const getThemeClasses = (tier?: string) => {
       </span>
     </div>
 
-    <div class="space-y-6 transition-all duration-300">
+    <div :id="listId" class="space-y-6 transition-all duration-300">
       <div
-        v-for="(ing, idx) in displayedIngredients"
+        v-for="(ing, idx) in explanations.visible.value"
         :key="idx"
         class="pl-5 border-l-4 space-y-2 animate-fade-in transition-colors duration-300"
         :class="getThemeClasses(ing.awareness_tier).border"
@@ -80,17 +76,16 @@ const getThemeClasses = (tier?: string) => {
       </div>
     </div>
 
-    <div v-if="ingredientsList.length > 5" class="pt-2">
-      <button
-        @click="showAll = !showAll"
-        class="w-full sm:w-auto px-6 py-3 bg-stone-100 dark:bg-stone-800/80 hover:bg-stone-200 dark:hover:bg-stone-700 text-brand-text dark:text-stone-200 dark:hover:text-white font-bold text-xs rounded-xl border border-stone-200 dark:border-stone-700 transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]"
-      >
-        <span>{{ showAll ? 'Show fewer ingredients' : `Read ${hiddenCount} more explanations` }}</span>
-        <svg :class="['w-4 h-4 transition-transform duration-300', showAll ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-    </div>
+    <ShowMoreControl
+      :next-count="explanations.nextCount.value"
+      :remaining="explanations.remaining.value"
+      :can-show-more="explanations.canShowMore.value"
+      :can-show-less="explanations.canShowLess.value"
+      noun="explanations"
+      :controls="listId"
+      @more="explanations.showMore"
+      @less="explanations.showLess"
+    />
   </div>
 </template>
 
