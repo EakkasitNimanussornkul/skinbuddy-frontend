@@ -12,7 +12,10 @@ import {
   describeDuplicateOverlap,
   resolveSeverityBand,
   sortBySeverity,
+  hasConflictDetails,
+  groupSkinTypeConflicts,
 } from '../../api/safety'
+import { mergedBuffet, singlePair, skinAlert } from '../fixtures/conflicts'
 
 const conflict = {
   alert_type: 'conflict',
@@ -394,6 +397,53 @@ describe('src/api/safety.ts', () => {
     it('treats an absent list as empty', () => {
       expect(sortBySeverity(null)).toEqual([])
       expect(sortBySeverity(undefined)).toEqual([])
+    })
+  })
+
+  // Appended last, so adding them moves no group ID already cited in this file.
+  describe('hasConflictDetails()', () => {
+    it('is true only for a merged card with two or more pairs', () => {
+      expect(hasConflictDetails(mergedBuffet())).toBe(true)
+      expect(hasConflictDetails(singlePair())).toBe(false)
+      expect(hasConflictDetails(skinAlert('x'))).toBe(false)
+      // An older response with no details field at all renders as before.
+      expect(hasConflictDetails({ details: undefined })).toBe(false)
+      expect(hasConflictDetails(null)).toBe(false)
+    })
+  })
+
+  describe('groupSkinTypeConflicts()', () => {
+    it('merges every skin-type alert into one card, most severe first', () => {
+      const out = groupSkinTypeConflicts([skinAlert('low one', 'Low'), skinAlert('high one', 'High'), skinAlert('medium one', 'Medium')])
+
+      expect(out).toHaveLength(1)
+      expect(out[0]!.alert_type).toBe('Skin Type Conflict')
+      expect(out[0]!.severity).toBe('High')
+      expect(out[0]!.details!.map((d) => d.message)).toEqual(['high one', 'medium one', 'low one'])
+      expect(out[0]!.message).toBe('3 ingredients in this formula are poorly suited to your skin type.')
+    })
+
+    it('puts the merged card where the first skin-type alert was', () => {
+      const out = groupSkinTypeConflicts([singlePair(), skinAlert('a'), mergedBuffet(), skinAlert('b')])
+
+      expect(out.map((w) => w.alert_type)).toEqual(['Chemical Interaction Warning', 'Skin Type Conflict', 'Active Routine Clash'])
+    })
+
+    it('leaves a single skin-type alert exactly as it arrived', () => {
+      const alert = skinAlert('only one')
+      const out = groupSkinTypeConflicts([singlePair(), alert])
+
+      expect(out).toEqual([singlePair(), alert])
+    })
+
+    it('leaves product conflicts untouched', () => {
+      const out = groupSkinTypeConflicts([mergedBuffet(), singlePair()])
+
+      expect(out).toEqual([mergedBuffet(), singlePair()])
+    })
+
+    it('treats an absent list as empty', () => {
+      expect(groupSkinTypeConflicts(undefined)).toEqual([])
     })
   })
 })

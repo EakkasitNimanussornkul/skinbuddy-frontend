@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import SafetyCheckModal from '../../components/Shared/SafetyCheckModal.vue'
+import { mergedBuffet } from '../fixtures/conflicts'
 import type { DuplicateMatch, SafetyStatus } from '../../api/safety'
 
 type Warning = { alert_type: string; severity: string; message: string }
@@ -295,6 +296,41 @@ describe('src/components/Shared/SafetyCheckModal.vue', () => {
       expect(wrapper.text()).toContain('s1')
       expect(wrapper.text()).not.toContain('s3')
       expect(wrapper.findAll('button.show-more')).toHaveLength(2)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('grouped conflicts and similar products', () => {
+    it('lists a merged product conflict pair by pair, two at a time', () => {
+      const wrapper = mountModal({ scanStatus: 'warned', warnings: [mergedBuffet() as never] })
+
+      expect(wrapper.text()).toContain('5 ingredient clashes')
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
+      expect(wrapper.get('button.show-more').text()).toContain('Show 2 more clashes')
+    })
+
+    it('merges several skin-type alerts into one card', () => {
+      const wrapper = mountModal({
+        scanStatus: 'warned',
+        warnings: [{ ...SKIN_TYPE, message: 's1' }, { ...SKIN_TYPE, message: 's2' }, { ...SKIN_TYPE, message: 's3' }],
+      })
+
+      expect(wrapper.text()).toContain('Poorly suited to your skin type · 3 ingredients')
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
+    })
+
+    it('shows two similar products, then the rest on request', async () => {
+      // Owner request: the dupe list on one product was too long.
+      const dupes = Array.from({ length: 5 }, (_, i) => ({ ...DUPE, product_id: 'd-' + i, name: 'Similar ' + (i + 1) }))
+      const wrapper = mountModal({ scanStatus: 'cleared', duplicates: dupes })
+      const names = () => dupes.map((d) => d.name).filter((n) => wrapper.text().includes(n))
+
+      expect(names()).toEqual(['Similar 1', 'Similar 2'])
+      const more = wrapper.findAll('button.show-more').find((b) => b.text().includes('similar products'))!
+      expect(more.text()).toContain('Show 2 more similar products')
+
+      await more.trigger('click')
+      expect(names()).toHaveLength(4)
     })
   })
 })

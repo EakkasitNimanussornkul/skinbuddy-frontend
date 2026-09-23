@@ -4,6 +4,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import CompareActivesMatrix from '../../components/Compare/CompareActivesMatrix.vue'
 import type { CompareResponse } from '../../api/products'
 import { compareData, ingredient } from '../fixtures/compare'
+import { mergedBuffet } from '../fixtures/conflicts'
 
 describe('src/components/Compare/CompareActivesMatrix.vue', () => {
   const CLASH = {
@@ -147,6 +148,16 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
       await more.trigger('click')
 
       expect(wrapper.text()).toContain('Concern 6')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('grouped conflicts', () => {
+    it('lists a merged pair conflict pair by pair, two at a time', () => {
+      const wrapper = mountMatrix(compareData({}, {}, { conflicts: [mergedBuffet()] }))
+
+      expect(wrapper.text()).toContain('5 ingredient clashes')
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
     })
   })
 })

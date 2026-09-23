@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import SafetyInspectionCard, { type WarningAlert } from '../../components/Shelf/SafetyInspectionCard.vue'
+import { mergedBuffet, singlePair, skinAlert } from '../fixtures/conflicts'
 
 const warning = (severity: string, message: string): WarningAlert => ({
   alert_type: 'Chemical Interaction Warning',
@@ -128,6 +129,40 @@ describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
       const wrapper = mount(SafetyInspectionCard, { props: { warnings: [], isLoading: true } })
 
       expect(darkOnlyClasses(wrapper)).toEqual([])
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('grouped conflicts', () => {
+    it('shows one card per clashing product, listing its pairs rather than the summary', () => {
+      const wrapper = mountCard([mergedBuffet() as never])
+
+      expect(wrapper.text()).toContain('1 Warning')
+      expect(wrapper.text()).toContain('With "Buffet" Multi-Technology Peptide Serum · 5 ingredient clashes')
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
+      // The summary names the pairs without the why; the pairs below say both.
+      expect(wrapper.text()).not.toContain('5 ingredient clashes. Salicylic Acid with')
+    })
+
+    it('keeps a single-pair warning as its own sentence', () => {
+      const wrapper = mountCard([singlePair() as never])
+
+      expect(wrapper.text()).toContain('layering two exfoliating acids')
+      expect(wrapper.find('li.conflict-detail').exists()).toBe(false)
+    })
+
+    it('merges several skin-type alerts into one card, and counts cards in the header', () => {
+      // Owner request: skin-type conflicts the same way as product clashes.
+      const wrapper = mountCard([
+        skinAlert('Heavy occlusive.') as never,
+        skinAlert('Drying alcohol.') as never,
+        skinAlert('Fragrance.', 'Medium') as never,
+      ])
+
+      expect(wrapper.text()).toContain('1 Warning')
+      expect(wrapper.text()).not.toContain('3 Warnings')
+      expect(wrapper.text()).toContain('Poorly suited to your skin type · 3 ingredients')
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
     })
   })
 })

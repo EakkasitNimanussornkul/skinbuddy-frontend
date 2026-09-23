@@ -1,7 +1,81 @@
+/**
+ * One ingredient pair behind a conflict with another product
+ * (ConflictDetail in the backend's app/schemas.py).
+ */
+export interface ConflictDetail {
+  alert_type: string
+  severity: string
+  // The checked product's ingredient(s); a category rule may join several.
+  ingredient: string
+  conflicting_ingredient: string | null
+  // The full sentence for this one pair, including why it clashes.
+  message: string
+}
+
 export interface WarningAlert {
   alert_type: string
   severity: string
   message: string
+  // Both optional because they are additive on the backend: an older response
+  // carries neither, and a Skin Type Conflict has no other product and no
+  // details. When a product clashes on two or more pairs the backend sends one
+  // warning for it, with `message` a one-line summary and each pair - with its
+  // explanation - in `details`, most severe first.
+  conflicting_product?: string | null
+  details?: ConflictDetail[]
+}
+
+/**
+ * Whether a warning is a merged, per-product conflict whose pairs should be
+ * listed individually. One pair or none: the warning's own message already is
+ * that pair's full sentence, so there is nothing more to list.
+ */
+export const hasConflictDetails = (warning: Pick<WarningAlert, 'details'> | null | undefined): boolean =>
+  Array.isArray(warning?.details) && warning.details.length > 1
+
+export const SKIN_TYPE_CONFLICT = 'Skin Type Conflict'
+
+/**
+ * Merge every Skin Type Conflict into one card, the way the backend merges the
+ * pairs of one clashing product.
+ *
+ * The backend deliberately leaves skin-type alerts one per ingredient, since
+ * each is about the checked product itself rather than about another product.
+ * A formula with several ingredients poorly suited to the user's type still
+ * drew one near-identical card each, which is the same flood the product merge
+ * removed. Grouped here instead, on the frontend, so the backend contract is
+ * untouched: the merged card takes the place of the first skin-type alert, its
+ * severity is the most severe of them, and each original alert becomes one
+ * detail, most severe first.
+ *
+ * One skin-type alert is left exactly as it arrived - there is nothing to group.
+ */
+export const groupSkinTypeConflicts = (warnings: readonly WarningAlert[] | null | undefined): WarningAlert[] => {
+  const list: WarningAlert[] = [...(warnings ?? [])]
+  const skin = list.filter((w) => w.alert_type === SKIN_TYPE_CONFLICT)
+  if (skin.length < 2) return list
+
+  const ordered = sortBySeverity(skin)
+  const merged: WarningAlert = {
+    alert_type: SKIN_TYPE_CONFLICT,
+    severity: ordered[0]!.severity,
+    message: `${skin.length} ingredients in this formula are poorly suited to your skin type.`,
+    conflicting_product: null,
+    details: ordered.map((w) => ({
+      alert_type: SKIN_TYPE_CONFLICT,
+      severity: w.severity,
+      ingredient: '',
+      conflicting_ingredient: null,
+      message: w.message,
+    })),
+  }
+
+  // Everything before the first skin-type alert is a non-skin warning, so its
+  // index in the filtered list is the same as in the original.
+  const first = list.findIndex((w) => w.alert_type === SKIN_TYPE_CONFLICT)
+  const rest = list.filter((w) => w.alert_type !== SKIN_TYPE_CONFLICT)
+  rest.splice(first, 0, merged)
+  return rest
 }
 
 /**

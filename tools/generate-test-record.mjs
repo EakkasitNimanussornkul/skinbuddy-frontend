@@ -416,6 +416,14 @@ const SPEC_MAP = [
     prerequisite: 'The component mounted with @vue/test-utils with warnings and a scan status passed directly. No store, no router, no network.',
     note: 'Warnings most severe first, two at a time, with the header count still stating the total - sorting first is what makes folding safe here, since the worst clash is always among those on screen. The Proceed Anyway dialogue deliberately does not fold, and that is pinned in its own spec, because it is the consent screen for adding a conflicting product.',
   },
+  {
+    file: 'src/__tests__/components/ConflictDetailsList.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shared/ConflictDetailsList',
+    prerequisite:
+      'The component mounted with @vue/test-utils with details passed directly. Fixtures in src/__tests__/fixtures/conflicts.ts follow the grouped warning shape from backend commit 88733e9 on feat/group-conflicts-by-product: one warning per clashing product, its ingredient pairs in details, most severe first. No store, no router, no network.',
+    note: 'The inside of a merged conflict card. The backend now sends one warning per clashing product instead of one per ingredient pair - on live data one exfoliant produced eight near-identical cards against a single serum. This lists the pairs with their own explanations, two at a time, and names the product and the pair count. Skin-type alerts, which the backend leaves one per ingredient, are grouped the same way on the frontend by groupSkinTypeConflicts. In the Proceed Anyway dialogue nothing is folded, because the owner decided the consent screen never hides a conflict. A response without details renders exactly as before, so the frontend does not depend on the backend branch being merged first.',
+  },
 ]
 
 function runSuite() {

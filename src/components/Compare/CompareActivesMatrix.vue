@@ -2,7 +2,8 @@
 import { computed, useId, watch } from 'vue'
 import KeyActivesGrid from '../Shelf/KeyActivesGrid.vue'
 import { resolvePairConflictState, resolvePairConflicts, resolveProductLabel, type CompareResponse } from '../../api/products'
-import { resolveSeverityBand, sortBySeverity } from '../../api/safety'
+import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity } from '../../api/safety'
+import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 import { useClampedText } from '../../composables/useClampedText'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
@@ -19,7 +20,9 @@ const props = defineProps<{ data: CompareResponse }>()
 // Most severe first, then shown two at a time - the same treatment as the
 // shelf inspection card, so the worst clash between the pair is always on
 // screen.
-const pairConflicts = computed(() => sortBySeverity(resolvePairConflicts(props.data)))
+// One card per clashing product (grouped by the backend) and one for all
+// skin-type alerts (grouped here), then sorted.
+const pairConflicts = computed(() => sortBySeverity(groupSkinTypeConflicts(resolvePairConflicts(props.data))))
 const conflictSteps = useStepList(pairConflicts, { initial: 2, step: 2 })
 const conflictListId = useId()
 const pairState = computed(() => resolvePairConflictState(props.data))
@@ -154,7 +157,14 @@ const concernListIdB = useId()
             </span>
           </div>
 
+          <ConflictDetailsList
+            v-if="hasConflictDetails(warning)"
+            :details="warning.details!"
+            :conflicting-product="warning.conflicting_product"
+          />
+
           <p
+            v-else
             :ref="(el) => setElement(idx, el)"
             :class="['text-xs sm:text-sm font-medium text-brand-text dark:text-stone-300 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
           >
@@ -162,7 +172,7 @@ const concernListIdB = useId()
           </p>
 
           <button
-            v-if="overflowing[idx]"
+            v-if="!hasConflictDetails(warning) && overflowing[idx]"
             @click="toggle(idx)"
             class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline cursor-pointer"
           >

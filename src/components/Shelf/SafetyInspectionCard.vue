@@ -2,13 +2,18 @@
 import { computed, useId, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
 import { useStepList } from '../../composables/useStepList'
-import { resolveSeverityBand, sortBySeverity, type SafetyStatus } from '../../api/safety'
+import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, type ConflictDetail, type SafetyStatus } from '../../api/safety'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
+import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 
 export interface WarningAlert {
   alert_type: string
   severity: string
   message: string
+  // One warning per clashing product; its ingredient pairs are in details.
+  // Optional - an older response carries neither. See api/safety.ts.
+  conflicting_product?: string | null
+  details?: ConflictDetail[]
 }
 
 const props = defineProps<{
@@ -37,7 +42,9 @@ const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText(
 // always among the two on screen, and the header count still states the total.
 // The measurement indices stay valid because stepping only appends - an item
 // already on screen never changes position.
-const sortedWarnings = computed(() => sortBySeverity(props.warnings))
+// Skin-type alerts grouped into one card first (see groupSkinTypeConflicts),
+// then the cards sorted. The header counts these cards, not the raw alerts.
+const sortedWarnings = computed(() => sortBySeverity(groupSkinTypeConflicts(props.warnings)))
 const warningSteps = useStepList(sortedWarnings, { initial: 2, step: 2 })
 const warningListId = useId()
 
@@ -128,7 +135,7 @@ const severityBadgeClass = (severity: string | null | undefined) =>
     <div class="flex items-center justify-between">
       <h4 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">Biochemical Safety & Conflict Warning</h4>
       <span class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-        {{ warnings.length }} Warning{{ warnings.length > 1 ? 's' : '' }}
+        {{ sortedWarnings.length }} Warning{{ sortedWarnings.length > 1 ? 's' : '' }}
       </span>
     </div>
 
@@ -152,8 +159,17 @@ const severityBadgeClass = (severity: string | null | undefined) =>
           <span>{{ warning.alert_type }}</span>
         </div>
 
+        <!-- A product clashing on two or more ingredient pairs: list the pairs,
+             each with its own explanation, rather than the one-line summary. -->
+        <ConflictDetailsList
+          v-if="hasConflictDetails(warning)"
+          :details="warning.details!"
+          :conflicting-product="warning.conflicting_product"
+        />
+
         <!-- Alert Message Body -->
         <p
+          v-else
           :ref="(el) => setElement(idx, el)"
           :class="['text-xs sm:text-sm font-medium text-brand-text dark:text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
         >
@@ -162,7 +178,7 @@ const severityBadgeClass = (severity: string | null | undefined) =>
 
         <!-- Read More Toggle: only when there is more to read (FE-DEF-26) -->
         <button
-          v-if="overflowing[idx]"
+          v-if="!hasConflictDetails(warning) && overflowing[idx]"
           @click="toggle(idx)"
           class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline cursor-pointer pt-0.5"
         >

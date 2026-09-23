@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
-import { resolveSeverityBand, sortBySeverity } from '../../api/safety'
+import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity } from '../../api/safety'
+import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 
 const props = defineProps<{
   warnings: any[]
@@ -21,7 +22,10 @@ const { overflowing, expanded, setElement, toggle, remeasure } = useClampedText(
 // the app shows two and offers "Show more"; this one is the consent screen in
 // front of "Proceed Anyway", so the user must be able to see every conflict
 // they are proceeding past without having to ask for it.
-const sortedWarnings = computed(() => sortBySeverity(props.warnings))
+// Grouped the same way as everywhere else - one card per clashing product, one
+// for all skin-type alerts - but the pairs inside a card are never folded here
+// either (fold: false below).
+const sortedWarnings = computed(() => sortBySeverity(groupSkinTypeConflicts(props.warnings)))
 
 watch(() => props.warnings, remeasure)
 
@@ -65,7 +69,14 @@ const getSeverityBadge = (severity?: string) =>
             <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">{{ warning.severity }} &bull; </template>{{ warning.alert_type }}
           </span>
 
-          <div>
+          <ConflictDetailsList
+            v-if="hasConflictDetails(warning)"
+            :details="warning.details!"
+            :conflicting-product="warning.conflicting_product"
+            :fold="false"
+          />
+
+          <div v-else>
             <p
               :ref="(el) => setElement(index, el)"
               class="text-sm font-medium text-brand-text dark:text-stone-300 leading-relaxed transition-all duration-300"

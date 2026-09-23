@@ -2,12 +2,16 @@
 import { computed, useId } from 'vue'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from './ShowMoreControl.vue'
+import ConflictDetailsList from './ConflictDetailsList.vue'
 import {
   describeDuplicateOverlap,
+  groupSkinTypeConflicts,
+  hasConflictDetails,
   resolveSeverityBand,
   sortBySeverity,
   type DuplicateMatch,
   type SafetyStatus,
+  type WarningAlert,
 } from '../../api/safety'
 
 const props = withDefaults(
@@ -15,7 +19,7 @@ const props = withDefaults(
     isOpen: boolean
     product: any
     isLoading: boolean
-    warnings: Array<{ alert_type: string; severity: string; message: string }>
+    warnings: WarningAlert[]
     hasChecked: boolean
     // The outcome's own status. Without it, an empty warnings array from a
     // failed request rendered as a pass. It is the whole status rather than a
@@ -54,9 +58,17 @@ const chemicalConflicts = computed(() => sortBySeverity(props.warnings.filter(w 
 // page, and a product clashing with a full shelf produced a column of warnings
 // taller than the dialogue. Each group keeps its own count in view.
 const chemicalSteps = useStepList(chemicalConflicts, { initial: 2, step: 2 })
-const skinSteps = useStepList(skinConflicts, { initial: 2, step: 2 })
 const chemicalListId = useId()
-const skinListId = useId()
+
+// Every skin-type alert as one card, its alerts listed inside it two at a
+// time, the same shape as a product clashing on several pairs. At most one
+// card: one alert stays as it arrived, two or more are merged.
+const skinCards = computed(() => groupSkinTypeConflicts(skinConflicts.value))
+
+// The similar products you already own, two at a time as well - a shelf with
+// several near-duplicates made this list the longest thing in the report.
+const dupeSteps = useStepList(() => props.duplicates, { initial: 2, step: 2 })
+const dupeListId = useId()
 // Reads the verdict rather than reconstructing it from an empty list. `cleared`
 // is the only status the backend affirms, so this cannot drift back toward
 // "no warnings, therefore safe" - the reading FE-DEF-03 recorded.
@@ -168,7 +180,12 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
                   >
                     Severity: {{ warn.severity }}
                   </span>
-                  <p>{{ warn.message }}</p>
+                  <ConflictDetailsList
+                    v-if="hasConflictDetails(warn)"
+                    :details="warn.details!"
+                    :conflicting-product="warn.conflicting_product"
+                  />
+                  <p v-else>{{ warn.message }}</p>
                 </div>
                 <ShowMoreControl
                   :next-count="chemicalSteps.nextCount.value"
@@ -183,22 +200,13 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
               </div>
 
               <!-- Pass 3 Skin Type Warnings -->
-              <div v-if="skinConflicts.length" :id="skinListId" class="space-y-2">
+              <div v-if="skinConflicts.length" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-warning/10 text-semantic-warning rounded-md border border-semantic-warning/20">Skin Type Contraindications</span>
-                <div v-for="(warn, i) in skinSteps.visible.value" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
+                <div v-for="(warn, i) in skinCards" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
                   <span class="text-[10px] font-bold text-semantic-warning tracking-wide">Severity: High &bull; Skin Type Conflict</span>
-                  <p>{{ warn.message }}</p>
+                  <ConflictDetailsList v-if="hasConflictDetails(warn)" :details="warn.details!" />
+                  <p v-else>{{ warn.message }}</p>
                 </div>
-                <ShowMoreControl
-                  :next-count="skinSteps.nextCount.value"
-                  :remaining="skinSteps.remaining.value"
-                  :can-show-more="skinSteps.canShowMore.value"
-                  :can-show-less="skinSteps.canShowLess.value"
-                  noun="conflicts"
-                  :controls="skinListId"
-                  @more="skinSteps.showMore"
-                  @less="skinSteps.showLess"
-                />
               </div>
             </div>
 
@@ -221,8 +229,9 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
                 </div>
               </div>
 
+              <div :id="dupeListId" class="space-y-3">
               <div
-                v-for="dupe in duplicates"
+                v-for="dupe in dupeSteps.visible.value"
                 :key="dupe.product_id"
                 class="bg-brand-surface-light dark:bg-stone-900 rounded-xl border border-brand-surface-border dark:border-stone-800/80 p-3.5 space-y-1"
               >
@@ -240,6 +249,19 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
                   {{ describeDuplicateOverlap(dupe) }}
                 </p>
               </div>
+              </div>
+
+              <ShowMoreControl
+                :next-count="dupeSteps.nextCount.value"
+                :remaining="dupeSteps.remaining.value"
+                :can-show-more="dupeSteps.canShowMore.value"
+                :can-show-less="dupeSteps.canShowLess.value"
+                noun="similar products"
+                singular="similar product"
+                :controls="dupeListId"
+                @more="dupeSteps.showMore"
+                @less="dupeSteps.showLess"
+              />
             </div>
           </template>
 

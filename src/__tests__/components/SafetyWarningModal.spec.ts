@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import SafetyWarningModal from '../../components/Shelf/SafetyWarningModal.vue'
+import { mergedBuffet, skinAlert } from '../fixtures/conflicts'
 
 type Warning = { alert_type: string; severity?: string | null; message: string }
 
@@ -217,6 +218,25 @@ describe('src/components/Shelf/SafetyWarningModal.vue', () => {
 
       expect(wrapper.findAll('p.text-sm')).toHaveLength(5)
       expect(wrapper.find('button.show-more').exists()).toBe(false)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('grouped conflicts', () => {
+    it('lists every pair of a merged product, with nothing folded', () => {
+      // The consent screen: the owner decided no conflict is hidden here, and
+      // that now holds inside a card as well as between cards.
+      const wrapper = mount(SafetyWarningModal, { props: { warnings: [mergedBuffet()] } })
+
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(5)
+      expect(wrapper.find('button.show-more').exists()).toBe(false)
+    })
+
+    it('groups skin-type alerts into one card here too', () => {
+      const wrapper = mount(SafetyWarningModal, { props: { warnings: [skinAlert('a'), skinAlert('b')] } })
+
+      expect(wrapper.text()).toContain('Poorly suited to your skin type · 2 ingredients')
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
     })
   })
 })
