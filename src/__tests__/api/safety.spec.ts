@@ -367,7 +367,7 @@ describe('src/api/safety.ts', () => {
 
     it('bands the concerns table grade "Moderate" as medium', () => {
       // ingredient_concerns rows reach the product and compare pages raw, graded
-      // High/Moderate/Low. Unbanded, 13 of the 29 live rows read as unknown.
+      // High/Moderate/Low. Unbanded, 12 of the 29 live rows read as unknown.
       expect(resolveSeverityBand('Moderate')).toBe('medium')
       expect(resolveSeverityBand(' moderate ')).toBe('medium')
     })

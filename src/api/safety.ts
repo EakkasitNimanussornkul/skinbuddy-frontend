@@ -355,7 +355,7 @@ export const showsDuplicates = (outcome: SafetyOutcome) =>
  *
  * "Moderate" is the middle band too. Warnings arrive as High/Medium/Low - the
  * backend converts - but `ingredient_concerns` rows reach the product page and
- * the compare page raw, graded High/Moderate/Low. Without this, 13 of the 29
+ * the compare page raw, graded High/Moderate/Low. Without this, 12 of the 29
  * live concerns banded as unknown.
  */
 export type SeverityBand = 'high' | 'medium' | 'low' | 'unknown'
