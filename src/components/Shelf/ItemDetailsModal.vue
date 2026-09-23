@@ -168,7 +168,15 @@ const handleExecuteDelete = async () => {
             <div class="space-y-6">
 
               <!-- 🌟 1. Safety Inspection Box (With Scanner HUD animation) -->
-              <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-status="scanStatus" />
+              <!-- Foldable here; folded to start for an archived product, open
+                   for one in use. -->
+              <SafetyInspectionCard
+                :warnings="warningAlerts"
+                :is-loading="isAnalyzing"
+                :scan-status="scanStatus"
+                foldable
+                :start-folded="localItem.usage_state === 'archived'"
+              />
 
               <!-- 🌟 2. Description -->
               <div v-if="description">

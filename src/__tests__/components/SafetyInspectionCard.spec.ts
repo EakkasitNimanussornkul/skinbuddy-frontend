@@ -186,4 +186,58 @@ describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
       ])
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('folding', () => {
+    const two = [warning('High', 'high one'), warning('Low', 'low one')]
+
+    const mountFoldable = (startFolded: boolean) =>
+      mount(SafetyInspectionCard, { props: { warnings: two, scanStatus: 'warned' as never, foldable: true, startFolded } })
+
+    const fold = (wrapper: VueWrapper) => wrapper.get('h4 button.warning-fold')
+    // v-show leaves the element mounted, so visibility is read off its style.
+    const region = (wrapper: VueWrapper) => wrapper.get(`#${fold(wrapper).attributes('aria-controls')}`)
+    const isHidden = (wrapper: VueWrapper) => (region(wrapper).attributes('style') ?? '').includes('display: none')
+
+    it('starts open when asked to, and the user can fold it', async () => {
+      const wrapper = mountFoldable(false)
+
+      expect(isHidden(wrapper)).toBe(false)
+      expect(fold(wrapper).attributes('aria-expanded')).toBe('true')
+
+      await fold(wrapper).trigger('click')
+
+      expect(isHidden(wrapper)).toBe(true)
+      expect(fold(wrapper).attributes('aria-expanded')).toBe('false')
+    })
+
+    it('starts folded when asked to, keeping the count on screen, and the user can open it', async () => {
+      const wrapper = mountFoldable(true)
+
+      expect(isHidden(wrapper)).toBe(true)
+      expect(fold(wrapper).text()).toContain('2 Warnings')
+      expect(fold(wrapper).text()).toContain('Show')
+
+      await fold(wrapper).trigger('click')
+
+      expect(isHidden(wrapper)).toBe(false)
+      expect(messages(wrapper)).toEqual(['high one', 'low one'])
+    })
+
+    it('folds when the item it describes becomes one that starts folded', async () => {
+      // Archiving from inside the open details modal flips the prop.
+      const wrapper = mountFoldable(false)
+
+      await wrapper.setProps({ startFolded: true })
+
+      expect(isHidden(wrapper)).toBe(true)
+    })
+
+    it('offers no fold control unless the caller asks for one', () => {
+      const wrapper = mount(SafetyInspectionCard, { props: { warnings: two, scanStatus: 'warned' as never, startFolded: true } })
+
+      expect(wrapper.find('button.warning-fold').exists()).toBe(false)
+      expect(messages(wrapper)).toEqual(['high one', 'low one'])
+    })
+  })
 })

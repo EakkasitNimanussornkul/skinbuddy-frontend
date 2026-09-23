@@ -12,7 +12,11 @@ vi.mock('../../api/shelfapi', async (importOriginal) => ({
   removeFromShelf: vi.fn(),
 }))
 
+// The routine is read only for which shelf items it uses.
+vi.mock('../../api/routineApi', () => ({ getRoutine: vi.fn() }))
+
 import { getMyShelf, removeFromShelf } from '../../api/shelfapi'
+import { getRoutine } from '../../api/routineApi'
 import { toLocalDateString, addMonthsAsDateString } from '../../api/dates'
 import ShelfView from '../../views/ShelfView.vue'
 import ItemDetailsModal from '../../components/Shelf/ItemDetailsModal.vue'
@@ -63,10 +67,11 @@ const withProduct = (item: Partial<ShelfItem>, product: Record<string, unknown>)
  */
 const ShelfCardStub = {
   name: 'ShelfCard',
-  props: ['item'],
+  props: ['item', 'inRoutine'],
   emits: ['open-details', 'delete'],
   template: `<div class="shelf-card">
     <span class="card-id">{{ item.id }}</span>
+    <span v-if="inRoutine" class="card-in-routine">in routine</span>
     <button class="card-open" @click="$emit('open-details', item)">open</button>
     <button class="card-delete" @click="$emit('delete', item)">delete</button>
   </div>`,
@@ -115,6 +120,7 @@ describe('src/views/ShelfView.vue', () => {
     toasts.value.splice(0)
     vi.mocked(getMyShelf).mockResolvedValue([])
     vi.mocked(removeFromShelf).mockResolvedValue({})
+    vi.mocked(getRoutine).mockResolvedValue({ routine: null, steps: [] })
   })
 
   describe('fetchShelf()', () => {
@@ -226,8 +232,9 @@ describe('src/views/ShelfView.vue', () => {
 
   describe('filteredProducts (computed)', () => {
     const catalogue = () => [
-      withProduct({ id: 'cleanser' }, { name: 'Hydrating Cleanser', brand: 'CeraVe', category: 'Cleanser' }),
-      withProduct({ id: 'serum' }, { name: 'Niacinamide Serum', brand: 'The Ordinary', category: 'Serum' }),
+      // Opened, so Active: the lifecycle is read from the opened date.
+      withProduct({ id: 'cleanser', opened_date: toLocalDateString() }, { name: 'Hydrating Cleanser', brand: 'CeraVe', category: 'Cleanser' }),
+      withProduct({ id: 'serum', opened_date: toLocalDateString() }, { name: 'Niacinamide Serum', brand: 'The Ordinary', category: 'Serum' }),
       withProduct({ id: 'archived-one', usage_state: 'archived' }, { name: 'Old Toner', brand: 'Klairs', category: 'Toner' }),
       withProduct({ id: 'unopened-one', usage_state: 'unopened' }, { name: 'Spare Cleanser', brand: 'CeraVe', category: 'Cleanser' }),
     ]
@@ -470,6 +477,84 @@ describe('src/views/ShelfView.vue', () => {
       expect(shownIds(wrapper)).toEqual(['item-1'])
       expect(lastToast()!.message).toBe('Failed to remove product')
       expect(lastToast()!.type).toBe('error')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('Active and In Routine', () => {
+    const pickPill = async (wrapper: VueWrapper, label: string) => {
+      await buttonWith(wrapper, label).trigger('click')
+      await flushPromises()
+    }
+
+    // The case from the owner's report: a product added straight to a routine
+    // is stored active with no opened date.
+    const shelf = () => [
+      shelfItem({ id: 'opened-in-use', product_id: 'p-a', opened_date: toLocalDateString() }),
+      shelfItem({ id: 'added-by-routine', product_id: 'p-b', usage_state: 'active', opened_date: null }),
+      shelfItem({ id: 'sealed-spare', product_id: 'p-c', usage_state: 'unopened', opened_date: null }),
+    ]
+    const routine = { routine: { id: 'r-1' }, steps: [{ shelf_item_id: 'added-by-routine', product_id: 'p-b' }] }
+
+    it('lists only opened items under Active', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      await pickPill(wrapper, 'Active')
+
+      expect(shownIds(wrapper)).toEqual(['opened-in-use'])
+    })
+
+    it('lists an item stored active but never opened under Unopened', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      await pickPill(wrapper, 'Unopened')
+
+      expect(shownIds(wrapper)).toEqual(['added-by-routine', 'sealed-spare'])
+    })
+
+    it('lists under In Routine what the routine uses, not everything active', async () => {
+      // The defect: this pill listed every item stored as active.
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      vi.mocked(getRoutine).mockResolvedValue(routine)
+      const wrapper = await mountShelf()
+
+      await pickPill(wrapper, 'In Routine')
+
+      expect(shownIds(wrapper)).toEqual(['added-by-routine'])
+    })
+
+    it('marks the routine items on their cards', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      vi.mocked(getRoutine).mockResolvedValue(routine)
+      const wrapper = await mountShelf()
+
+      const marked = wrapper.findAll('.shelf-card').filter((c) => c.find('.card-in-routine').exists())
+      expect(marked.map((c) => c.get('.card-id').text())).toEqual(['added-by-routine'])
+    })
+
+    it('still shows the shelf when the routine fails to load, and says why In Routine is empty', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      vi.mocked(getRoutine).mockRejectedValue(new Error('network down'))
+      const wrapper = await mountShelf()
+
+      expect(shownIds(wrapper)).toEqual(['opened-in-use', 'added-by-routine', 'sealed-spare'])
+
+      await pickPill(wrapper, 'In Routine')
+
+      // Not "no items match": a routine that did not load is not an empty one.
+      expect(wrapper.get('.routine-unavailable').text()).toContain("Your routine couldn't be loaded")
+    })
+
+    it('says nothing matches, not that the routine failed, when the routine loaded empty', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      await pickPill(wrapper, 'In Routine')
+
+      expect(wrapper.find('.routine-unavailable').exists()).toBe(false)
+      expect(wrapper.text()).toContain('No items match your current search or status filters.')
     })
   })
 })

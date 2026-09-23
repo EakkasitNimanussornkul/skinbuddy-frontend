@@ -95,20 +95,23 @@ describe('src/components/Shelf/ShelfCard.vue', () => {
       expect(dateLine(wrapper)).toBe('Status: Unopened')
     })
 
-    it('reports an opened item with no derivable expiry as active, naming its period', () => {
-      // Opened, so the unopened branch above does not apply - but with no
-      // expiration_date and no opened_date to count a period from, there is no
-      // date to show. "Active" claims only what is known.
-      const wrapper = mountCard(shelfItem({ usage_state: 'active', pao: 12 }))
+    it('reports an item stored as active but never opened as unopened, naming its period', () => {
+      // The defect. This asserted "Active" for exactly this item - usage_state
+      // 'active' and no opened date, which is how a product added straight to
+      // a routine is stored - while its details panel said Unopened. Opened
+      // means an opened date: nothing has started the period-after-opening clock.
+      const wrapper = mountCard(shelfItem({ usage_state: 'active', opened_date: null, pao: 12 }))
 
-      expect(badge(wrapper)).toEqual({ type: 'good', text: 'Active' })
+      expect(badge(wrapper)).toEqual({ type: 'unopened', text: 'Unopened' })
       expect(dateLine(wrapper)).toBe('PAO: 12M')
     })
 
-    it('says the expiration is not set when an opened item has no period either', () => {
-      const wrapper = mountCard(shelfItem({ usage_state: 'active' }))
+    it('reports an opened item with no period as active, with the expiration not set', () => {
+      // Opened, but with no period and no stored date there is no expiry to
+      // count down to. "Active" claims only what is known.
+      const wrapper = mountCard(shelfItem({ usage_state: 'active', opened_date: inDays(-5) }))
 
-      expect(badge(wrapper).type).toBe('good')
+      expect(badge(wrapper)).toEqual({ type: 'good', text: 'Active' })
       expect(dateLine(wrapper)).toBe('Expiration: Not Set')
     })
 
@@ -210,6 +213,25 @@ describe('src/components/Shelf/ShelfCard.vue', () => {
 
       expect(wrapper.emitted('delete')).toHaveLength(1)
       expect(wrapper.emitted('open-details')).toBeUndefined()
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('inRoutine (render)', () => {
+    it('marks an item the routine uses, separately from its lifecycle badge', () => {
+      // An unopened product can be in the routine: the badge says Unopened and
+      // the marker says In Routine, rather than one word standing for both.
+      const wrapper = mount(ShelfCard, { props: { item: shelfItem({ opened_date: null }), inRoutine: true } })
+
+      expect(wrapper.get('.in-routine').text()).toBe('In Routine')
+      expect(badge(wrapper).text).toBe('Unopened')
+    })
+
+    it('shows no marker for an item the routine does not use, opened or not', () => {
+      const wrapper = mount(ShelfCard, { props: { item: shelfItem({ opened_date: inDays(-5) }), inRoutine: false } })
+
+      expect(wrapper.find('.in-routine').exists()).toBe(false)
+      expect(badge(wrapper).text).toBe('Active')
     })
   })
 })

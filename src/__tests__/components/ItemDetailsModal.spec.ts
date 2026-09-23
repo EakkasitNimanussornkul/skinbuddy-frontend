@@ -548,4 +548,37 @@ describe('src/components/Shelf/ItemDetailsModal.vue', () => {
       expect(wrapper.text()).toContain('Hyaluronic Acid')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('safety warnings (fold)', () => {
+    const warned = async (item: ShelfItem) => {
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: false, warnings: [CONFLICT], duplicates: [] })
+      const wrapper = await mountModal(item)
+      await flushPromises()
+      return wrapper.get('button.warning-fold')
+    }
+
+    it('shows the warnings of a product in use, and lets the user fold them', async () => {
+      const fold = await warned(shelfItem({ usage_state: 'active' }))
+
+      expect(fold.attributes('aria-expanded')).toBe('true')
+
+      await fold.trigger('click')
+
+      expect(fold.attributes('aria-expanded')).toBe('false')
+    })
+
+    it('folds the warnings of an archived product to start with, and lets the user open them', async () => {
+      // Owner request: an archived product is finished with, so its warnings
+      // are history - kept one click away rather than open over the record.
+      const fold = await warned(shelfItem({ usage_state: 'archived', archived_at: '2026-01-01T00:00:00Z' }))
+
+      expect(fold.attributes('aria-expanded')).toBe('false')
+      expect(fold.text()).toContain('1 Warning')
+
+      await fold.trigger('click')
+
+      expect(fold.attributes('aria-expanded')).toBe('true')
+    })
+  })
 })

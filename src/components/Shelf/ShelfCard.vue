@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ItemBadge from '../Shelf/ItemBadge.vue'
-import { daysUntilExpiry, resolveExpiryDate } from '../../api/shelfapi'
+import { daysUntilExpiry, isShelfItemOpened, resolveExpiryDate } from '../../api/shelfapi'
 import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
   item: ShelfItem
+  // Whether a step of the active routine uses this item. Separate from the
+  // badge: the badge is the product's lifecycle, this is the routine.
+  inRoutine?: boolean
 }>()
 
 const emit = defineEmits(['open-details', 'delete'])
@@ -24,7 +27,10 @@ const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText:
   // separately and without the opened-date fallback below.
   const targetDate = resolveExpiryDate(props.item)
 
-  const isOpened = Boolean(props.item.opened_date) || state === 'active'
+  // Opened means an opened date, not usage_state 'active' - a product added
+  // straight to a routine is stored 'active' without ever being opened, and
+  // this badge called it "Active" while its details panel said Unopened.
+  const isOpened = isShelfItemOpened(props.item)
 
   if (!targetDate) {
     if (!isOpened) {
@@ -99,6 +105,14 @@ const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText:
         <p class="text-[10px] lg:text-[11px] font-semibold text-brand-text-muted dark:text-stone-400 mt-2 sm:mt-2.5 flex items-center justify-start sm:justify-center gap-1.5 bg-brand-bg-light dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-brand-surface-border/50 dark:border-stone-800/50 w-max sm:w-auto">
           <svg class="w-3.5 h-3.5 stroke-[2] text-brand-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           <span class="truncate">{{ expirationInfo.dateText }}</span>
+        </p>
+
+        <p
+          v-if="inRoutine"
+          class="in-routine text-[10px] lg:text-[11px] font-bold text-brand-primary mt-1.5 flex items-center justify-start sm:justify-center gap-1"
+        >
+          <svg class="w-3.5 h-3.5 stroke-[2] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+          <span>In Routine</span>
         </p>
       </div>
 

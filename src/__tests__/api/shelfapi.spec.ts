@@ -17,6 +17,7 @@ import {
   daysUntilExpiry,
   resolveShelfItemStatus,
   paoPeriodHasElapsed,
+  resolveRoutineShelfIds,
 } from '../../api/shelfapi'
 import { toLocalDateString } from '../../api/dates'
 
@@ -358,8 +359,17 @@ describe('src/api/shelfapi.ts', () => {
       expect(s).toBe('Expired')
     })
 
-    it('reports an opened item with no determinable expiry as In Routine', () => {
-      expect(resolveShelfItemStatus({ usage_state: 'active' }, now)).toBe('In Routine')
+    it('reports an opened item with no determinable expiry as Active', () => {
+      // Was "In Routine", a name for the lifecycle column that said nothing
+      // about the routine. Membership is resolveRoutineShelfIds' job.
+      expect(resolveShelfItemStatus({ usage_state: 'active', opened_date: '2026-05-01' }, now)).toBe('Active')
+    })
+
+    it('reports an item stored as active but never opened as Unopened', () => {
+      // The defect. Adding an off-shelf product to a routine stores it 'active'
+      // with no opened date, and it was listed as In Routine - and as Active on
+      // its card - while its details panel said Unopened.
+      expect(resolveShelfItemStatus({ usage_state: 'active', opened_date: null, pao: 12 }, now)).toBe('Unopened')
     })
 
     it('reports an unopened item with no determinable expiry as Unopened', () => {
@@ -417,6 +427,56 @@ describe('src/api/shelfapi.ts', () => {
 
     it('reports no period as elapsed when the period is not a number', () => {
       expect(paoPeriodHasElapsed('2020-01-01', Number.NaN, now)).toBe(false)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('resolveRoutineShelfIds()', () => {
+    const shelf = [
+      { id: 'cleanser-item', product_id: 'cleanser', usage_state: 'active' },
+      { id: 'serum-item', product_id: 'serum', usage_state: 'unopened' },
+      { id: 'toner-item', product_id: 'toner', usage_state: 'active' },
+      { id: 'old-toner-item', product_id: 'old-toner', usage_state: 'archived' },
+    ]
+
+    it('marks the shelf items the routine steps name', () => {
+      const ids = resolveRoutineShelfIds([{ shelf_item_id: 'cleanser-item', product_id: 'cleanser' }], shelf)
+
+      expect([...ids]).toEqual(['cleanser-item'])
+    })
+
+    it('does not mark an active item the routine does not use', () => {
+      // The defect: every active item was "In Routine", in use or not.
+      const ids = resolveRoutineShelfIds([{ shelf_item_id: 'cleanser-item', product_id: 'cleanser' }], shelf)
+
+      expect(ids.has('toner-item')).toBe(false)
+    })
+
+    it('matches a step with no shelf item to the shelf by product', () => {
+      // shelf_item_id is optional on the add-step request.
+      const ids = resolveRoutineShelfIds([{ shelf_item_id: null, product_id: 'serum' }], shelf)
+
+      expect([...ids]).toEqual(['serum-item'])
+    })
+
+    it('marks an unopened item the routine uses - membership is not the lifecycle', () => {
+      const ids = resolveRoutineShelfIds([{ shelf_item_id: 'serum-item', product_id: 'serum' }], shelf)
+
+      expect(ids.has('serum-item')).toBe(true)
+    })
+
+    it('leaves archived items out, whether named or matched by product', () => {
+      const ids = resolveRoutineShelfIds(
+        [{ shelf_item_id: 'old-toner-item', product_id: 'old-toner' }, { shelf_item_id: null, product_id: 'old-toner' }],
+        shelf,
+      )
+
+      expect(ids.size).toBe(0)
+    })
+
+    it('marks nothing when there is no routine', () => {
+      expect(resolveRoutineShelfIds([], shelf).size).toBe(0)
+      expect(resolveRoutineShelfIds(null, shelf).size).toBe(0)
     })
   })
 })

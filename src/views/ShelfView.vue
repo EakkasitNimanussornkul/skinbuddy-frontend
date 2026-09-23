@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyShelf, removeFromShelf, resolveShelfItemStatus } from '../api/shelfapi'
+import { getMyShelf, removeFromShelf, resolveRoutineShelfIds, resolveShelfItemStatus } from '../api/shelfapi'
+import { getRoutine } from '../api/routineApi'
 import { resolveCatalogState } from '../api/products'
 import { useToast } from '../composables/useToast'
 
@@ -29,7 +30,31 @@ const searchQuery = ref('')
 const activeCategory = ref('All')
 const activeStatus = ref('All')
 
-const statuses = ['All', 'Unopened', 'In Routine', 'Expiring Soon', 'Expired', 'Archived']
+// "Active" is the lifecycle (opened and in use); "In Routine" is whether a step
+// of the active routine uses the item. They used to be one pill, "In Routine",
+// that listed every item stored as active - including products added to a
+// routine that had never been opened, and excluding nothing that was not in it.
+const statuses = ['All', 'Unopened', 'Active', 'In Routine', 'Expiring Soon', 'Expired', 'Archived']
+
+// The routine, read only for which shelf items it uses. Loaded beside the shelf
+// rather than inside it, so a routine that fails to load costs the In Routine
+// markers and nothing else - the shelf itself still shows.
+const routineSteps = ref<any[]>([])
+const routineFailed = ref(false)
+
+const fetchRoutine = async () => {
+  routineFailed.value = false
+  try {
+    const data = await getRoutine()
+    routineSteps.value = data?.steps ?? []
+  } catch (error) {
+    console.error('Failed to load routine:', error)
+    routineSteps.value = []
+    routineFailed.value = true
+  }
+}
+
+const routineShelfIds = computed(() => resolveRoutineShelfIds(routineSteps.value, myShelf.value))
 
 const dynamicCategories = computed(() => {
   const uniqueCats = new Set<string>()
@@ -84,7 +109,15 @@ const handleModalRefresh = async () => {
   }
 }
 
-onMounted(() => fetchShelf())
+onMounted(() => {
+  fetchShelf()
+  fetchRoutine()
+})
+
+const retryRetrieval = () => {
+  fetchShelf()
+  fetchRoutine()
+}
 
 const filteredProducts = computed(() => {
   return myShelf.value.filter(item => {
@@ -103,7 +136,10 @@ const filteredProducts = computed(() => {
     const query = searchQuery.value.toLowerCase()
     const matchesSearch = !query || name.includes(query) || brand.includes(query) || itemCategory.includes(query)
     const matchesCategory = activeCategory.value === 'All' || itemCategory === activeCategory.value.toLowerCase()
-    const matchesStatus = activeStatus.value === 'All' ? computedStatus !== 'Archived' : computedStatus === activeStatus.value
+    const matchesStatus =
+      activeStatus.value === 'All' ? computedStatus !== 'Archived'
+      : activeStatus.value === 'In Routine' ? routineShelfIds.value.has(item.id)
+      : computedStatus === activeStatus.value
 
     return matchesSearch && matchesCategory && matchesStatus
   })
@@ -182,7 +218,7 @@ const executeDelete = async () => {
           </p>
         </div>
         <button
-          @click="fetchShelf()"
+          @click="retryRetrieval()"
           class="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer transition-all active:scale-95"
         >
           Retry Retrieval
@@ -214,6 +250,7 @@ const executeDelete = async () => {
             v-for="item in filteredProducts"
             :key="item.id"
             :item="item"
+            :in-routine="routineShelfIds.has(item.id)"
             @open-details="viewingItem = item"
             @delete="itemToDelete = item"
           />
@@ -221,7 +258,12 @@ const executeDelete = async () => {
 
         <!-- Filter Empty State -->
         <div v-else class="text-center py-12 bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 mt-2 shadow-sm">
-          <p class="text-brand-text-muted mb-3 text-sm font-medium">No items match your current search or status filters.</p>
+          <!-- A routine that did not load cannot be told apart from a routine
+               with nothing in it, so the In Routine pill says which it is. -->
+          <p v-if="activeStatus === 'In Routine' && routineFailed" class="routine-unavailable text-brand-text-muted mb-3 text-sm font-medium">
+            Your routine couldn't be loaded, so we can't tell which products are in it.
+          </p>
+          <p v-else class="text-brand-text-muted mb-3 text-sm font-medium">No items match your current search or status filters.</p>
           <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-xs underline hover:text-brand-primary-hover transition-colors cursor-pointer">Reset Filters</button>
         </div>
       </div>

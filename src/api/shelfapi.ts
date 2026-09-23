@@ -135,17 +135,37 @@ export const resolveExpiryDate = (item: {
 }
 
 /**
- * `Archived` `Expired` `Expiring Soon` `In Routine` `Unopened`
+ * `Archived` `Expired` `Expiring Soon` `Active` `Unopened`
  *
  * The single derivation behind both the card badge and the status filter. It
  * previously existed twice, in ShelfCard and ShelfView, and the two disagreed.
+ *
+ * `Active` replaces what was called `In Routine`. That name described the
+ * lifecycle column, not the routine: every item with usage_state 'active' was
+ * listed under it whether or not any routine step used it. Routine membership
+ * is now its own fact - see resolveRoutineShelfIds - because an item can be in
+ * use without being in the routine, and in the routine without being opened.
  */
 export type ShelfItemStatus =
   | 'Archived'
   | 'Expired'
   | 'Expiring Soon'
-  | 'In Routine'
+  | 'Active'
   | 'Unopened'
+
+/**
+ * Whether the product has been opened, read from the opened date alone.
+ *
+ * Not from usage_state. Adding an off-shelf product to a routine stores it with
+ * usage_state 'active' and no opened date - the routine modal and the backend's
+ * routine apply both do this - so the state column says "active" for a product
+ * nobody has opened. The card called that "Active", the filter "In Routine",
+ * and the item's own details panel, which reads the opened date, "Status:
+ * Unopened". The opened date is what starts the period-after-opening clock, so
+ * it is the one field that can answer the question.
+ */
+export const isShelfItemOpened = (item: { opened_date?: string | null } | null | undefined): boolean =>
+  Boolean(item?.opened_date)
 
 /** Days from `now` until expiry; negative once past. Null when undeterminable. */
 export const daysUntilExpiry = (
@@ -207,5 +227,34 @@ export const resolveShelfItemStatus = (
     if (daysLeft <= 30) return 'Expiring Soon'
   }
 
-  return state === 'active' ? 'In Routine' : 'Unopened'
+  return isShelfItemOpened(item) ? 'Active' : 'Unopened'
+}
+
+/**
+ * The ids of the shelf items the active routine uses.
+ *
+ * A step names its shelf item when it was added with one; a step without one
+ * (the add-step request makes it optional) is matched to the shelf by product.
+ * Archived items are left out: the shelf lists them apart from everything in
+ * use, and an archived product still referenced by a step is not one the user
+ * is using.
+ */
+export const resolveRoutineShelfIds = (
+  steps: ReadonlyArray<{ shelf_item_id?: string | null; product_id?: string | null }> | null | undefined,
+  shelf: ReadonlyArray<{ id: string; product_id?: string | null; usage_state?: string | null }>,
+): Set<string> => {
+  const ids = new Set<string>()
+  const live = shelf.filter((item) => item.usage_state !== 'archived')
+
+  for (const step of steps ?? []) {
+    if (step.shelf_item_id) {
+      if (live.some((item) => item.id === step.shelf_item_id)) ids.add(step.shelf_item_id)
+      continue
+    }
+    for (const item of live) {
+      if (step.product_id && item.product_id === step.product_id) ids.add(item.id)
+    }
+  }
+
+  return ids
 }
