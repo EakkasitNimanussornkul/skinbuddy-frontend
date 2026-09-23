@@ -372,6 +372,50 @@ const SPEC_MAP = [
     prerequisite: 'Global fetch stubbed and the shared axios client mocked. No network access.',
     note: 'exchangeLineCode() is currently unreferenced by application code - nothing in src/ calls it, and authentication runs through the LINE redirect flow in AuthCallbackView. It is covered because the Test Record documents it; the document should not imply the app exercises this path.',
   },
+  // Appended after every existing entry, so registering the stepping work
+  // moves none of the group IDs already cited in the Test Record.
+  {
+    file: 'src/__tests__/composables/useStepList.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'composables/useStepList',
+    prerequisite: 'The composable called directly with a ref or getter source and plain arrays. No component mounting and no network access.',
+    note: 'The rule behind every "Show N more" control in the app. It reveals a fixed step per press instead of jumping from the first slice to the whole list, and reports the exact size of a last partial step so the label never promises more than it shows. It resets when the source array is replaced, keyed on identity rather than length, so a details modal re-pointed at another item does not open halfway down the previous one. Two clauses were removed after mutation testing showed they decided nothing; the guard that replaced one of them is pinned by a card that grows the list in place after a stray press - written first without the growth, that card passed with the guard deleted.',
+  },
+  {
+    file: 'src/__tests__/components/ShowMoreControl.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/ShowMoreControl',
+    prerequisite: 'The component mounted with @vue/test-utils with its counts passed directly. No store, no router, no network.',
+    note: 'The one control every stepped list renders, so the wording is shared: "Show 4 more ingredients (7 left)", singular for a single remaining item ("Show 1 more conflict"), and "Show less" once past the first slice. It renders nothing when there is nothing to reveal or fold back.',
+  },
+  {
+    file: 'src/__tests__/components/IngredientsExplained.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/IngredientsExplained',
+    prerequisite: 'The component mounted with @vue/test-utils with an ingredient list passed directly. No store, no router, no network.',
+    note: 'Five explanations, then four more at a time. It used to go from five straight to every explanation - 52 on the longest product in the live catalogue.',
+  },
+  {
+    file: 'src/__tests__/components/KeyActivesGrid.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/KeyActivesGrid',
+    prerequisite: 'The component mounted with @vue/test-utils with ingredient rows passed directly. No store, no router, no network.',
+    note: 'Four actives, then four more at a time, with the full count kept in the header. The fold is opt-in: ItemDetailsModal asks for it, because the actives sit among several other sections there, and the compare matrix does not, because the actives are the subject of that panel. The fold card reads the v-show inline style directly rather than isVisible(), which reported the region visible after folding on an unattached mount even though its style was display none.',
+  },
+  {
+    file: 'src/__tests__/components/TargetedConcernsSection.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/TargetedConcernsSection',
+    prerequisite: 'The component mounted with @vue/test-utils with a shelf item passed directly. No store, no router, no network.',
+    note: 'Covers the tag extraction and the stepping. What the section means is recorded separately, because its heading is ambiguous: on the shelf its chips come from the good_for field of each ingredient, which is what the product helps with - the opposite sense to "concerns" on the product page, which are warnings. The component also reads ingredient_concerns titles into the same chips; the shelf join does not select that relation today, so those never appear, but they would read as benefits if it ever did.',
+  },
+  {
+    file: 'src/__tests__/components/SafetyInspectionCard.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/SafetyInspectionCard',
+    prerequisite: 'The component mounted with @vue/test-utils with warnings and a scan status passed directly. No store, no router, no network.',
+    note: 'Warnings most severe first, two at a time, with the header count still stating the total - sorting first is what makes folding safe here, since the worst clash is always among those on screen. The Proceed Anyway dialogue deliberately does not fold, and that is pinned in its own spec, because it is the consent screen for adding a conflicting product.',
+  },
 ]
 
 function runSuite() {
