@@ -80,31 +80,44 @@ export const groupSimilarDetails = (
     return message
   }
 
-  const groups: Array<ConflictDetailGroup & { template: string | null }> = []
+  // Two kinds of sentence reach this, per the backend (compatibility_service,
+  // commented in 4eb143b). A category-rule sentence names the other product's
+  // ingredient ("Combining Salicylic Acid with Pentapeptide-18 is unadvised.
+  // ..."), so it is compared with that ingredient blanked out and a folded line
+  // says "these N ingredients". An ingredient-pair sentence never names it
+  // ("Layering Salicylic Acid directly alongside it triggers a structural
+  // clash. ..."), so two such pairs with the same rule text are word for word
+  // identical - and left unfolded they rendered as two indistinguishable lines,
+  // with nothing saying which ingredient each was about. Those fold on the
+  // exact sentence, which is left as it is. Either way the ingredient names for
+  // the chips come from conflicting_ingredient, never from parsing the message.
+  const groups: Array<ConflictDetailGroup & { key: string; templated: boolean }> = []
   for (const detail of details ?? []) {
     const message = stripProduct(detail.message)
     const other = detail.conflicting_ingredient?.trim()
-    const template = other && message.includes(other) ? message.split(other).join(PLACEHOLDER) : null
-    const match = template
-      ? groups.find((g) => g.template === template && g.severity === detail.severity && g.alert_type === detail.alert_type)
+    const templated = !!other && message.includes(other)
+    const key = templated ? message.split(other!).join(PLACEHOLDER) : message
+    const match = other
+      ? groups.find((g) => g.key === key && g.templated === templated && g.severity === detail.severity && g.alert_type === detail.alert_type)
       : undefined
 
-    if (match && other) {
+    if (match && other && !match.ingredients.includes(other)) {
       match.ingredients.push(other)
-    } else {
+    } else if (!match) {
       groups.push({
         alert_type: detail.alert_type,
         severity: detail.severity,
         ingredients: other ? [other] : [],
         message,
-        template,
+        key,
+        templated,
       })
     }
   }
 
-  return groups.map(({ template, ...group }) =>
-    group.ingredients.length > 1 && template
-      ? { ...group, message: template.split(PLACEHOLDER).join(`these ${group.ingredients.length} ingredients`) }
+  return groups.map(({ key, templated, ...group }) =>
+    group.ingredients.length > 1 && templated
+      ? { ...group, message: key.split(PLACEHOLDER).join(`these ${group.ingredients.length} ingredients`) }
       : group,
   )
 }

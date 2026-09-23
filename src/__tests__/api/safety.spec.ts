@@ -493,13 +493,38 @@ describe('src/api/safety.ts', () => {
       expect(out).toHaveLength(2)
     })
 
-    it('leaves a pair alone when its message does not contain its own ingredient', () => {
-      // Nothing to blank out, so nothing to compare on - no merging on a guess.
-      const odd = { ...peptidePair('Mystery'), message: 'An unrelated sentence.' }
-      const out = groupSimilarDetails([odd, { ...odd }], BUFFET)
+    it('folds identical ingredient-pair sentences, naming each ingredient from its field', () => {
+      // The backend's pass-1 sentence never names the other product's
+      // ingredient, so two pairs under the same rule text were word for word
+      // identical - rendered as two indistinguishable lines. They fold on the
+      // exact sentence, which is kept as it is, and the chips name the
+      // ingredients from conflicting_ingredient.
+      const out = groupSimilarDetails([
+        distinctPair('Medium', 'Retinol', 'Use them on alternate nights.'),
+        distinctPair('Medium', 'Retinal', 'Use them on alternate nights.'),
+      ], BUFFET)
+
+      expect(out).toHaveLength(1)
+      expect(out[0]!.ingredients).toEqual(['Retinol', 'Retinal'])
+      expect(out[0]!.message).toBe('Layering Salicylic Acid directly alongside it triggers a structural clash. Use them on alternate nights.')
+    })
+
+    it('does not fold a category sentence with an ingredient-pair sentence that happens to match it', () => {
+      // One names its ingredient and is compared as a template; the other does
+      // not and is compared exactly. They are never the same kind of line.
+      const category = peptidePair('X')
+      const pass1 = { ...category, conflicting_ingredient: 'Y', message: category.message.replace('X', '\u0000') }
+      const out = groupSimilarDetails([category, pass1], BUFFET)
 
       expect(out).toHaveLength(2)
-      expect(out[0]!.message).toBe('An unrelated sentence.')
+    })
+
+    it('drops an exact duplicate pair rather than naming the same ingredient twice', () => {
+      const pair = peptidePair(PEPTIDES[0]!)
+      const out = groupSimilarDetails([pair, { ...pair }], BUFFET)
+
+      expect(out).toHaveLength(1)
+      expect(out[0]!.ingredients).toEqual([PEPTIDES[0]])
     })
 
     it('leaves a pair with no conflicting ingredient as its own line', () => {

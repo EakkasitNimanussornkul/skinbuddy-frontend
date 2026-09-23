@@ -37,7 +37,7 @@ describe('src/components/Shared/ConflictDetailsList.vue', () => {
     it('drops the product prefix the card heading already states', () => {
       const wrapper = buffetList()
 
-      expect(lines(wrapper)[0]).toBe('Layering Salicylic Acid with Copper Tripeptide-1 releases free copper ions that oxidise the acid.')
+      expect(lines(wrapper)[0]).toBe('Layering Salicylic Acid directly alongside it triggers a structural clash. Releases free copper ions that oxidise the acid.')
       expect(lines(wrapper).join(' ')).not.toContain('Conflict with')
     })
 
@@ -76,12 +76,12 @@ describe('src/components/Shared/ConflictDetailsList.vue', () => {
       // like "critical" arrives title-cased - and the backend ranks it below
       // Low, so it sits last in details.
       const w = mergedBuffet()
-      w.details!.push(distinctPair('Critical', 'Niacinamide', 'is flagged by a rule graded outside the known bands.'))
+      w.details!.push(distinctPair('Critical', 'Niacinamide', 'Flagged by a rule graded outside the known bands.'))
       const wrapper = mountList({ details: w.details, conflictingProduct: w.conflicting_product, fold: false })
       const items = wrapper.findAll('li.conflict-detail')
 
       expect(items).toHaveLength(4)
-      expect(items[3]!.text()).toContain('Niacinamide')
+      expect(items[3]!.text()).toContain('graded outside the known bands')
       expect(items[3]!.find('li > span').exists()).toBe(false)
       // The banded lines keep their chips.
       expect(items[0]!.get('li > span').text()).toBe('High')

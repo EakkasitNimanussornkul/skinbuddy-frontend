@@ -26,13 +26,18 @@ export const PEPTIDES = [
   'Palmitoyl Tetrapeptide-7',
 ]
 
-/** A pair with a reason of its own, which must never fold into the peptides. */
+/**
+ * An ingredient-pair (pass 1) clash, in the backend's exact form. Unlike the
+ * category sentence above it never names the other product's ingredient - the
+ * name is only in conflicting_ingredient. A different reason keeps it from
+ * folding into anything.
+ */
 export const distinctPair = (severity: string, conflicting: string, reason: string): ConflictDetail => ({
   alert_type: severity === 'High' ? 'Chemical Interaction Warning' : 'Active Routine Clash',
   severity,
   ingredient: 'Salicylic Acid',
   conflicting_ingredient: conflicting,
-  message: `Conflict with ${BUFFET}: Layering Salicylic Acid with ${conflicting} ${reason}`,
+  message: `Conflict with ${BUFFET}: Layering Salicylic Acid directly alongside it triggers a structural clash. ${reason}`,
 })
 
 /**
@@ -46,9 +51,9 @@ export const mergedBuffet = (): WarningAlert => ({
   message: `Conflict with ${BUFFET}: 7 ingredient clashes. Salicylic Acid with Copper Tripeptide-1, Multi-Peptide Complex, ...`,
   conflicting_product: BUFFET,
   details: [
-    distinctPair('High', 'Copper Tripeptide-1', 'releases free copper ions that oxidise the acid.'),
+    distinctPair('High', 'Copper Tripeptide-1', 'Releases free copper ions that oxidise the acid.'),
     ...PEPTIDES.map(peptidePair),
-    distinctPair('Low', 'Hyaluronic Acid', 'can briefly lower its hydrating effect.'),
+    distinctPair('Low', 'Hyaluronic Acid', 'Can briefly lower its hydrating effect.'),
   ],
 })
 
