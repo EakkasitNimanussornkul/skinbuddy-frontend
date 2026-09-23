@@ -1,17 +1,21 @@
 /**
  * Warnings in the grouped shape the backend sends from feat/group-conflicts-by-
  * product (88733e9): one warning per clashing product, its ingredient pairs in
- * `details`, most severe first. Modelled on the live case that prompted it -
- * the 2% BHA exfoliant against the Buffet serum, eight pairs in one product.
+ * `details`, most severe first. Modelled on the live case in the owner's
+ * screenshot - the 2% BHA exfoliant against the Buffet serum, where every
+ * peptide pair carried the same sentence.
  */
 import type { ConflictDetail, WarningAlert } from '../../api/safety'
 
-export const detail = (severity: string, conflicting: string): ConflictDetail => ({
+export const BUFFET = '"Buffet" Multi-Technology Peptide Serum'
+
+/** The backend's exact peptide sentence, one per peptide. */
+export const peptidePair = (peptide: string): ConflictDetail => ({
   alert_type: 'Active Routine Clash',
-  severity,
+  severity: 'Medium',
   ingredient: 'Salicylic Acid',
-  conflicting_ingredient: conflicting,
-  message: `Combining Salicylic Acid with ${conflicting} is unadvised: the low pH can degrade it.`,
+  conflicting_ingredient: peptide,
+  message: `Category Conflict with ${BUFFET}: Combining Salicylic Acid with ${peptide} is unadvised. Low-pH BHA exfoliants can degrade peptide activity through deamination when layered in the same routine.`,
 })
 
 export const PEPTIDES = [
@@ -22,18 +26,29 @@ export const PEPTIDES = [
   'Palmitoyl Tetrapeptide-7',
 ]
 
-/** One product clashing on five pairs: High first, then Medium. */
+/** A pair with a reason of its own, which must never fold into the peptides. */
+export const distinctPair = (severity: string, conflicting: string, reason: string): ConflictDetail => ({
+  alert_type: severity === 'High' ? 'Chemical Interaction Warning' : 'Active Routine Clash',
+  severity,
+  ingredient: 'Salicylic Acid',
+  conflicting_ingredient: conflicting,
+  message: `Conflict with ${BUFFET}: Layering Salicylic Acid with ${conflicting} ${reason}`,
+})
+
+/**
+ * One product, seven pairs, three reasons: a High pair with its own reason,
+ * five Medium peptides sharing one sentence, a Low pair with its own reason.
+ * Grouped, that is three lines - the first two shown, one behind Show more.
+ */
 export const mergedBuffet = (): WarningAlert => ({
-  alert_type: 'Active Routine Clash',
+  alert_type: 'Chemical Interaction Warning',
   severity: 'High',
-  message: 'Conflict with "Buffet" Multi-Technology Peptide Serum: 5 ingredient clashes. Salicylic Acid with Multi-Peptide Complex, ...',
-  conflicting_product: '"Buffet" Multi-Technology Peptide Serum',
+  message: `Conflict with ${BUFFET}: 7 ingredient clashes. Salicylic Acid with Copper Tripeptide-1, Multi-Peptide Complex, ...`,
+  conflicting_product: BUFFET,
   details: [
-    detail('High', PEPTIDES[0]!),
-    detail('Medium', PEPTIDES[1]!),
-    detail('Medium', PEPTIDES[2]!),
-    detail('Medium', PEPTIDES[3]!),
-    detail('Low', PEPTIDES[4]!),
+    distinctPair('High', 'Copper Tripeptide-1', 'releases free copper ions that oxidise the acid.'),
+    ...PEPTIDES.map(peptidePair),
+    distinctPair('Low', 'Hyaluronic Acid', 'can briefly lower its hydrating effect.'),
   ],
 })
 

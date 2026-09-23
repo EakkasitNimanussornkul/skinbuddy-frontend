@@ -14,8 +14,9 @@ import {
   sortBySeverity,
   hasConflictDetails,
   groupSkinTypeConflicts,
+  groupSimilarDetails,
 } from '../../api/safety'
-import { mergedBuffet, singlePair, skinAlert } from '../fixtures/conflicts'
+import { BUFFET, PEPTIDES, distinctPair, mergedBuffet, peptidePair, singlePair, skinAlert } from '../fixtures/conflicts'
 
 const conflict = {
   alert_type: 'conflict',
@@ -426,7 +427,9 @@ describe('src/api/safety.ts', () => {
     it('puts the merged card where the first skin-type alert was', () => {
       const out = groupSkinTypeConflicts([singlePair(), skinAlert('a'), mergedBuffet(), skinAlert('b')])
 
-      expect(out.map((w) => w.alert_type)).toEqual(['Chemical Interaction Warning', 'Skin Type Conflict', 'Active Routine Clash'])
+      // singlePair, then the merged skin card where the first skin alert was,
+      // then the Buffet card that followed it.
+      expect(out.map((w) => w.conflicting_product ?? w.alert_type)).toEqual(['Glycolic Toner', 'Skin Type Conflict', BUFFET])
     })
 
     it('leaves a single skin-type alert exactly as it arrived', () => {
@@ -444,6 +447,79 @@ describe('src/api/safety.ts', () => {
 
     it('treats an absent list as empty', () => {
       expect(groupSkinTypeConflicts(undefined)).toEqual([])
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('groupSimilarDetails()', () => {
+    it('folds pairs with the same sentence into one line naming each ingredient', () => {
+      // The owner's screenshot: one sentence repeated per peptide.
+      const out = groupSimilarDetails(PEPTIDES.map(peptidePair), BUFFET)
+
+      expect(out).toHaveLength(1)
+      expect(out[0]!.ingredients).toEqual(PEPTIDES)
+      expect(out[0]!.message).toBe(
+        'Combining Salicylic Acid with these 5 ingredients is unadvised. Low-pH BHA exfoliants can degrade peptide activity through deamination when layered in the same routine.',
+      )
+    })
+
+    it('keeps the backend order, a group sitting where its first pair was', () => {
+      const out = groupSimilarDetails(mergedBuffet().details, BUFFET)
+
+      expect(out.map((g) => g.severity)).toEqual(['High', 'Medium', 'Low'])
+      expect(out.map((g) => g.ingredients.length)).toEqual([1, 5, 1])
+    })
+
+    it('never merges pairs with a different explanation', () => {
+      const out = groupSimilarDetails([
+        distinctPair('Medium', 'A', 'reason one.'),
+        distinctPair('Medium', 'B', 'reason two.'),
+      ], BUFFET)
+
+      expect(out).toHaveLength(2)
+    })
+
+    it('never merges the same sentence at a different severity', () => {
+      const lower = { ...peptidePair(PEPTIDES[1]!), severity: 'Low' }
+      const out = groupSimilarDetails([peptidePair(PEPTIDES[0]!), lower], BUFFET)
+
+      expect(out).toHaveLength(2)
+    })
+
+    it('leaves a pair alone when its message does not contain its own ingredient', () => {
+      // Nothing to blank out, so nothing to compare on - no merging on a guess.
+      const odd = { ...peptidePair('Mystery'), message: 'An unrelated sentence.' }
+      const out = groupSimilarDetails([odd, { ...odd }], BUFFET)
+
+      expect(out).toHaveLength(2)
+      expect(out[0]!.message).toBe('An unrelated sentence.')
+    })
+
+    it('leaves a pair with no conflicting ingredient as its own line', () => {
+      const bare = { ...peptidePair('X'), conflicting_ingredient: null }
+      const out = groupSimilarDetails([bare, { ...bare }], BUFFET)
+
+      expect(out).toHaveLength(2)
+      expect(out[0]!.ingredients).toEqual([])
+    })
+
+    it('drops the product prefix only when it names this card\u2019s product', () => {
+      const pair = peptidePair(PEPTIDES[0]!)
+
+      expect(groupSimilarDetails([pair], BUFFET)[0]!.message.startsWith('Combining')).toBe(true)
+      expect(groupSimilarDetails([pair], 'Some Other Serum')[0]!.message.startsWith('Category Conflict with')).toBe(true)
+      expect(groupSimilarDetails([pair], null)[0]!.message.startsWith('Category Conflict with')).toBe(true)
+    })
+
+    it('keeps a single pair as its own sentence rather than a count', () => {
+      const out = groupSimilarDetails(singlePair().details, 'Glycolic Toner')
+
+      expect(out[0]!.message).toBe('layering two exfoliating acids can over-exfoliate.')
+      expect(out[0]!.ingredients).toEqual(['Glycolic Acid'])
+    })
+
+    it('treats an absent list as empty', () => {
+      expect(groupSimilarDetails(undefined)).toEqual([])
     })
   })
 })

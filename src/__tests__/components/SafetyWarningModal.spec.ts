@@ -225,10 +225,12 @@ describe('src/components/Shelf/SafetyWarningModal.vue', () => {
   describe('grouped conflicts', () => {
     it('lists every pair of a merged product, with nothing folded', () => {
       // The consent screen: the owner decided no conflict is hidden here, and
-      // that now holds inside a card as well as between cards.
+      // that now holds inside a card as well as between cards. Seven pairs,
+      // three reasons: all three lines, and all five grouped peptides named.
       const wrapper = mount(SafetyWarningModal, { props: { warnings: [mergedBuffet()] } })
 
-      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(5)
+      expect(wrapper.findAll('li.conflict-detail')).toHaveLength(3)
+      expect(wrapper.findAll('.ingredient-chip')).toHaveLength(5)
       expect(wrapper.find('button.show-more').exists()).toBe(false)
     })
 

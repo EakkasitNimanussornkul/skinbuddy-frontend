@@ -304,9 +304,9 @@ describe('src/components/Shared/SafetyCheckModal.vue', () => {
     it('lists a merged product conflict pair by pair, two at a time', () => {
       const wrapper = mountModal({ scanStatus: 'warned', warnings: [mergedBuffet() as never] })
 
-      expect(wrapper.text()).toContain('5 ingredient clashes')
+      expect(wrapper.text()).toContain('7 ingredient clashes')
       expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
-      expect(wrapper.get('button.show-more').text()).toContain('Show 2 more clashes')
+      expect(wrapper.get('button.show-more').text()).toContain('Show 1 more clash')
     })
 
     it('merges several skin-type alerts into one card', () => {

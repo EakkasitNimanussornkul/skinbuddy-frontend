@@ -138,10 +138,10 @@ describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
       const wrapper = mountCard([mergedBuffet() as never])
 
       expect(wrapper.text()).toContain('1 Warning')
-      expect(wrapper.text()).toContain('With "Buffet" Multi-Technology Peptide Serum · 5 ingredient clashes')
+      expect(wrapper.text()).toContain('With "Buffet" Multi-Technology Peptide Serum · 7 ingredient clashes')
       expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
       // The summary names the pairs without the why; the pairs below say both.
-      expect(wrapper.text()).not.toContain('5 ingredient clashes. Salicylic Acid with')
+      expect(wrapper.text()).not.toContain('7 ingredient clashes. Salicylic Acid with')
     })
 
     it('keeps a single-pair warning as its own sentence', () => {

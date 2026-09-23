@@ -156,7 +156,7 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
     it('lists a merged pair conflict pair by pair, two at a time', () => {
       const wrapper = mountMatrix(compareData({}, {}, { conflicts: [mergedBuffet()] }))
 
-      expect(wrapper.text()).toContain('5 ingredient clashes')
+      expect(wrapper.text()).toContain('7 ingredient clashes')
       expect(wrapper.findAll('li.conflict-detail')).toHaveLength(2)
     })
   })

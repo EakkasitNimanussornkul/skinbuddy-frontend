@@ -33,6 +33,82 @@ export interface WarningAlert {
 export const hasConflictDetails = (warning: Pick<WarningAlert, 'details'> | null | undefined): boolean =>
   Array.isArray(warning?.details) && warning.details.length > 1
 
+/** Several ingredient pairs that clash for the same reason, shown as one line. */
+export interface ConflictDetailGroup {
+  alert_type: string
+  severity: string
+  // The other product's ingredients this rule fires on. One entry when the
+  // pair stood alone; two or more when identical pairs were folded together.
+  ingredients: string[]
+  // The shared sentence, the product prefix removed when the card already
+  // names the product, and the ingredient replaced by a count when grouped.
+  message: string
+}
+
+const PLACEHOLDER = '\u0000'
+
+/**
+ * Fold pairs whose explanation is word for word the same apart from the other
+ * product's ingredient.
+ *
+ * The owner's screenshot: a BHA exfoliant against the Buffet serum clashed on
+ * eight peptides - Multi-Peptide Complex, Acetyl Hexapeptide-8,
+ * Pentapeptide-18 and five more - and every pair carried the same sentence
+ * about low-pH acids degrading peptides. Eight near-identical paragraphs said
+ * one thing. Grouped here, they become one line naming the eight ingredients.
+ *
+ * The rule is textual and deliberately narrow: two pairs merge only when their
+ * severity, alert type and message match once the conflicting ingredient is
+ * blanked out. Anything else - a different explanation, a different severity,
+ * a message that does not contain its own ingredient - stays its own line, so
+ * nothing is ever merged on a guess about chemistry.
+ *
+ * The "Conflict with <product>: " prefix is dropped when the card already
+ * names that product, since every line in the card would otherwise repeat it.
+ * Order is kept: a group sits where its first pair was, so the backend's
+ * most-severe-first order still holds.
+ */
+export const groupSimilarDetails = (
+  details: readonly ConflictDetail[] | null | undefined,
+  conflictingProduct?: string | null,
+): ConflictDetailGroup[] => {
+  const stripProduct = (message: string) => {
+    if (!conflictingProduct) return message
+    for (const prefix of [`Category Conflict with ${conflictingProduct}: `, `Conflict with ${conflictingProduct}: `]) {
+      if (message.startsWith(prefix)) return message.slice(prefix.length)
+    }
+    return message
+  }
+
+  const groups: Array<ConflictDetailGroup & { template: string | null }> = []
+  for (const detail of details ?? []) {
+    const message = stripProduct(detail.message)
+    const other = detail.conflicting_ingredient?.trim()
+    const template = other && message.includes(other) ? message.split(other).join(PLACEHOLDER) : null
+    const match = template
+      ? groups.find((g) => g.template === template && g.severity === detail.severity && g.alert_type === detail.alert_type)
+      : undefined
+
+    if (match && other) {
+      match.ingredients.push(other)
+    } else {
+      groups.push({
+        alert_type: detail.alert_type,
+        severity: detail.severity,
+        ingredients: other ? [other] : [],
+        message,
+        template,
+      })
+    }
+  }
+
+  return groups.map(({ template, ...group }) =>
+    group.ingredients.length > 1 && template
+      ? { ...group, message: template.split(PLACEHOLDER).join(`these ${group.ingredients.length} ingredients`) }
+      : group,
+  )
+}
+
 export const SKIN_TYPE_CONFLICT = 'Skin Type Conflict'
 
 /**

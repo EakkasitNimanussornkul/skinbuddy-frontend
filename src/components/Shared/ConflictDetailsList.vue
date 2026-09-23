@@ -14,7 +14,7 @@
  * pair stays listed.
  */
 import { computed, useId } from 'vue'
-import { SKIN_TYPE_CONFLICT, resolveSeverityBand, type ConflictDetail } from '../../api/safety'
+import { SKIN_TYPE_CONFLICT, groupSimilarDetails, resolveSeverityBand, type ConflictDetail } from '../../api/safety'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from './ShowMoreControl.vue'
 
@@ -27,8 +27,11 @@ const props = withDefaults(
   { conflictingProduct: null, fold: true },
 )
 
-// Details arrive most severe first; the order is the backend's and is kept.
-const steps = useStepList(() => props.details, {
+// Pairs that clash for the same reason fold into one line first (eight
+// peptides against one acid, one sentence), then the lines are stepped. Details
+// arrive most severe first and groupSimilarDetails keeps that order.
+const groups = computed(() => groupSimilarDetails(props.details, props.conflictingProduct))
+const steps = useStepList(groups, {
   initial: props.fold ? 2 : Number.POSITIVE_INFINITY,
   step: 2,
 })
@@ -63,7 +66,7 @@ const CHIP: Record<string, string> = {
       <li
         v-for="(detail, idx) in steps.visible.value"
         :key="idx"
-        class="conflict-detail pl-3 border-l-2 border-brand-surface-border dark:border-stone-700 space-y-1"
+        class="conflict-detail pl-3 border-l-2 border-brand-surface-border dark:border-stone-700 space-y-1.5"
       >
         <span
           v-if="resolveSeverityBand(detail.severity) !== 'unknown'"
@@ -74,6 +77,16 @@ const CHIP: Record<string, string> = {
         <p class="text-xs font-medium text-brand-text-muted dark:text-stone-300 leading-relaxed">
           {{ detail.message }}
         </p>
+        <!-- The ingredients a grouped line covers, named individually. -->
+        <div v-if="detail.ingredients.length > 1" class="flex flex-wrap gap-1">
+          <span
+            v-for="name in detail.ingredients"
+            :key="name"
+            class="ingredient-chip text-[10px] font-bold px-2 py-0.5 rounded-md bg-brand-bg-light dark:bg-stone-800 border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-300"
+          >
+            {{ name }}
+          </span>
+        </div>
       </li>
     </ul>
 
