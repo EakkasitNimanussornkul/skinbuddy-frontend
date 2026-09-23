@@ -48,10 +48,12 @@ watch(() => warningSteps.visible.value.length, remeasure)
 // same alarm red as a High one. The band is shared with the two other
 // components that render this field; the palette is this component's own.
 const SEVERITY_BADGE: Record<string, string> = {
-  high: 'bg-rose-950/80 border-rose-800/60 text-rose-400',
-  medium: 'bg-amber-950/80 border-amber-800/60 text-amber-400',
-  low: 'bg-stone-800/80 border-stone-600/60 text-stone-300',
-  unknown: 'bg-stone-800/80 border-stone-600/60 text-stone-300',
+  // Light first, dark behind `dark:`. These were dark-only, so in light mode
+  // each badge was a near-black chip on a pale modal.
+  high: 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/80 dark:border-rose-800/60 dark:text-rose-400',
+  medium: 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/80 dark:border-amber-800/60 dark:text-amber-400',
+  low: 'bg-stone-100 border-stone-300 text-stone-600 dark:bg-stone-800/80 dark:border-stone-600/60 dark:text-stone-300',
+  unknown: 'bg-stone-100 border-stone-300 text-stone-600 dark:bg-stone-800/80 dark:border-stone-600/60 dark:text-stone-300',
 }
 
 const severityBadgeClass = (severity: string | null | undefined) =>
@@ -59,7 +61,7 @@ const severityBadgeClass = (severity: string | null | undefined) =>
 </script>
 
 <template>
-  <div v-if="isLoading" class="p-5 rounded-3xl bg-stone-900/40 border border-brand-primary/20 backdrop-blur-sm shadow-sm relative overflow-hidden">
+  <div v-if="isLoading" class="p-5 rounded-3xl bg-brand-bg-light dark:bg-stone-900/40 border border-brand-primary/20 backdrop-blur-sm shadow-sm relative overflow-hidden">
     <!-- Ambient Pulse Glow Effect -->
     <div class="absolute -inset-x-20 -top-20 h-40 bg-brand-primary/10 rounded-full blur-2xl animate-pulse"></div>
 
@@ -125,7 +127,7 @@ const severityBadgeClass = (severity: string | null | undefined) =>
   <div v-else-if="warnings && warnings.length > 0" class="space-y-3">
     <div class="flex items-center justify-between">
       <h4 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">Biochemical Safety & Conflict Warning</h4>
-      <span class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">
+      <span class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
         {{ warnings.length }} Warning{{ warnings.length > 1 ? 's' : '' }}
       </span>
     </div>
@@ -134,7 +136,7 @@ const severityBadgeClass = (severity: string | null | undefined) =>
       <div
         v-for="(warning, idx) in warningSteps.visible.value"
         :key="idx"
-        class="p-4 rounded-2xl bg-stone-800/60 dark:bg-stone-900/80 border border-stone-700/60 space-y-2 shadow-sm"
+        class="p-4 rounded-2xl bg-brand-bg-light dark:bg-stone-900/80 border border-brand-surface-border dark:border-stone-700/60 space-y-2 shadow-sm"
       >
         <!-- Alert Badge Header. The severity is omitted rather than defaulted
              when the backend did not send one - `severity || 'HIGH'` printed a
@@ -153,7 +155,7 @@ const severityBadgeClass = (severity: string | null | undefined) =>
         <!-- Alert Message Body -->
         <p
           :ref="(el) => setElement(idx, el)"
-          :class="['text-xs sm:text-sm font-medium text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
+          :class="['text-xs sm:text-sm font-medium text-brand-text dark:text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
         >
           {{ warning.message }}
         </p>

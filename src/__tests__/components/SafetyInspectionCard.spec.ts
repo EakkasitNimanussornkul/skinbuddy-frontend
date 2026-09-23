@@ -12,7 +12,9 @@ const warning = (severity: string, message: string): WarningAlert => ({
 const mountCard = (warnings: WarningAlert[], scanStatus: string | null = 'warned') =>
   mount(SafetyInspectionCard, { props: { warnings, scanStatus: scanStatus as never } })
 
-const messages = (wrapper: VueWrapper) => wrapper.findAll('p.text-stone-200').map((p) => p.text())
+/** Each warning card's message, by structure rather than by a colour class. */
+const messages = (wrapper: VueWrapper) =>
+  wrapper.findAll('[id] > div.rounded-2xl > p').map((p) => p.text())
 
 describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
   describe('warning list (render)', () => {
@@ -85,6 +87,47 @@ describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
 
       expect(wrapper.text()).toContain('real clash')
       expect(wrapper.text()).not.toContain('No Conflicts Found')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('light mode', () => {
+    /**
+     * Every class in the rendered card that sets a dark stone or dark tint
+     * without a `dark:` prefix. Those are what made the card near-black in
+     * light mode: the surfaces, the message text and the badges had no light
+     * variant at all.
+     */
+    const darkOnlyClasses = (wrapper: VueWrapper) =>
+      wrapper
+        .findAll('*')
+        .flatMap((el) => el.classes())
+        // Dark surfaces and borders, and the pale message text that only reads on
+        // them. Dark *text* such as text-rose-700 is the correct light variant,
+        // so it is not matched.
+        .filter((c) => /^(bg|border)-(stone|rose|amber)-[789]\d\d\b/.test(c) || c === 'text-stone-200')
+
+    it('draws no surface, border or text in a dark-only colour', async () => {
+      // One warning per band, all revealed, so every badge colour is rendered.
+      const wrapper = mountCard([warning('High', 'a'), warning('Medium', 'b'), warning('Low', 'c')])
+      await wrapper.get('button.show-more').trigger('click')
+      expect(messages(wrapper)).toHaveLength(3)
+
+      expect(darkOnlyClasses(wrapper)).toEqual([])
+    })
+
+    it('keeps the dark palette for dark mode, behind the dark: prefix', () => {
+      const wrapper = mountCard([warning('High', 'a')])
+      const badge = wrapper.get('.rounded-2xl .inline-flex')
+
+      expect(badge.classes()).toContain('bg-rose-50')
+      expect(badge.classes()).toContain('dark:bg-rose-950/80')
+    })
+
+    it('gives the scanning panel a light surface too', () => {
+      const wrapper = mount(SafetyInspectionCard, { props: { warnings: [], isLoading: true } })
+
+      expect(darkOnlyClasses(wrapper)).toEqual([])
     })
   })
 })
