@@ -551,34 +551,84 @@ describe('src/components/Shelf/ItemDetailsModal.vue', () => {
 
   // Appended last, so adding it moves no group ID already cited in this file.
   describe('safety warnings (fold)', () => {
-    const warned = async (item: ShelfItem) => {
+    const ARCHIVED = { usage_state: 'archived' as const, archived_at: '2026-01-01T00:00:00Z' }
+    const toggle = (wrapper: VueWrapper) => wrapper.get('button.archived-safety-toggle')
+    const region = (wrapper: VueWrapper) => wrapper.get(`#${toggle(wrapper).attributes('aria-controls')}`)
+    const isHidden = (wrapper: VueWrapper) => (region(wrapper).attributes('style') ?? '').includes('display: none')
+
+    it('checks a product in use on open, shows its warnings, and lets the user fold them', async () => {
       vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: false, warnings: [CONFLICT], duplicates: [] })
-      const wrapper = await mountModal(item)
+      const wrapper = await mountModal(shelfItem({ usage_state: 'active' }))
       await flushPromises()
-      return wrapper.get('button.warning-fold')
-    }
+      const fold = wrapper.get('button.warning-fold')
 
-    it('shows the warnings of a product in use, and lets the user fold them', async () => {
-      const fold = await warned(shelfItem({ usage_state: 'active' }))
-
+      expect(analyzeProduct).toHaveBeenCalledTimes(1)
       expect(fold.attributes('aria-expanded')).toBe('true')
 
       await fold.trigger('click')
 
       expect(fold.attributes('aria-expanded')).toBe('false')
+      expect(wrapper.find('button.archived-safety-toggle').exists()).toBe(false)
     })
 
-    it('folds the warnings of an archived product to start with, and lets the user open them', async () => {
-      // Owner request: an archived product is finished with, so its warnings
-      // are history - kept one click away rather than open over the record.
-      const fold = await warned(shelfItem({ usage_state: 'archived', archived_at: '2026-01-01T00:00:00Z' }))
+    it('does not check an archived product on open, and shows no result panel', async () => {
+      // The owner's report: an archived product still showed its safety panel.
+      // A clean result's "No Conflicts Found" was never foldable, and the check
+      // ran on every open. Now nothing is asked until the user opens the row.
+      const wrapper = await mountModal(shelfItem(ARCHIVED))
+      await flushPromises()
 
-      expect(fold.attributes('aria-expanded')).toBe('false')
-      expect(fold.text()).toContain('1 Warning')
+      expect(analyzeProduct).not.toHaveBeenCalled()
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('false')
+      expect(toggle(wrapper).text()).toContain('Show')
+      expect(isHidden(wrapper)).toBe(true)
+      expect(wrapper.text()).not.toContain('No Conflicts Found')
+      expect(wrapper.text()).not.toContain('Routine Safety Scan')
+    })
 
-      await fold.trigger('click')
+    it('runs the check when the row is opened, framed as a question about using it again', async () => {
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: false, warnings: [CONFLICT], duplicates: [] })
+      const wrapper = await mountModal(shelfItem(ARCHIVED))
 
-      expect(fold.attributes('aria-expanded')).toBe('true')
+      await toggle(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(analyzeProduct).toHaveBeenCalledTimes(1)
+      expect(isHidden(wrapper)).toBe(false)
+      expect(wrapper.text()).toContain(CONFLICT.message)
+      expect(wrapper.get('.archived-safety-note').text()).toContain('what would clash if you started using it again')
+      // The inner card is not foldable here - the row above it is the fold.
+      expect(wrapper.find('button.warning-fold').exists()).toBe(false)
+    })
+
+    it('asks once: hiding and showing again keeps the result', async () => {
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: true, warnings: [], duplicates: [] })
+      const wrapper = await mountModal(shelfItem(ARCHIVED))
+
+      await toggle(wrapper).trigger('click')
+      await flushPromises()
+      await toggle(wrapper).trigger('click')
+      expect(isHidden(wrapper)).toBe(true)
+      await toggle(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(analyzeProduct).toHaveBeenCalledTimes(1)
+      expect(wrapper.text()).toContain('No Conflicts Found')
+    })
+
+    it('folds and clears the check when the product is archived from this modal', async () => {
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: false, warnings: [CONFLICT], duplicates: [] })
+      const wrapper = await mountModal(shelfItem({ usage_state: 'active' }))
+      await flushPromises()
+      expect(wrapper.text()).toContain(CONFLICT.message)
+
+      await wrapper.setProps({ item: shelfItem(ARCHIVED) })
+      await flushPromises()
+
+      expect(toggle(wrapper).attributes('aria-expanded')).toBe('false')
+      expect(isHidden(wrapper)).toBe(true)
+      // Checked once while active; archiving does not ask again.
+      expect(analyzeProduct).toHaveBeenCalledTimes(1)
     })
   })
 })

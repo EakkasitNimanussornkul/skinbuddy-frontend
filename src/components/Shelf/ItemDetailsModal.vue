@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, useId } from 'vue'
 import { removeFromShelf, analyzeProduct } from '../../api/shelfapi'
 import { resolveSafety, type SafetyStatus } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
@@ -48,9 +48,36 @@ const runAutomaticSafetyCheck = async () => {
   scanStatus.value = outcome.status
 }
 
+// Owner decision: an archived product's safety check is hidden and not run
+// until the user opens it. The product is finished with, so a clash with the
+// current shelf is not something to act on today - but it is the question to
+// ask before using it again, so the check stays one click away rather than
+// being removed. Every other product is checked on open, as before.
+const isArchived = computed(() => localItem.value.usage_state === 'archived')
+const archivedCheckOpen = ref(false)
+const archivedCheckRun = ref(false)
+const archivedCheckId = useId()
+
+const resetArchivedCheck = () => {
+  warningAlerts.value = []
+  scanStatus.value = null
+  archivedCheckOpen.value = false
+  archivedCheckRun.value = false
+}
+
+// Runs the check the first time it is opened, and only then. Folding and
+// unfolding again shows the same result rather than asking again.
+const toggleArchivedCheck = () => {
+  archivedCheckOpen.value = !archivedCheckOpen.value
+  if (archivedCheckOpen.value && !archivedCheckRun.value) {
+    archivedCheckRun.value = true
+    runAutomaticSafetyCheck()
+  }
+}
+
 onMounted(() => {
   isVisible.value = true
-  runAutomaticSafetyCheck()
+  if (!isArchived.value) runAutomaticSafetyCheck()
 })
 
 const handleClose = () => {
@@ -62,9 +89,16 @@ const handleClose = () => {
 
 watch(
   () => props.item,
-  (newItem) => {
+  (newItem, oldItem) => {
     localItem.value = { ...newItem }
-    runAutomaticSafetyCheck()
+    if (!isArchived.value) {
+      runAutomaticSafetyCheck()
+      return
+    }
+    // Archived now: fold and clear when it has just been archived from this
+    // modal, or the modal was pointed at another item. A refresh of the same
+    // archived item keeps whatever the user already opened.
+    if (newItem.id !== oldItem?.id || oldItem?.usage_state !== 'archived') resetArchivedCheck()
   },
   { deep: true }
 )
@@ -168,15 +202,48 @@ const handleExecuteDelete = async () => {
             <div class="space-y-6">
 
               <!-- 🌟 1. Safety Inspection Box (With Scanner HUD animation) -->
-              <!-- Foldable here; folded to start for an archived product, open
-                   for one in use. -->
+              <!-- A product in use: checked on open, shown, and foldable. -->
               <SafetyInspectionCard
+                v-if="!isArchived"
                 :warnings="warningAlerts"
                 :is-loading="isAnalyzing"
                 :scan-status="scanStatus"
                 foldable
-                :start-folded="localItem.usage_state === 'archived'"
               />
+
+              <!-- An archived product: one folded row, and no check until it is
+                   opened. The button sits inside the h4, as in KeyActivesGrid. -->
+              <div v-else class="archived-safety rounded-2xl border border-brand-surface-border dark:border-stone-700/60 bg-brand-bg-light dark:bg-stone-900/40">
+                <h4 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted">
+                  <button
+                    type="button"
+                    class="archived-safety-toggle flex items-center justify-between gap-3 w-full text-left uppercase tracking-widest p-4 cursor-pointer group"
+                    :aria-expanded="archivedCheckOpen"
+                    :aria-controls="archivedCheckId"
+                    @click="toggleArchivedCheck"
+                  >
+                    <span>Safety Check Against Your Current Shelf</span>
+                    <span class="flex items-center gap-1 text-[11px] font-bold text-brand-primary normal-case tracking-normal shrink-0 group-hover:underline">
+                      {{ archivedCheckOpen ? 'Hide' : 'Show' }}
+                      <svg
+                        :class="['w-3.5 h-3.5 stroke-[2.5] transition-transform duration-200', archivedCheckOpen ? 'rotate-180' : '']"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+                  </button>
+                </h4>
+                <div v-show="archivedCheckOpen" :id="archivedCheckId" class="px-4 pb-4 space-y-3">
+                  <p class="archived-safety-note text-[11px] font-medium text-brand-text-muted leading-relaxed">
+                    This product is archived, so nothing here affects your routine today. It is checked against what is on your shelf now - what would clash if you started using it again.
+                  </p>
+                  <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-status="scanStatus" />
+                </div>
+              </div>
 
               <!-- 🌟 2. Description -->
               <div v-if="description">

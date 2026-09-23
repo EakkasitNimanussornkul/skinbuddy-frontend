@@ -31,22 +31,13 @@ const props = defineProps<{
   // Null means no check has resolved yet, so neither panel below is shown.
   scanStatus?: SafetyStatus | null
   // Lets the user fold the warnings behind their header, which keeps the count
-  // on screen. The item details modal passes it; nothing else does.
+  // on screen. Starts open. The item details modal passes it for a product in
+  // use; an archived product's check is folded one level up, in the modal,
+  // and is not run until opened.
   foldable?: boolean
-  // Where a foldable card starts. The details modal starts it folded for an
-  // archived product - a record of something finished, whose warnings are
-  // history rather than something to act on - and open for anything in use.
-  startFolded?: boolean
 }>()
 
-const folded = ref(Boolean(props.foldable && props.startFolded))
-
-// Follows the item rather than only the first render: archiving from inside
-// the open modal, or the modal being re-pointed at another item, resets it.
-watch(
-  () => Boolean(props.foldable && props.startFolded),
-  (value) => { folded.value = value },
-)
+const folded = ref(false)
 
 const warningsVisible = computed(() => !props.foldable || !folded.value)
 const warningRegionId = useId()
