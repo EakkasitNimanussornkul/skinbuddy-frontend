@@ -486,6 +486,13 @@ describe('src/api/safety.ts', () => {
       expect(out).toHaveLength(2)
     })
 
+    it('never merges the same sentence under a different alert type', () => {
+      const other = { ...peptidePair(PEPTIDES[1]!), alert_type: 'Chemical Interaction Warning' }
+      const out = groupSimilarDetails([peptidePair(PEPTIDES[0]!), other], BUFFET)
+
+      expect(out).toHaveLength(2)
+    })
+
     it('leaves a pair alone when its message does not contain its own ingredient', () => {
       // Nothing to blank out, so nothing to compare on - no merging on a guess.
       const odd = { ...peptidePair('Mystery'), message: 'An unrelated sentence.' }
