@@ -352,6 +352,11 @@ export const showsDuplicates = (outcome: SafetyOutcome) =>
  *
  * `unknown` is a real answer, not a default. A missing severity used to print
  * as "HIGH" through `severity || 'HIGH'`, a value the backend never sent.
+ *
+ * "Moderate" is the middle band too. Warnings arrive as High/Medium/Low - the
+ * backend converts - but `ingredient_concerns` rows reach the product page and
+ * the compare page raw, graded High/Moderate/Low. Without this, 13 of the 29
+ * live concerns banded as unknown.
  */
 export type SeverityBand = 'high' | 'medium' | 'low' | 'unknown'
 
@@ -360,7 +365,7 @@ export const resolveSeverityBand = (severity: string | null | undefined): Severi
 
   const normalised = severity.trim().toLowerCase()
   if (normalised === 'high') return 'high'
-  if (normalised === 'medium') return 'medium'
+  if (normalised === 'medium' || normalised === 'moderate') return 'medium'
   if (normalised === 'low') return 'low'
   return 'unknown'
 }

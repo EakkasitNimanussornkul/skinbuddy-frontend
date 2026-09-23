@@ -2,7 +2,9 @@
 import { computed, useId } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { useStepList } from '../../composables/useStepList'
+import { resolveSeverityBand, sortBySeverity, type SeverityBand } from '../../api/safety'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
+import { CONCERN_TONE } from '../Shared/concernTone'
 import ProductHeroSection from './ProductHeroSection.vue'
 import IngredientAwarenessLegend from './IngredientAwarenessLegend.vue'
 import IngredientsExplained from './IngredientsExplained.vue'
@@ -37,7 +39,7 @@ const rawIngredients = computed<any[]>(() => props.product?.product_ingredients 
 // --- Extract Relational Concerns ---
 const productConcerns = computed(() => {
   if (!rawIngredients.value.length) return []
-  const concernsList: Array<{ title: string; msg: string; severity: string; ingredientName: string }> = []
+  const concernsList: Array<{ title: string; msg: string; severity: string | null; band: SeverityBand; ingredientName: string }> = []
 
   rawIngredients.value.forEach((pi: any) => {
     const ing = pi.ingredients
@@ -47,14 +49,22 @@ const productConcerns = computed(() => {
       concernsList.push({
         title: concern.concern_title,
         msg: concern.concern_description || `Contains ${ing.name} which holds profile alerts: ${concern.target_profile || 'Sensitivity'}`,
-        severity: concern.severity || 'Moderate',
+        // No longer defaulted to 'Moderate': an ungraded concern is unknown,
+        // not a guess (FE-DEF-25).
+        severity: concern.severity ?? null,
+        band: resolveSeverityBand(concern.severity),
         ingredientName: ing.name
       })
     })
   })
 
-  return concernsList
+  // Most severe first, so a High concern never sits below a run of Low ones.
+  return sortBySeverity(concernsList)
 })
+
+// The section header takes the tone of its worst concern, so a product whose
+// only concerns are Low does not open under a red count.
+const worstConcernBand = computed<SeverityBand>(() => productConcerns.value[0]?.band ?? 'unknown')
 
 // --- Sorted Pipelines ---
 const sortedRawIngredients = computed(() => {
@@ -265,14 +275,19 @@ const handleGuestTrigger = () => {
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
                 <h3 class="text-lg font-serif font-bold text-brand-text dark:text-white flex items-center gap-2">
-                  <svg class="w-5 h-5 text-semantic-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    :class="['w-5 h-5', worstConcernBand === 'high' ? 'text-semantic-error' : worstConcernBand === 'medium' ? 'text-amber-600 dark:text-amber-400' : 'text-brand-text-muted']"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                   </svg>
                   <span>Formula Concerns & Sensitivity Profile</span>
                 </h3>
                 <p class="text-xs text-brand-text-muted">Targeted profile contraindications associated with this formulation.</p>
               </div>
-              <span class="text-xs font-bold text-semantic-error font-mono bg-semantic-error/10 px-3 py-1 rounded-lg border border-semantic-error/20 flex-shrink-0">
+              <span
+                :class="['concern-count text-xs font-bold font-mono px-3 py-1 rounded-lg border flex-shrink-0', CONCERN_TONE[worstConcernBand === 'unknown' ? 'low' : worstConcernBand].grade]"
+              >
                 {{ productConcerns.length }} {{ productConcerns.length === 1 ? 'Alert' : 'Alerts' }}
               </span>
             </div>
@@ -281,9 +296,10 @@ const handleGuestTrigger = () => {
               <div
                 v-for="(con, idx) in productConcerns"
                 :key="idx"
-                class="p-5 bg-semantic-error/5 dark:bg-semantic-error/10 rounded-2xl border border-semantic-error/15 shadow-2xs transition-all flex items-start gap-3.5"
+                :data-band="con.band"
+                :class="['ingredient-concern p-5 rounded-2xl border shadow-2xs transition-all flex items-start gap-3.5', CONCERN_TONE[con.band].card]"
               >
-                <div class="w-8 h-8 rounded-full bg-semantic-error/10 border border-semantic-error/20 flex items-center justify-center text-semantic-error shrink-0 font-mono font-bold text-xs mt-0.5">
+                <div :class="['w-8 h-8 rounded-full border flex items-center justify-center shrink-0 font-mono font-bold text-xs mt-0.5', CONCERN_TONE[con.band].icon]">
                   !
                 </div>
                 <div class="min-w-0 flex-1">
@@ -295,6 +311,14 @@ const handleGuestTrigger = () => {
                       {{ con.ingredientName }}
                     </span>
                   </div>
+                  <!-- The grade, as the backend wrote it. Omitted, not guessed,
+                       when the row has none. -->
+                  <span
+                    v-if="con.band !== 'unknown'"
+                    :class="['concern-grade inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1.5', CONCERN_TONE[con.band].grade]"
+                  >
+                    {{ con.severity }}
+                  </span>
                   <p class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
                     {{ con.msg }}
                   </p>

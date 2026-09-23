@@ -364,6 +364,13 @@ describe('src/api/safety.ts', () => {
     it('reports a severity it does not recognise as unknown rather than guessing', () => {
       expect(resolveSeverityBand('critical')).toBe('unknown')
     })
+
+    it('bands the concerns table grade "Moderate" as medium', () => {
+      // ingredient_concerns rows reach the product and compare pages raw, graded
+      // High/Moderate/Low. Unbanded, 13 of the 29 live rows read as unknown.
+      expect(resolveSeverityBand('Moderate')).toBe('medium')
+      expect(resolveSeverityBand(' moderate ')).toBe('medium')
+    })
   })
 
   // Appended last, so adding it moves no group ID already cited in this file.

@@ -169,4 +169,44 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
       expect(wrapper.text()).toContain('Flush & Stinging Flare')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('concern severity', () => {
+    const concern = (concern_title: string, severity?: string) => ({
+      concern_title,
+      concern_description: 'x',
+      ...(severity === undefined ? {} : { severity }),
+    })
+
+    const withConcerns = (...concerns: Record<string, unknown>[]) =>
+      compareData({ product_ingredients: [ingredient('i-phe', 'Phenoxyethanol', { ingredient_concerns: concerns })] })
+
+    const cards = (wrapper: VueWrapper) => wrapper.findAll('.ingredient-concern')
+
+    it('tones each concern by its grade instead of drawing all of them in alarm red', () => {
+      const wrapper = mountMatrix(withConcerns(concern('Low Note', 'Low'), concern('High Note', 'High'), concern('Mid Note', 'Moderate')))
+
+      // Most severe first, so the four shown before "Show more" are the worst.
+      expect(cards(wrapper).map((c) => c.get('h5').text())).toEqual(['High Note', 'Mid Note', 'Low Note'])
+      expect(cards(wrapper).map((c) => c.attributes('data-band'))).toEqual(['high', 'medium', 'low'])
+      expect(cards(wrapper).map((c) => c.classes().some((k) => k.includes('semantic-error')))).toEqual([true, false, false])
+      expect(wrapper.findAll('.concern-grade').map((g) => g.text())).toEqual(['High', 'Moderate', 'Low'])
+    })
+
+    it('puts a High fifth concern among the first four rather than behind Show more', () => {
+      const wrapper = mountMatrix(
+        withConcerns(...[1, 2, 3, 4].map((n) => concern(`Low ${n}`, 'Low')), concern('Retinoid Purging', 'High')),
+      )
+
+      expect(cards(wrapper)).toHaveLength(4)
+      expect(cards(wrapper)[0]!.get('h5').text()).toBe('Retinoid Purging')
+    })
+
+    it('leaves an ungraded concern ungraded rather than calling it Moderate', () => {
+      const wrapper = mountMatrix(withConcerns(concern('Ungraded Note')))
+
+      expect(cards(wrapper)[0]!.attributes('data-band')).toBe('unknown')
+      expect(wrapper.find('.concern-grade').exists()).toBe(false)
+    })
+  })
 })

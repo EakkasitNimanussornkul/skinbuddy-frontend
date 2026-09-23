@@ -2,7 +2,8 @@
 import { computed, useId, watch } from 'vue'
 import KeyActivesGrid from '../Shelf/KeyActivesGrid.vue'
 import { resolvePairConflictState, resolvePairConflicts, resolveProductLabel, type CompareResponse } from '../../api/products'
-import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity } from '../../api/safety'
+import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, type SeverityBand } from '../../api/safety'
+import { CONCERN_TONE } from '../Shared/concernTone'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
 import { useClampedText } from '../../composables/useClampedText'
@@ -61,7 +62,7 @@ const cleanProductBActives = computed(() => props.data?.product_b?.product_ingre
 const formulaBreakdowns = computed(() => {
   const extractSkinTypeWarnings = (product: any) => {
     if (!product || !product.product_ingredients) return []
-    const concernsList: Array<{ title: string; msg: string; severity: string }> = []
+    const concernsList: Array<{ title: string; msg: string; severity: string | null; band: SeverityBand }> = []
 
     product.product_ingredients.forEach((pi: any) => {
       const ing = pi.ingredients
@@ -71,14 +72,17 @@ const formulaBreakdowns = computed(() => {
         concernsList.push({
           title: concern.concern_title,
           msg: concern.concern_description || `Contains ${ing.name} which holds profile alerts: ${concern.target_profile}`,
-          severity: concern.severity || 'Moderate'
+          // Not defaulted to 'Moderate' - an ungraded concern is unknown.
+          severity: concern.severity ?? null,
+          band: resolveSeverityBand(concern.severity),
         })
       })
     })
 
     // No longer cut to four here. The slice dropped the fifth concern onwards
-    // without saying so; stepping below keeps them reachable.
-    return concernsList
+    // without saying so; stepping below keeps them reachable. Most severe
+    // first, so the four shown are the worst four.
+    return sortBySeverity(concernsList)
   }
 
   return {
@@ -247,10 +251,21 @@ const concernListIdB = useId()
 
         <!-- Left Concerns: Product A -->
         <div :id="concernListIdA" class="space-y-3 md:pr-4 w-full">
-          <div v-for="(con, i) in concernStepsA.visible.value" :key="i" class="flex items-start gap-3 bg-semantic-error/5 border border-semantic-error/10 p-3.5 rounded-2xl animate-fade-in">
-            <div class="w-7 h-7 rounded-full bg-semantic-error/10 border border-semantic-error/20 flex items-center justify-center text-semantic-error shrink-0 font-mono font-bold text-xs">!</div>
+          <div
+            v-for="(con, i) in concernStepsA.visible.value"
+            :key="i"
+            :data-band="con.band"
+            :class="['ingredient-concern flex items-start gap-3 border p-3.5 rounded-2xl animate-fade-in', CONCERN_TONE[con.band].card]"
+          >
+            <div :class="['w-7 h-7 rounded-full border flex items-center justify-center shrink-0 font-mono font-bold text-xs', CONCERN_TONE[con.band].icon]">!</div>
             <div>
-              <h5 class="text-xs font-black text-brand-text dark:text-stone-200 uppercase tracking-wide">{{ con.title }}</h5>
+              <div class="flex flex-wrap items-center gap-2">
+                <h5 class="text-xs font-black text-brand-text dark:text-stone-200 uppercase tracking-wide">{{ con.title }}</h5>
+                <span
+                  v-if="con.band !== 'unknown'"
+                  :class="['concern-grade text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border', CONCERN_TONE[con.band].grade]"
+                >{{ con.severity }}</span>
+              </div>
               <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-relaxed">{{ con.msg }}</p>
             </div>
           </div>
@@ -271,10 +286,21 @@ const concernListIdB = useId()
 
         <!-- Right Concerns: Product B -->
         <div :id="concernListIdB" class="space-y-3 md:pl-6 pt-4 md:pt-0 w-full">
-          <div v-for="(con, i) in concernStepsB.visible.value" :key="i" class="flex items-start gap-3 bg-semantic-error/5 border border-semantic-error/10 p-3.5 rounded-2xl animate-fade-in">
-            <div class="w-7 h-7 rounded-full bg-semantic-error/10 border border-semantic-error/20 flex items-center justify-center text-semantic-error shrink-0 font-mono font-bold text-xs">!</div>
+          <div
+            v-for="(con, i) in concernStepsB.visible.value"
+            :key="i"
+            :data-band="con.band"
+            :class="['ingredient-concern flex items-start gap-3 border p-3.5 rounded-2xl animate-fade-in', CONCERN_TONE[con.band].card]"
+          >
+            <div :class="['w-7 h-7 rounded-full border flex items-center justify-center shrink-0 font-mono font-bold text-xs', CONCERN_TONE[con.band].icon]">!</div>
             <div>
-              <h5 class="text-xs font-black text-brand-text dark:text-stone-200 uppercase tracking-wide">{{ con.title }}</h5>
+              <div class="flex flex-wrap items-center gap-2">
+                <h5 class="text-xs font-black text-brand-text dark:text-stone-200 uppercase tracking-wide">{{ con.title }}</h5>
+                <span
+                  v-if="con.band !== 'unknown'"
+                  :class="['concern-grade text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border', CONCERN_TONE[con.band].grade]"
+                >{{ con.severity }}</span>
+              </div>
               <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-relaxed">{{ con.msg }}</p>
             </div>
           </div>

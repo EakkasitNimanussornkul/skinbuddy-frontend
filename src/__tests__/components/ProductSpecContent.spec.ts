@@ -274,4 +274,71 @@ describe('src/components/Catalog/ProductSpecContent.vue', () => {
       expect(wrapper.html()).not.toContain('hidden sm:flex')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('productConcerns (severity)', () => {
+    const concern = (concern_title: string, severity?: string | null) => ({
+      concern_title,
+      concern_description: `${concern_title} description.`,
+      ...(severity === undefined ? {} : { severity }),
+    })
+
+    /** One ingredient carrying the given ingredient_concerns rows. */
+    const withConcerns = (...concerns: Record<string, unknown>[]) => ({
+      product_ingredients: [
+        { ingredients: { id: 'i-1', name: 'Phenoxyethanol', awareness_tier: 'medium', ingredient_concerns: concerns } },
+      ],
+    })
+
+    const cards = (wrapper: VueWrapper) => wrapper.findAll('.ingredient-concern')
+
+    it('lists concerns most severe first', async () => {
+      const { wrapper } = await mountSpec(
+        true,
+        withConcerns(concern('Mild Preservative Note', 'Low'), concern('Retinoid Purging', 'High'), concern('Stinging', 'Moderate')),
+      )
+
+      expect(cards(wrapper).map((c) => c.get('h5').text())).toEqual(['Retinoid Purging', 'Stinging', 'Mild Preservative Note'])
+    })
+
+    it('draws only a High concern in alarm red, and tones the rest by grade', async () => {
+      // The defect: every concern box was semantic-error whatever its grade, so
+      // the eight Low preservative rows looked as serious as a High one.
+      const { wrapper } = await mountSpec(
+        true,
+        withConcerns(concern('Retinoid Purging', 'High'), concern('Stinging', 'Moderate'), concern('Mild Preservative Note', 'Low')),
+      )
+
+      expect(cards(wrapper).map((c) => c.attributes('data-band'))).toEqual(['high', 'medium', 'low'])
+      expect(cards(wrapper).map((c) => c.classes().some((k) => k.includes('semantic-error')))).toEqual([true, false, false])
+    })
+
+    it('prints the grade the concerns table holds', async () => {
+      const { wrapper } = await mountSpec(true, withConcerns(concern('Stinging', 'Moderate'), concern('Mild Note', 'Low')))
+
+      expect(wrapper.findAll('.concern-grade').map((g) => g.text())).toEqual(['Moderate', 'Low'])
+    })
+
+    it('leaves an ungraded concern ungraded rather than calling it Moderate', async () => {
+      // `concern.severity || 'Moderate'` invented a grade the row did not have.
+      const { wrapper } = await mountSpec(true, withConcerns(concern('Ungraded Note')))
+
+      expect(cards(wrapper)[0]!.attributes('data-band')).toBe('unknown')
+      expect(wrapper.find('.concern-grade').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Moderate')
+    })
+
+    it('does not put a red count over a product whose concerns are all Low', async () => {
+      const { wrapper } = await mountSpec(true, withConcerns(concern('Note A', 'Low'), concern('Note B', 'Low')))
+
+      expect(wrapper.get('.concern-count').text()).toBe('2 Alerts')
+      expect(wrapper.get('.concern-count').classes().some((k) => k.includes('semantic-error'))).toBe(false)
+    })
+
+    it('keeps the count red when the worst concern is High', async () => {
+      const { wrapper } = await mountSpec(true, withConcerns(concern('Note A', 'Low'), concern('Retinoid Purging', 'High')))
+
+      expect(wrapper.get('.concern-count').classes()).toContain('text-semantic-error')
+    })
+  })
 })
