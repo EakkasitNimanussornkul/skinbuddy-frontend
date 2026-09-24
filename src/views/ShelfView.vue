@@ -175,6 +175,19 @@ const shelfState = computed(() =>
   resolveCatalogState(isLoading.value, shelfFailed.value, myShelf.value.length),
 )
 
+// A card leaving the grid is taken out of the flow where it stands, so it can
+// fade in place while the cards after it glide into the gap. Without this the
+// grid reflows at once and the fade plays in a cell that no longer exists.
+const pinLeavingCard = (el: Element) => {
+  const node = el as HTMLElement
+  const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = node
+  node.style.position = 'absolute'
+  node.style.left = `${offsetLeft}px`
+  node.style.top = `${offsetTop}px`
+  node.style.width = `${offsetWidth}px`
+  node.style.height = `${offsetHeight}px`
+}
+
 const executeDelete = async () => {
   if (!itemToDelete.value) return
   const deletedId = itemToDelete.value.id
@@ -280,27 +293,42 @@ const executeDelete = async () => {
         </div>
 
         <!-- Grid Container -->
-        <div v-if="sortedProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
-          <ShelfCard
-            v-for="item in sortedProducts"
-            :key="item.id"
-            :item="item"
-            :in-routine="routineShelfIds.has(item.id)"
-            @open-details="viewingItem = item"
-            @delete="itemToDelete = item"
-          />
-        </div>
+        <!-- The grid and the no-match message cross-fade. Inside the grid, cards
+             fade in on load a few at a time, glide to their new places when the
+             sort or a filter changes, and fade out where they stood when they
+             leave. -->
+        <Transition name="shelf-swap" mode="out-in">
+          <TransitionGroup
+            v-if="sortedProducts.length > 0"
+            key="grid"
+            tag="div"
+            name="shelf-card"
+            appear
+            class="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2"
+            @before-leave="pinLeavingCard"
+          >
+            <ShelfCard
+              v-for="(item, index) in sortedProducts"
+              :key="item.id"
+              :item="item"
+              :in-routine="routineShelfIds.has(item.id)"
+              :style="{ '--enter-delay': `${Math.min(index, 10) * 35}ms` }"
+              @open-details="viewingItem = item"
+              @delete="itemToDelete = item"
+            />
+          </TransitionGroup>
 
-        <!-- Filter Empty State -->
-        <div v-else class="text-center py-12 bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 mt-2 shadow-sm">
-          <!-- A routine that did not load cannot be told apart from a routine
-               with nothing in it, so the In Routine pill says which it is. -->
-          <p v-if="activeStatus === 'In Routine' && routineFailed" class="routine-unavailable text-brand-text-muted mb-3 text-sm font-medium">
-            Your routine couldn't be loaded, so we can't tell which products are in it.
-          </p>
-          <p v-else class="text-brand-text-muted mb-3 text-sm font-medium">No items match your current search or status filters.</p>
-          <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-xs underline hover:text-brand-primary-hover transition-colors cursor-pointer">Reset Filters</button>
-        </div>
+          <!-- Filter Empty State -->
+          <div v-else key="empty" class="text-center py-12 bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 mt-2 shadow-sm">
+            <!-- A routine that did not load cannot be told apart from a routine
+                 with nothing in it, so the In Routine pill says which it is. -->
+            <p v-if="activeStatus === 'In Routine' && routineFailed" class="routine-unavailable text-brand-text-muted mb-3 text-sm font-medium">
+              Your routine couldn't be loaded, so we can't tell which products are in it.
+            </p>
+            <p v-else class="text-brand-text-muted mb-3 text-sm font-medium">No items match your current search or status filters.</p>
+            <button @click="searchQuery = ''; activeCategory = 'All'; activeStatus = 'All'" class="text-brand-primary font-bold text-xs underline hover:text-brand-primary-hover transition-colors cursor-pointer">Reset Filters</button>
+          </div>
+        </Transition>
       </div>
 
       <!-- True Application Empty State -->
@@ -328,6 +356,45 @@ const executeDelete = async () => {
 </template>
 
 <style scoped>
+/* Cards gliding to their new place on a sort or filter change. */
+.shelf-card-move {
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.shelf-card-enter-active {
+  transition: opacity 320ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--enter-delay, 0ms);
+}
+.shelf-card-enter-from {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+.shelf-card-leave-active {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.shelf-card-leave-to {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+.shelf-swap-enter-active,
+.shelf-swap-leave-active {
+  transition: opacity 180ms ease;
+}
+.shelf-swap-enter-from,
+.shelf-swap-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-card-move,
+  .shelf-card-enter-active,
+  .shelf-card-leave-active,
+  .shelf-swap-enter-active,
+  .shelf-swap-leave-active {
+    transition: none;
+  }
+}
+
 .animate-float { animation: float 4s ease-in-out infinite; }
 @keyframes float {
   0%, 100% { transform: translateY(0); }

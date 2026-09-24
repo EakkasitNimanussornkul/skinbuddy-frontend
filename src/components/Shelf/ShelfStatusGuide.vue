@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, useId } from 'vue'
 import ItemBadge from './ItemBadge.vue'
+import CollapseTransition from '../Shared/CollapseTransition.vue'
 
 // What each badge on a shelf card means, drawn with the cards' own ItemBadge so
 // the guide cannot show a colour the cards do not use. Folded by default: the
@@ -33,7 +34,7 @@ const BADGES: ReadonlyArray<{ type: BadgeType; text: string; name: string; meani
     type: 'unopened',
     text: 'Unopened',
     name: 'Unopened',
-    meaning: 'Not opened yet, so its countdown has not started. Open the product and press "Start Product Life" when you open it.',
+    meaning: 'Not opened yet, so its countdown has not started. When you open it, press "Start Product Life" in its details.',
   },
   {
     type: 'archived',
@@ -75,33 +76,37 @@ const BADGES: ReadonlyArray<{ type: BadgeType; text: string; name: string; meani
       </button>
     </h2>
 
-    <div v-show="isOpen" :id="regionId" class="px-4 pb-4 space-y-3">
-      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-        <li v-for="badge in BADGES" :key="badge.name" class="status-guide-entry flex items-start gap-3">
-          <ItemBadge :type="badge.type" :text="badge.text" class="shrink-0 mt-0.5" />
-          <p class="text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
-            <span class="font-bold text-brand-text dark:text-stone-200">{{ badge.name }}.</span>
-            {{ badge.meaning }}
-          </p>
-        </li>
+    <CollapseTransition>
+      <div v-show="isOpen" :id="regionId">
+        <div class="px-4 pb-4 space-y-3">
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            <li v-for="badge in BADGES" :key="badge.name" class="status-guide-entry flex items-start gap-3">
+              <ItemBadge :type="badge.type" :text="badge.text" class="shrink-0 mt-0.5" />
+              <p class="text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
+                <span class="font-bold text-brand-text dark:text-stone-200">{{ badge.name }}.</span>
+                {{ badge.meaning }}
+              </p>
+            </li>
 
-        <!-- Not a badge: a separate marker under the date line, because it
-             answers a different question from the lifecycle badge. -->
-        <li class="status-guide-entry flex items-start gap-3">
-          <span class="flex items-center gap-1 text-[10px] font-bold text-brand-primary shrink-0 mt-0.5">
-            <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-            In Routine
-          </span>
-          <p class="text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
-            <span class="font-bold text-brand-text dark:text-stone-200">In Routine.</span>
-            A step in your current routine uses it. Shown beside the badge, so an unopened product can be in your routine too.
-          </p>
-        </li>
-      </ul>
+            <!-- Not a badge: a separate marker under the date line, because it
+                 answers a different question from the lifecycle badge. -->
+            <li class="status-guide-entry flex items-start gap-3">
+              <span class="flex items-center gap-1 text-[10px] font-bold text-brand-primary shrink-0 mt-0.5">
+                <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                In Routine
+              </span>
+              <p class="text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed">
+                <span class="font-bold text-brand-text dark:text-stone-200">In Routine.</span>
+                A step in your current routine uses it. Shown beside the badge, so an unopened product can be in your routine too.
+              </p>
+            </li>
+          </ul>
 
-      <p class="status-guide-order text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed border-t border-brand-surface-border dark:border-stone-800 pt-3">
-        "Needs attention first" lists expired products, then those expiring soon, then active ones - routine products first - then unopened ones. Change the order with "Sort by".
-      </p>
-    </div>
+          <p class="status-guide-order text-[11px] text-brand-text-muted dark:text-stone-400 leading-relaxed border-t border-brand-surface-border dark:border-stone-800 pt-3">
+            "Needs attention first" lists expired products, then those expiring soon, then active ones - routine products first - then unopened ones. Change the order with "Sort by".
+          </p>
+        </div>
+      </div>
+    </CollapseTransition>
   </div>
 </template>

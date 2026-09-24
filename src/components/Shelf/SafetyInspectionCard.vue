@@ -6,6 +6,7 @@ import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBy
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
+import CollapseTransition from '../Shared/CollapseTransition.vue'
 
 export interface WarningAlert {
   alert_type: string
@@ -182,71 +183,73 @@ const severityBadgeClass = (severity: string | null | undefined) =>
       </component>
     </h4>
 
-    <div v-show="warningsVisible" :id="warningRegionId" class="space-y-3">
-      <div :id="warningListId" class="space-y-2.5">
-        <div
-          v-for="(warning, idx) in warningSteps.visible.value"
-          :key="idx"
-          class="p-4 rounded-2xl bg-brand-bg-light dark:bg-stone-900/80 border border-brand-surface-border dark:border-stone-700/60 space-y-2 shadow-sm"
-        >
-          <!-- Alert Badge Header. The severity is omitted rather than defaulted
-               when the backend did not send one - `severity || 'HIGH'` printed a
-               value nobody computed, and printed the most alarming one. -->
+    <CollapseTransition>
+      <div v-show="warningsVisible" :id="warningRegionId" class="space-y-3">
+        <div :id="warningListId" class="space-y-2.5">
           <div
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black tracking-wider uppercase"
-            :class="severityBadgeClass(warning.severity)"
+            v-for="(warning, idx) in warningSteps.visible.value"
+            :key="idx"
+            class="animate-reveal p-4 rounded-2xl bg-brand-bg-light dark:bg-stone-900/80 border border-brand-surface-border dark:border-stone-700/60 space-y-2 shadow-sm"
           >
-            <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">
-              <span>{{ warning.severity }}</span>
-              <span>•</span>
-            </template>
-            <span>{{ warning.alert_type }}</span>
+            <!-- Alert Badge Header. The severity is omitted rather than defaulted
+                 when the backend did not send one - `severity || 'HIGH'` printed a
+                 value nobody computed, and printed the most alarming one. -->
+            <div
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black tracking-wider uppercase"
+              :class="severityBadgeClass(warning.severity)"
+            >
+              <template v-if="resolveSeverityBand(warning.severity) !== 'unknown'">
+                <span>{{ warning.severity }}</span>
+                <span>•</span>
+              </template>
+              <span>{{ warning.alert_type }}</span>
+            </div>
+
+            <!-- A product clashing on two or more ingredient pairs: list the pairs,
+                 each with its own explanation, rather than the one-line summary. -->
+            <ConflictDetailsList
+              v-if="hasConflictDetails(warning)"
+              :details="warning.details!"
+              :conflicting-product="warning.conflicting_product"
+            />
+
+            <!-- Alert Message Body -->
+            <p
+              v-else
+              :ref="(el) => setElement(idx, el)"
+              :class="['text-xs sm:text-sm font-medium text-brand-text dark:text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
+            >
+              {{ warning.message }}
+            </p>
+
+            <!-- Read More Toggle: only when there is more to read (FE-DEF-26) -->
+            <button
+              v-if="!hasConflictDetails(warning) && overflowing[idx]"
+              @click="toggle(idx)"
+              class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline cursor-pointer pt-0.5"
+            >
+              <span>{{ expanded[idx] ? 'Read less' : 'Read more' }}</span>
+              <svg :class="['w-3 h-3 transition-transform', expanded[idx] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <SkinTypeReasons v-if="!hasConflictDetails(warning) && warning.reasons?.length" :reasons="warning.reasons" />
           </div>
-
-          <!-- A product clashing on two or more ingredient pairs: list the pairs,
-               each with its own explanation, rather than the one-line summary. -->
-          <ConflictDetailsList
-            v-if="hasConflictDetails(warning)"
-            :details="warning.details!"
-            :conflicting-product="warning.conflicting_product"
-          />
-
-          <!-- Alert Message Body -->
-          <p
-            v-else
-            :ref="(el) => setElement(idx, el)"
-            :class="['text-xs sm:text-sm font-medium text-brand-text dark:text-stone-200 leading-relaxed transition-all', expanded[idx] ? '' : 'line-clamp-2']"
-          >
-            {{ warning.message }}
-          </p>
-
-          <!-- Read More Toggle: only when there is more to read (FE-DEF-26) -->
-          <button
-            v-if="!hasConflictDetails(warning) && overflowing[idx]"
-            @click="toggle(idx)"
-            class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline cursor-pointer pt-0.5"
-          >
-            <span>{{ expanded[idx] ? 'Read less' : 'Read more' }}</span>
-            <svg :class="['w-3 h-3 transition-transform', expanded[idx] ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          <SkinTypeReasons v-if="!hasConflictDetails(warning) && warning.reasons?.length" :reasons="warning.reasons" />
         </div>
-      </div>
 
-      <ShowMoreControl
-        :next-count="warningSteps.nextCount.value"
-        :remaining="warningSteps.remaining.value"
-        :can-show-more="warningSteps.canShowMore.value"
-        :can-show-less="warningSteps.canShowLess.value"
-        noun="conflicts"
-        :controls="warningListId"
-        @more="warningSteps.showMore"
-        @less="warningSteps.showLess"
-      />
-    </div>
+        <ShowMoreControl
+          :next-count="warningSteps.nextCount.value"
+          :remaining="warningSteps.remaining.value"
+          :can-show-more="warningSteps.canShowMore.value"
+          :can-show-less="warningSteps.canShowLess.value"
+          noun="conflicts"
+          :controls="warningListId"
+          @more="warningSteps.showMore"
+          @less="warningSteps.showLess"
+        />
+      </div>
+    </CollapseTransition>
   </div>
 
   <!-- Cleared: the check ran, returned a verdict, and the verdict was a pass.

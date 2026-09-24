@@ -2,6 +2,7 @@
 import { ref, computed, useId } from 'vue'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
+import CollapseTransition from '../Shared/CollapseTransition.vue'
 
 const props = defineProps<{
   ingredients?: Array<{
@@ -81,42 +82,44 @@ const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value
       </component>
     </h3>
 
-    <div v-show="isContentVisible" :id="regionId" class="space-y-4">
-      <div v-if="activeSteps.visible.value.length > 0" :id="listId" class="grid grid-cols-1 gap-3 w-full">
-        <div
-          v-for="pi in activeSteps.visible.value"
-          :key="pi.ingredients?.id"
-          class="group bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 rounded-2xl p-4 transition-all hover:border-brand-primary/40 dark:hover:border-brand-primary/40 hover:shadow-md"
-        >
-          <div class="flex items-start justify-between gap-4 mb-2">
-            <span class="block text-sm font-bold text-brand-text dark:text-stone-100 group-hover:text-brand-primary dark:group-hover:text-brand-primary-accent transition-colors leading-tight truncate">
-              {{ pi.ingredients?.name }}
-            </span>
-            <span class="text-[9px] font-black bg-brand-primary-light text-brand-primary dark:bg-brand-primary/10 dark:text-brand-primary-accent px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 border border-brand-primary/10 max-w-[150px] truncate">
-              {{ pi.ingredients?.functional_group || 'Active' }}
-            </span>
+    <CollapseTransition>
+      <div v-show="isContentVisible" :id="regionId" class="space-y-4">
+        <div v-if="activeSteps.visible.value.length > 0" :id="listId" class="grid grid-cols-1 gap-3 w-full">
+          <div
+            v-for="pi in activeSteps.visible.value"
+            :key="pi.ingredients?.id"
+            class="animate-reveal group bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 rounded-2xl p-4 transition-all hover:border-brand-primary/40 dark:hover:border-brand-primary/40 hover:shadow-md"
+          >
+            <div class="flex items-start justify-between gap-4 mb-2">
+              <span class="block text-sm font-bold text-brand-text dark:text-stone-100 group-hover:text-brand-primary dark:group-hover:text-brand-primary-accent transition-colors leading-tight truncate">
+                {{ pi.ingredients?.name }}
+              </span>
+              <span class="text-[9px] font-black bg-brand-primary-light text-brand-primary dark:bg-brand-primary/10 dark:text-brand-primary-accent px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 border border-brand-primary/10 max-w-[150px] truncate">
+                {{ pi.ingredients?.functional_group || 'Active' }}
+              </span>
+            </div>
+            <p class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
+              {{ pi.ingredients?.benefits || 'No target physiological benefit descriptions logged for this active component compound.' }}
+            </p>
           </div>
-          <p class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
-            {{ pi.ingredients?.benefits || 'No target physiological benefit descriptions logged for this active component compound.' }}
-          </p>
         </div>
-      </div>
 
-      <!-- Fallback Empty State Indicator -->
-      <div v-else class="text-center py-6 border border-dashed border-brand-surface-border dark:border-stone-800 rounded-2xl text-xs font-semibold text-brand-text-muted">
-        No therapeutic chemical groups found inside this product classification layer.
-      </div>
+        <!-- Fallback Empty State Indicator -->
+        <div v-else class="text-center py-6 border border-dashed border-brand-surface-border dark:border-stone-800 rounded-2xl text-xs font-semibold text-brand-text-muted">
+          No therapeutic chemical groups found inside this product classification layer.
+        </div>
 
-      <ShowMoreControl
-        :next-count="activeSteps.nextCount.value"
-        :remaining="activeSteps.remaining.value"
-        :can-show-more="activeSteps.canShowMore.value"
-        :can-show-less="activeSteps.canShowLess.value"
-        noun="actives"
-        :controls="listId"
-        @more="activeSteps.showMore"
-        @less="activeSteps.showLess"
-      />
-    </div>
+        <ShowMoreControl
+          :next-count="activeSteps.nextCount.value"
+          :remaining="activeSteps.remaining.value"
+          :can-show-more="activeSteps.canShowMore.value"
+          :can-show-less="activeSteps.canShowLess.value"
+          noun="actives"
+          :controls="listId"
+          @more="activeSteps.showMore"
+          @less="activeSteps.showLess"
+        />
+      </div>
+    </CollapseTransition>
   </div>
 </template>

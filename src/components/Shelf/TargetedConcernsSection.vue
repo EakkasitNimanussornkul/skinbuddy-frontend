@@ -100,7 +100,7 @@ const suitedListId = useId()
       <span
         v-for="(concern, idx) in suitedSteps.visible.value"
         :key="idx"
-        class="text-[11px] font-bold bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent px-3 py-1 rounded-xl border border-brand-primary/20 shadow-2xs"
+        class="animate-reveal text-[11px] font-bold bg-brand-primary/10 text-brand-primary dark:text-brand-primary-accent px-3 py-1 rounded-xl border border-brand-primary/20 shadow-2xs"
       >
         {{ concern }}
       </span>

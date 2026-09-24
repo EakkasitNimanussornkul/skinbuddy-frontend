@@ -10,6 +10,7 @@ import ArchiveLogForm from './ArchiveLogForm.vue'
 import ArchiveLogSummary from './ArchiveLogSummary.vue'
 import SafetyInspectionCard, { type WarningAlert } from './SafetyInspectionCard.vue'
 import TargetedConcernsSection from './TargetedConcernsSection.vue'
+import CollapseTransition from '../Shared/CollapseTransition.vue'
 import type { ShelfItem } from '../../stores/shelfStore'
 
 const props = defineProps<{
@@ -237,12 +238,16 @@ const handleExecuteDelete = async () => {
                     </span>
                   </button>
                 </h4>
-                <div v-show="archivedCheckOpen" :id="archivedCheckId" class="px-4 pb-4 space-y-3">
-                  <p class="archived-safety-note text-[11px] font-medium text-brand-text-muted leading-relaxed">
-                    This product is archived, so nothing here affects your routine today. It is checked against what is on your shelf now - what would clash if you started using it again.
-                  </p>
-                  <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-status="scanStatus" />
-                </div>
+                <CollapseTransition>
+                  <div v-show="archivedCheckOpen" :id="archivedCheckId">
+                    <div class="px-4 pb-4 space-y-3">
+                      <p class="archived-safety-note text-[11px] font-medium text-brand-text-muted leading-relaxed">
+                        This product is archived, so nothing here affects your routine today. It is checked against what is on your shelf now - what would clash if you started using it again.
+                      </p>
+                      <SafetyInspectionCard :warnings="warningAlerts" :is-loading="isAnalyzing" :scan-status="scanStatus" />
+                    </div>
+                  </div>
+                </CollapseTransition>
               </div>
 
               <!-- 🌟 2. Description -->
