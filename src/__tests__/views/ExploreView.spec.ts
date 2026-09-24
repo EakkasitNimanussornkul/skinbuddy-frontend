@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory, type Router } from 'vue-router'
+import { TransitionGroup } from 'vue'
 
 vi.mock('../../api/products.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/products')>()),
   searchProducts: vi.fn(),
 }))
 
-import { searchProducts } from '../../api/products.ts'
+import { searchProducts, MATCH_SCORE_BASIS } from '../../api/products.ts'
 import ExploreView from '../../views/ExploreView.vue'
 import SearchAutocompleteInput from '../../components/Shared/SearchAutocompleteInput.vue'
 import SkinTypeRecommendationsWidget from '../../components/Shared/SkinTypeRecommendationsWidget.vue'
@@ -463,6 +464,76 @@ describe('src/views/ExploreView.vue', () => {
       // observable here - the same repair the ShelfView card needed.
       expect(marquee().props('products')).toEqual([])
       expect(wrapper.text()).toContain('Catalog Unavailable')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('loading, the match note and the scroll hold', () => {
+    it('shows placeholder cards in the product card shape while the catalogue loads', async () => {
+      // Owner request: a skeleton rather than a line of text.
+      let resolve!: (value: unknown) => void
+      vi.mocked(searchProducts).mockReturnValue(new Promise((r) => { resolve = r }) as never)
+      const { wrapper } = await mountExplore()
+
+      const skeleton = wrapper.get('.catalog-skeleton')
+      expect(skeleton.attributes('role')).toBe('status')
+      expect(skeleton.findAll('.skeleton-card')).toHaveLength(4)
+      expect(wrapper.text()).not.toContain('Refining Formula Matrix Viewport')
+
+      resolve([catalogProduct()])
+      await flushPromises()
+      expect(wrapper.find('.catalog-skeleton').exists()).toBe(false)
+      expect(cards(wrapper)).toHaveLength(1)
+    })
+
+    it('draws the grid as a list, since each card is a list item', async () => {
+      vi.mocked(searchProducts).mockResolvedValue([catalogProduct()])
+      const { wrapper } = await mountExplore()
+
+      // Test Utils stubs TransitionGroup, so the tag it is asked for is read.
+      expect(wrapper.findComponent(TransitionGroup).props('tag')).toBe('ul')
+    })
+
+    it('says in plain words what % Match is based on', async () => {
+      // Owner request: be open about how the score works.
+      vi.mocked(searchProducts).mockResolvedValue([catalogProduct()])
+      const { wrapper } = await mountExplore('/explore', { authenticated: true })
+
+      const note = wrapper.get('.match-explainer').text()
+      expect(note).toContain('What is % Match?')
+      expect(note).toContain(MATCH_SCORE_BASIS)
+      expect(note).not.toContain('Baumann')
+    })
+
+    it('tells a guest how to get a score, and a user with no skin type too', async () => {
+      vi.mocked(searchProducts).mockResolvedValue([catalogProduct({ skin_match_score: null })])
+      const { wrapper: guest } = await mountExplore()
+      expect(guest.get('.match-explainer').text()).toContain('Sign in and take the skin quiz to see yours.')
+
+      const { wrapper: noType } = await mountExplore('/explore', { authenticated: true, skinType: null })
+      expect(noType.get('.match-explainer').text()).toContain('Take the skin quiz to see yours.')
+      expect(noType.get('.match-explainer').text()).not.toContain('Sign in')
+    })
+
+    it('holds the results at their height while a price change reloads, then lets go', async () => {
+      // Owner report: the grid gave way to a short loading line, the page
+      // shrank under the user and the browser threw them upward.
+      vi.mocked(searchProducts).mockResolvedValue([catalogProduct()])
+      const { wrapper } = await mountExplore()
+      const region = () => wrapper.get('.catalog-results')
+      // jsdom has no layout, so the height the browser would report is given.
+      Object.defineProperty(region().element, 'offsetHeight', { configurable: true, value: 900 })
+
+      let resolve!: (value: unknown) => void
+      vi.mocked(searchProducts).mockReturnValue(new Promise((r) => { resolve = r }) as never)
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      await wrapper.vm.$nextTick()
+
+      expect(region().attributes('style')).toContain('min-height: 900px')
+
+      resolve([catalogProduct()])
+      await flushPromises()
+      expect(region().attributes('style') ?? '').not.toContain('min-height')
     })
   })
 })

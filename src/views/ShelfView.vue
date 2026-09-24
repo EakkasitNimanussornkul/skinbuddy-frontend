@@ -16,6 +16,7 @@ import { useToast } from '../composables/useToast'
 
 import ShelfCard from '../components/Shelf/ShelfCard.vue'
 import ShelfStatusGuide from '../components/Shelf/ShelfStatusGuide.vue'
+import { cardFlowDelay, pinLeavingCard } from '../components/Shared/cardFlow'
 import ShelfQuickAddBanner from '../components/Shelf/ShelfQuickAddBanner.vue'
 import AddProductModal from '../components/Shelf/AddProductModal.vue'
 import ItemDetailsModal from '../components/Shelf/ItemDetailsModal.vue'
@@ -175,19 +176,6 @@ const shelfState = computed(() =>
   resolveCatalogState(isLoading.value, shelfFailed.value, myShelf.value.length),
 )
 
-// A card leaving the grid is taken out of the flow where it stands, so it can
-// fade in place while the cards after it glide into the gap. Without this the
-// grid reflows at once and the fade plays in a cell that no longer exists.
-const pinLeavingCard = (el: Element) => {
-  const node = el as HTMLElement
-  const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = node
-  node.style.position = 'absolute'
-  node.style.left = `${offsetLeft}px`
-  node.style.top = `${offsetTop}px`
-  node.style.width = `${offsetWidth}px`
-  node.style.height = `${offsetHeight}px`
-}
-
 const executeDelete = async () => {
   if (!itemToDelete.value) return
   const deletedId = itemToDelete.value.id
@@ -297,12 +285,12 @@ const executeDelete = async () => {
              fade in on load a few at a time, glide to their new places when the
              sort or a filter changes, and fade out where they stood when they
              leave. -->
-        <Transition name="shelf-swap" mode="out-in">
+        <Transition name="swap-fade" mode="out-in">
           <TransitionGroup
             v-if="sortedProducts.length > 0"
             key="grid"
             tag="div"
-            name="shelf-card"
+            name="card-flow"
             appear
             class="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2"
             @before-leave="pinLeavingCard"
@@ -312,7 +300,7 @@ const executeDelete = async () => {
               :key="item.id"
               :item="item"
               :in-routine="routineShelfIds.has(item.id)"
-              :style="{ '--enter-delay': `${Math.min(index, 10) * 35}ms` }"
+              :style="cardFlowDelay(index)"
               @open-details="viewingItem = item"
               @delete="itemToDelete = item"
             />
@@ -356,45 +344,6 @@ const executeDelete = async () => {
 </template>
 
 <style scoped>
-/* Cards gliding to their new place on a sort or filter change. */
-.shelf-card-move {
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.shelf-card-enter-active {
-  transition: opacity 320ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--enter-delay, 0ms);
-}
-.shelf-card-enter-from {
-  opacity: 0;
-  transform: translateY(12px) scale(0.98);
-}
-.shelf-card-leave-active {
-  transition: opacity 200ms ease, transform 200ms ease;
-}
-.shelf-card-leave-to {
-  opacity: 0;
-  transform: scale(0.94);
-}
-
-.shelf-swap-enter-active,
-.shelf-swap-leave-active {
-  transition: opacity 180ms ease;
-}
-.shelf-swap-enter-from,
-.shelf-swap-leave-to {
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shelf-card-move,
-  .shelf-card-enter-active,
-  .shelf-card-leave-active,
-  .shelf-swap-enter-active,
-  .shelf-swap-leave-active {
-    transition: none;
-  }
-}
-
 .animate-float { animation: float 4s ease-in-out infinite; }
 @keyframes float {
   0%, 100% { transform: translateY(0); }

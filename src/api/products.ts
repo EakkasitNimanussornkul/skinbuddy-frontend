@@ -164,10 +164,14 @@ export const resolveMatchBand = (score: number | null | undefined): MatchBand =>
  * saying what it matched against, so it read as a rating of the product. It is
  * not: it is a rating of the fit between this product's ingredients and the
  * viewer's own Baumann skin type, and the same product scores differently for
- * two different people. Shared so the three screens describe it identically.
+ * two different people. Shared so the screens describe it identically.
+ *
+ * Plain words on purpose (owner request): "Baumann" and "formula" meant nothing
+ * to most users, and the point - it is about their skin, from their quiz - was
+ * lost behind them.
  */
 export const MATCH_SCORE_BASIS =
-  "How well this formula's ingredients suit your Baumann skin type. It is personal to your profile, not a rating of the product."
+  "% Match is how well a product's ingredients suit your skin type, based on your skin quiz. It's personal to you, not a rating of the product."
 
 /**
  * `scored`      a score was computed and can be shown

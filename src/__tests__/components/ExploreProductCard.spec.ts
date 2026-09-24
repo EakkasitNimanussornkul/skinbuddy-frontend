@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import ExploreProductCard from '../../components/Catalog/ExploreProductCard.vue'
+import { MATCH_SCORE_BASIS } from '../../api/products'
 
 const product = (overrides: Record<string, unknown> = {}) => ({
   id: 'p-1',
@@ -53,6 +54,11 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       expect(badge(wrapper).classes()).toContain('text-[10px]')
       expect(badge(wrapper).find('svg').exists()).toBe(false)
     })
+
+    it('says what the score is based on when hovered, and says nothing for no score', () => {
+      expect(badge(mountCard()).attributes('title')).toBe(MATCH_SCORE_BASIS)
+      expect(badge(mountCard({ skin_match_score: null })).attributes('title')).toBeUndefined()
+    })
   })
 
   describe('inspect', () => {
@@ -62,6 +68,18 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       await wrapper.get('.cursor-pointer').trigger('click')
 
       expect(wrapper.emitted('inspect')).toHaveLength(1)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('text size', () => {
+    it('draws the tags and the description large enough to fill the card', () => {
+      // Owner feedback: the card read as mostly blank beside its image.
+      const wrapper = mountCard()
+
+      expect(wrapper.get('.card-description').classes()).toEqual(expect.arrayContaining(['text-sm', 'line-clamp-3']))
+      expect(wrapper.get('.card-tags').classes()).toContain('text-sm')
+      expect(wrapper.get('h3').classes()).toContain('text-lg')
     })
   })
 })

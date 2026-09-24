@@ -448,6 +448,14 @@ const SPEC_MAP = [
       'The component mounted with @vue/test-utils with a product passed directly, its skin_match_score set per case. The badge wording and palette come from components/Catalog/matchBadge.ts, which the recommendation cards also use. No store, no router, no network.',
     note: 'One card in the Explore grid. On owner feedback the skin match badge moved from a 10px pill in the card footer to the top right of the card and was enlarged, since it is the one figure on the card that is about the viewer rather than the product. A score nobody computed, for a guest or a user with no skin type, stays small and reads Score Unavailable rather than 0 percent. The recommendation cards on the same page draw the same score with the same label and palette.',
   },
+  {
+    file: 'src/__tests__/router/scroll.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'router/scroll',
+    prerequisite:
+      'No router instance and no components - scrollBehavior is a pure function over the target and source routes and the saved position, called directly with plain objects carrying only the fields it reads.',
+    note: 'Where the window goes after a navigation. On owner report, each Explore category chip scrolled the page back to the top, away from the grid being filtered, because the chip writes the category into the address and every address change scrolled to the top. A route marked keepScrollOnQueryChange, which only Explore is, now keeps its place when only the query changes. Back and forward still restore the saved position and every other navigation still starts at the top.',
+  },
 ]
 
 function runSuite() {

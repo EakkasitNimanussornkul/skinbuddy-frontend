@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { resolveNavigation } from './guard'
+import { scrollBehavior } from './scroll'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 import ChatbotView from '../views/ChatbotView.vue'
 import CompareView from '../views/CompareView.vue'
@@ -20,13 +21,7 @@ import WeeklyCheckInView from '../views/WeeklyCheckInView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition
-    } else {
-      return { top: 0, behavior: 'smooth' }
-    }
-  },
+  scrollBehavior,
   routes: [
     {
       path: '/',
@@ -77,6 +72,8 @@ const router = createRouter({
       path: '/explore',
       name: 'explore',
       component: ExploreView,
+      // Category chips write ?category= here; see router/scroll.ts.
+      meta: { keepScrollOnQueryChange: true },
     },
     {
       path: '/routine',

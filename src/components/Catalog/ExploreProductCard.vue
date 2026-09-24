@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { describeMatchBadge } from './matchBadge'
+import { MATCH_SCORE_BASIS } from '../../api/products'
 
 const props = defineProps<{
   product: any
@@ -36,6 +37,7 @@ const ingredientsSummary = computed(() => {
            the card that is about the viewer rather than the product. On narrow
            screens it sits over the image's corner. -->
       <span
+        :title="matchInfo.band === 'unavailable' ? undefined : MATCH_SCORE_BASIS"
         :class="[
           'match-badge absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
           // A score nobody computed (a guest, or no skin type) stays small: it
@@ -67,21 +69,23 @@ const ingredientsSummary = computed(() => {
              before it reaches the badge. -->
         <div class="flex items-start justify-between gap-4 w-full sm:pr-32">
           <div class="min-w-0">
-            <span class="text-[10px] font-bold text-brand-text-muted dark:text-stone-400 uppercase tracking-widest block truncate">
+            <span class="text-[11px] font-bold text-brand-text-muted dark:text-stone-400 uppercase tracking-widest block truncate">
               {{ product.brand || 'Curated Formulation' }}
             </span>
-            <h3 class="text-base font-serif font-bold text-brand-text dark:text-white leading-snug mt-0.5 group-hover:text-brand-primary transition-colors line-clamp-2">
+            <h3 class="text-lg font-serif font-bold text-brand-text dark:text-white leading-snug mt-0.5 group-hover:text-brand-primary transition-colors line-clamp-2">
               {{ product.name }}
             </h3>
           </div>
         </div>
 
-        <!-- Row 2: Metadata Core Identifiers Matrix Row -->
-        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs font-semibold text-brand-text-muted">
-          <span class="px-2.5 py-0.5 rounded-md bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 font-medium text-[11px]">
+        <!-- Row 2: category and price. Enlarged on owner feedback, with the
+             description below, to fill a card that read as mostly blank beside
+             its image. -->
+        <div class="card-tags flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-semibold text-brand-text-muted">
+          <span class="px-3 py-1 rounded-lg bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 font-semibold text-xs sm:text-[13px] text-brand-text dark:text-stone-200">
             {{ product.category || 'Active Formula' }}
           </span>
-          <div v-if="product.price_thb || product.price_usd" class="flex items-center gap-1 font-mono font-bold text-brand-text dark:text-stone-200">
+          <div v-if="product.price_thb || product.price_usd" class="flex items-center gap-1.5 font-mono font-bold text-sm sm:text-base text-brand-text dark:text-stone-200">
             <span v-if="product.price_thb" class="text-brand-primary">฿{{ product.price_thb }}</span>
             <span v-if="product.price_thb && product.price_usd" class="text-brand-surface-border dark:text-stone-700 font-normal">/</span>
             <span v-if="product.price_usd" class="opacity-70">${{ product.price_usd }}</span>
@@ -91,12 +95,10 @@ const ingredientsSummary = computed(() => {
           </div>
         </div>
 
-        <!-- Row 3: Live Bio-Compatibility Summary Blurbs Description -->
-        <p class="text-xs text-brand-text-muted dark:text-stone-400 font-medium line-clamp-2 leading-relaxed flex-1">
+        <!-- Row 3: description, or the leading ingredients when there is none -->
+        <p class="card-description text-sm text-brand-text-muted dark:text-stone-400 font-medium line-clamp-3 leading-relaxed flex-1">
           {{ product.description || ingredientsSummary }}
         </p>
-
-
       </div>
 
     </div>

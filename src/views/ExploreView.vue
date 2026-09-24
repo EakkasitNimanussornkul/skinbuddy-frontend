@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   searchProducts,
   pickTopRecommendations,
   resolveCatalogState,
+  MATCH_SCORE_BASIS,
   type ScoredProduct,
 } from '../api/products.ts'
 import { useAuthStore } from '../stores/auth.ts'
@@ -18,6 +19,7 @@ import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue
 import PriceRangeSlider from '../components/Catalog/PriceRangeSlider.vue'
 import EmptyState from '../components/Shared/EmptyState.vue'
 import ProductShowcaseMarquee from '../components/Catalog/ProductShowcaseMarquee.vue'
+import { cardFlowDelay, pinLeavingCard } from '../components/Shared/cardFlow'
 
 const route = useRoute()
 const router = useRouter()
@@ -82,7 +84,15 @@ const syncFiltersFromURL = () => {
 // file should quietly rely on.
 let fetchedQuery = ''
 
+// The results area's height while a re-request is in flight. The grid gives way
+// to a short loading line, so without this the page shrank under the user, the
+// browser clamped the scroll position, and a price change threw them upward -
+// owner report. Held at the grid's last height until the new results land.
+const resultsRegion = ref<HTMLElement | null>(null)
+const heldHeight = ref<number | null>(null)
+
 const fetchCatalog = async () => {
+  heldHeight.value = resultsRegion.value?.offsetHeight || null
   isLoading.value = true
   catalogFailed.value = false
   // Recorded before the await, not after. A failure leaves the failed state on
@@ -102,6 +112,9 @@ const fetchCatalog = async () => {
     addToast('Failed to load product catalog.', 'error')
   } finally {
     isLoading.value = false
+    // Released once the new results are drawn, so the region then takes their
+    // own height - shorter or longer - rather than the old one.
+    nextTick(() => { heldHeight.value = null })
   }
 }
 
@@ -144,6 +157,17 @@ const recommendationsCollapsed = ref(false)
 const showRecommendations = computed(
   () => authStore.isAuthenticated && !!authStore.user?.skin_type,
 )
+
+// What the % Match on every card is based on, in plain words (owner request:
+// be open about how the score works). A viewer with no score yet is told how
+// to get one rather than left looking at "Score Unavailable".
+const matchExplainer = computed(() => {
+  if (showRecommendations.value) return MATCH_SCORE_BASIS
+  const next = authStore.isAuthenticated
+    ? 'Take the skin quiz to see yours.'
+    : 'Sign in and take the skin quiz to see yours.'
+  return `${MATCH_SCORE_BASIS} ${next}`
+})
 
 const loadRecommendations = async () => {
   if (!showRecommendations.value) return
@@ -339,7 +363,7 @@ watch(
           compact
           hide-divider
           collapsible
-          subheading="Ranked against your Baumann profile. Browse the full registry below."
+          subheading="Ranked by % Match, best first: how well each product's ingredients suit your skin type."
           @retry="loadRecommendations"
         />
       </div>
@@ -419,11 +443,51 @@ watch(
           <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
             Every product in the catalog, filtered by your selections above.
           </p>
+          <p class="match-explainer mt-3 flex items-start gap-2 text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/15 rounded-xl px-3 py-2">
+            <svg class="w-4 h-4 text-brand-primary shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span><span class="font-bold text-brand-text dark:text-stone-200">What is % Match?</span> {{ matchExplainer }}</span>
+          </p>
         </div>
 
-      <!-- Loading Tracker -->
-      <div v-if="catalogState === 'loading'" class="py-32 text-center animate-pulse text-xs font-bold uppercase tracking-widest text-brand-text-muted">
-        Refining Formula Matrix Viewport...
+      <div ref="resultsRegion" class="catalog-results" :style="heldHeight ? { minHeight: `${heldHeight}px` } : undefined">
+      <!-- Loading: placeholder cards in the product card's own shape, so the
+           grid does not jump when the results land. Replaces a line of text
+           that said nothing about what was coming (owner request). -->
+      <div
+        v-if="catalogState === 'loading'"
+        class="catalog-skeleton grid grid-cols-1 xl:grid-cols-2 gap-5 w-full"
+        role="status"
+        aria-busy="true"
+      >
+        <span class="sr-only">Loading products</span>
+        <div
+          v-for="n in 4"
+          :key="n"
+          class="skeleton-card bg-brand-surface-light dark:bg-brand-surface-dark rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm flex flex-col sm:flex-row gap-5 p-5 animate-pulse"
+          aria-hidden="true"
+        >
+          <div class="w-full sm:w-44 md:w-48 aspect-[4/3] sm:aspect-square bg-brand-bg-light dark:bg-stone-900 rounded-2xl shrink-0"></div>
+          <div class="flex-1 flex flex-col gap-3 py-1">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 space-y-2">
+                <div class="h-2.5 w-20 bg-brand-bg-light dark:bg-stone-900 rounded-full"></div>
+                <div class="h-4 w-4/5 bg-brand-bg-light dark:bg-stone-900 rounded-full"></div>
+              </div>
+              <div class="h-7 w-24 bg-brand-bg-light dark:bg-stone-900 rounded-full shrink-0"></div>
+            </div>
+            <div class="flex gap-3">
+              <div class="h-6 w-20 bg-brand-bg-light dark:bg-stone-900 rounded-lg"></div>
+              <div class="h-6 w-16 bg-brand-bg-light dark:bg-stone-900 rounded-lg"></div>
+            </div>
+            <div class="space-y-2 pt-1">
+              <div class="h-3 w-full bg-brand-bg-light dark:bg-stone-900 rounded-full"></div>
+              <div class="h-3 w-11/12 bg-brand-bg-light dark:bg-stone-900 rounded-full"></div>
+              <div class="h-3 w-2/3 bg-brand-bg-light dark:bg-stone-900 rounded-full"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Retrieval failure. Reported before the empty state below, because a
@@ -450,15 +514,26 @@ watch(
         </button>
       </div>
 
-      <!-- Product Grid -->
-      <div v-else-if="catalogState === 'results'" class="grid grid-cols-1 xl:grid-cols-2 gap-5 w-full items-start">
+      <!-- Product Grid. Cards fade up a few at a time as they arrive, glide to
+           their new place when a filter narrows the list, and fade out where
+           they stood when they leave - the shelf's motion. A list, since each
+           card is an li. -->
+      <TransitionGroup
+        v-else-if="catalogState === 'results'"
+        tag="ul"
+        name="card-flow"
+        appear
+        class="relative grid grid-cols-1 xl:grid-cols-2 gap-5 w-full items-start"
+        @before-leave="pinLeavingCard"
+      >
         <ExploreProductCard
-          v-for="product in filteredCatalog"
+          v-for="(product, index) in filteredCatalog"
           :key="product.id"
           :product="product"
+          :style="cardFlowDelay(index)"
           @inspect="selectedForInspection = product"
         />
-      </div>
+      </TransitionGroup>
 
       <div v-else class="py-12 flex justify-center w-full">
         <EmptyState
@@ -467,6 +542,7 @@ watch(
           action-label="Reset Filter Criteria"
           @action="handlePriceClear(); selectedCategory = 'All'; selectedBrand = 'All'; router.push('/explore')"
         />
+      </div>
       </div>
       </div>
 
