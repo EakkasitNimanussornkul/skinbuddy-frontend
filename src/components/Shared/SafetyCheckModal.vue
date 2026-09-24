@@ -170,7 +170,7 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
               <!-- Pass 1 & Pass 2 Chemistry Errors -->
               <div v-if="chemicalConflicts.length" :id="chemicalListId" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-error/10 text-semantic-error rounded-md border border-semantic-error/20">Chemical Interaction Risks</span>
-                <div v-for="(warn, i) in chemicalSteps.visible.value" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
+                <div v-for="(warn, i) in chemicalSteps.visible.value" :key="i" class="animate-reveal text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
                   <!-- FE-DEF-25: was a two-way test that drew Low in the same
                        amber as Medium. Banded by the shared rule now; the
                        colours stay this component's own. -->
@@ -203,7 +203,7 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
               <!-- Pass 3 Skin Type Warnings -->
               <div v-if="skinConflicts.length" class="space-y-2">
                 <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-semantic-warning/10 text-semantic-warning rounded-md border border-semantic-warning/20">Skin Type Contraindications</span>
-                <div v-for="(warn, i) in skinCards" :key="i" class="text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
+                <div v-for="(warn, i) in skinCards" :key="i" class="animate-reveal text-xs font-medium leading-relaxed text-brand-text dark:text-stone-300 bg-brand-bg-light dark:bg-stone-900/60 p-3.5 rounded-xl border border-brand-surface-border dark:border-stone-800/80 flex flex-col gap-1">
                   <!-- The alert's own grade. This read "Severity: High" for every
                        skin-type alert, which was accurate only while the backend
                        graded them all High; it now grades each by its worst
@@ -246,7 +246,7 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
               <div
                 v-for="dupe in dupeSteps.visible.value"
                 :key="dupe.product_id"
-                class="bg-brand-surface-light dark:bg-stone-900 rounded-xl border border-brand-surface-border dark:border-stone-800/80 p-3.5 space-y-1"
+                class="animate-reveal bg-brand-surface-light dark:bg-stone-900 rounded-xl border border-brand-surface-border dark:border-stone-800/80 p-3.5 space-y-1"
               >
                 <!-- Both brand and slug are nullable server-side, so neither the
                      prefix nor the link can be assumed. -->

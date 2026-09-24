@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, useId } from 'vue'
+import CollapseTransition from '../Shared/CollapseTransition.vue'
 
 defineProps<{
   stats: {
@@ -46,37 +47,43 @@ const guideId = useId()
         </span>
       </button>
 
-      <div v-if="showAwarenessGuide" :id="guideId" class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 mt-3 border-t border-brand-surface-border dark:border-stone-800/80 animate-fade-in">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2 text-xs font-bold text-rose-500">
-            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            High Awareness (Red)
-          </div>
-          <p class="text-[11px] font-medium text-brand-text-muted leading-relaxed">
-            Active triggers (such as high-strength retinoids, strong chemical exfoliants, or volatile alcohols). Requires careful routine planning to avoid clashing.
-          </p>
-        </div>
+      <CollapseTransition>
+        <div v-if="showAwarenessGuide" :id="guideId">
+          <div class="pt-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-brand-surface-border dark:border-stone-800/80">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 text-xs font-bold text-rose-500">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                  High Awareness (Red)
+                </div>
+                <p class="text-[11px] font-medium text-brand-text-muted leading-relaxed">
+                  Active triggers (such as high-strength retinoids, strong chemical exfoliants, or volatile alcohols). Requires careful routine planning to avoid clashing.
+                </p>
+              </div>
 
-        <div class="space-y-1">
-          <div class="flex items-center gap-2 text-xs font-bold text-stone-500 dark:text-stone-300">
-            <span class="w-2.5 h-2.5 rounded-full bg-stone-400 dark:bg-stone-600"></span>
-            Medium Awareness (Grey)
-          </div>
-          <p class="text-[11px] font-medium text-brand-text-muted leading-relaxed">
-            Formulation binders, mild surfactants, standard preservatives, and emulsifiers. Safe and necessary structural elements to stabilize the active formula.
-          </p>
-        </div>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 text-xs font-bold text-stone-500 dark:text-stone-300">
+                  <span class="w-2.5 h-2.5 rounded-full bg-stone-400 dark:bg-stone-600"></span>
+                  Medium Awareness (Grey)
+                </div>
+                <p class="text-[11px] font-medium text-brand-text-muted leading-relaxed">
+                  Formulation binders, mild surfactants, standard preservatives, and emulsifiers. Safe and necessary structural elements to stabilize the active formula.
+                </p>
+              </div>
 
-        <div class="space-y-1">
-          <div class="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            Low Awareness (Green)
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  Low Awareness (Green)
+                </div>
+                <p class="text-[11px] font-medium text-brand-text-muted leading-relaxed">
+                  Highly compatible ingredients (such as Ceramides, Panthenol, Glycerin, and Green Tea) that soothe the lipid barrier and deliver gentle nourishment.
+                </p>
+              </div>
+            </div>
           </div>
-          <p class="text-[11px] font-medium text-brand-text-muted leading-relaxed">
-            Highly compatible ingredients (such as Ceramides, Panthenol, Glycerin, and Green Tea) that soothe the lipid barrier and deliver gentle nourishment.
-          </p>
         </div>
-      </div>
+      </CollapseTransition>
     </div>
   </div>
 </template>

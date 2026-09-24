@@ -197,7 +197,7 @@ const handleGuestTrigger = () => {
           <IngredientAwarenessLegend :stats="awarenessStats" />
 
           <div :id="ingredientListId" class="divide-y divide-brand-surface-border dark:divide-stone-800 border-t border-b border-brand-surface-border dark:border-stone-800">
-            <div v-for="(item, idx) in ingredientSteps.visible.value" :key="idx" class="py-4 flex items-center justify-between gap-4">
+            <div v-for="(item, idx) in ingredientSteps.visible.value" :key="idx" class="animate-reveal py-4 flex items-center justify-between gap-4">
               <div class="flex items-center gap-3">
                 <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0 shadow-sm" :class="getTierBgColor(item.ingredients?.awareness_tier)"></span>
                 <div>
@@ -244,7 +244,7 @@ const handleGuestTrigger = () => {
               <div
                 v-for="ing in benefitSteps.visible.value"
                 :key="ing.id"
-                class="p-5 bg-brand-bg-light dark:bg-stone-900/50 rounded-2xl border border-brand-surface-border dark:border-stone-800 shadow-2xs transition-all justify-between items-start flex"
+                class="animate-reveal p-5 bg-brand-bg-light dark:bg-stone-900/50 rounded-2xl border border-brand-surface-border dark:border-stone-800 shadow-2xs transition-all justify-between items-start flex"
               >
                 <div class="flex items-start gap-3.5">
                   <span class="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs border border-emerald-500/20 dark:border-emerald-800/50">

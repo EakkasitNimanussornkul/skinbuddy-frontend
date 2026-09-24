@@ -67,7 +67,7 @@ const CHIP: Record<string, string> = {
       <li
         v-for="(detail, idx) in steps.visible.value"
         :key="idx"
-        class="conflict-detail pl-3 border-l-2 border-brand-surface-border dark:border-stone-700 space-y-1.5"
+        class="conflict-detail animate-reveal pl-3 border-l-2 border-brand-surface-border dark:border-stone-700 space-y-1.5"
       >
         <span
           v-if="resolveSeverityBand(detail.severity) !== 'unknown'"

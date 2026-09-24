@@ -146,7 +146,7 @@ const concernListIdB = useId()
         <div
           v-for="(warning, idx) in conflictSteps.visible.value"
           :key="idx"
-          class="p-4 rounded-2xl bg-semantic-error/5 border border-semantic-error/15 space-y-2"
+          class="animate-reveal p-4 rounded-2xl bg-semantic-error/5 border border-semantic-error/15 space-y-2"
         >
           <!-- Severity omitted rather than defaulted when the engine sent none:
                printing the most alarming value nobody computed is FE-DEF-25. -->
@@ -255,7 +255,7 @@ const concernListIdB = useId()
             v-for="(con, i) in concernStepsA.visible.value"
             :key="i"
             :data-band="con.band"
-            :class="['ingredient-concern flex items-start gap-3 border p-3.5 rounded-2xl animate-fade-in', CONCERN_TONE[con.band].card]"
+            :class="['ingredient-concern animate-reveal flex items-start gap-3 border p-3.5 rounded-2xl', CONCERN_TONE[con.band].card]"
           >
             <div :class="['w-7 h-7 rounded-full border flex items-center justify-center shrink-0 font-mono font-bold text-xs', CONCERN_TONE[con.band].icon]">!</div>
             <div>
@@ -290,7 +290,7 @@ const concernListIdB = useId()
             v-for="(con, i) in concernStepsB.visible.value"
             :key="i"
             :data-band="con.band"
-            :class="['ingredient-concern flex items-start gap-3 border p-3.5 rounded-2xl animate-fade-in', CONCERN_TONE[con.band].card]"
+            :class="['ingredient-concern animate-reveal flex items-start gap-3 border p-3.5 rounded-2xl', CONCERN_TONE[con.band].card]"
           >
             <div :class="['w-7 h-7 rounded-full border flex items-center justify-center shrink-0 font-mono font-bold text-xs', CONCERN_TONE[con.band].icon]">!</div>
             <div>

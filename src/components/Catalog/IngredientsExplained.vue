@@ -52,7 +52,7 @@ const getThemeClasses = (tier?: string) => {
       <div
         v-for="(ing, idx) in explanations.visible.value"
         :key="idx"
-        class="pl-5 border-l-4 space-y-2 animate-fade-in transition-colors duration-300"
+        class="animate-reveal pl-5 border-l-4 space-y-2 transition-colors duration-300"
         :class="getThemeClasses(ing.awareness_tier).border"
       >
         <div class="flex items-center gap-2">
@@ -89,7 +89,3 @@ const getThemeClasses = (tier?: string) => {
   </div>
 </template>
 
-<style scoped>
-.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-</style>
