@@ -18,6 +18,7 @@ import {
   resolveShelfItemStatus,
   paoPeriodHasElapsed,
   resolveRoutineShelfIds,
+  sortShelfItems,
 } from '../../api/shelfapi'
 import { toLocalDateString } from '../../api/dates'
 
@@ -477,6 +478,102 @@ describe('src/api/shelfapi.ts', () => {
     it('marks nothing when there is no routine', () => {
       expect(resolveRoutineShelfIds([], shelf).size).toBe(0)
       expect(resolveRoutineShelfIds(null, shelf).size).toBe(0)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sortShelfItems()', () => {
+    const now = new Date(2026, 5, 1)
+    const item = (id: string, fields: Record<string, unknown>, name = id, brand = 'Brand') => ({
+      id,
+      usage_state: 'active',
+      opened_date: null as string | null,
+      expiration_date: null as string | null,
+      pao: null,
+      products: { name, brand },
+      ...fields,
+    })
+
+    const expiredLongAgo = item('expired-long-ago', { expiration_date: '2026-03-01' })
+    const expiredRecently = item('expired-recently', { expiration_date: '2026-05-01' })
+    const expiringSoon = item('expiring-soon', { opened_date: '2026-01-01', expiration_date: '2026-06-10' })
+    const activeInRoutine = item('active-in-routine', { opened_date: '2026-05-01' }, 'Zinc Serum')
+    const activeDated = item('active-dated', { opened_date: '2026-05-01', expiration_date: '2026-12-01' }, 'Aloe Gel')
+    const unopened = item('unopened', { usage_state: 'unopened' }, 'Calm Toner')
+    const unopenedInRoutine = item('unopened-in-routine', { usage_state: 'unopened' }, 'Daily Cream')
+    const routine = new Set(['active-in-routine', 'unopened-in-routine'])
+
+    const shelf = [unopened, activeDated, expiringSoon, unopenedInRoutine, expiredRecently, activeInRoutine, expiredLongAgo]
+    const ids = (items: { id: string }[]) => items.map((i) => i.id)
+
+    it('lists expired, then expiring, then active with routine products first, then unopened', () => {
+      // The owner's order. The rows used to show in whatever order the database
+      // returned them, which read as "most recently edited first".
+      expect(ids(sortShelfItems(shelf, 'attention', routine, now))).toEqual([
+        'expired-long-ago',
+        'expired-recently',
+        'expiring-soon',
+        'active-in-routine',
+        'active-dated',
+        'unopened-in-routine',
+        'unopened',
+      ])
+    })
+
+    it('gives the same order whatever order the rows arrived in', () => {
+      const once = ids(sortShelfItems(shelf, 'attention', routine, now))
+      const reversed = ids(sortShelfItems([...shelf].reverse(), 'attention', routine, now))
+
+      expect(reversed).toEqual(once)
+    })
+
+    it('reverses the statuses for least urgent first, keeping the order inside each', () => {
+      expect(ids(sortShelfItems(shelf, 'calm', routine, now))).toEqual([
+        'unopened-in-routine',
+        'unopened',
+        'active-in-routine',
+        'active-dated',
+        'expiring-soon',
+        'expired-long-ago',
+        'expired-recently',
+      ])
+    })
+
+    it('sorts by expiry date, soonest first, with undated products after every dated one', () => {
+      expect(ids(sortShelfItems(shelf, 'expiry', routine, now))).toEqual([
+        'expired-long-ago',
+        'expired-recently',
+        'expiring-soon',
+        'active-dated',
+        // No date: by name.
+        'unopened',
+        'unopened-in-routine',
+        'active-in-routine',
+      ])
+    })
+
+    it('sorts by product name and by brand, ignoring case', () => {
+      const a = item('a', {}, 'aloe gel', 'Zeta')
+      const b = item('b', {}, 'Barrier Cream', 'alpha')
+      const c = item('c', {}, 'Cleanser', 'Alpha')
+
+      expect(ids(sortShelfItems([c, b, a], 'name', new Set(), now))).toEqual(['a', 'b', 'c'])
+      expect(ids(sortShelfItems([a, c, b], 'brand', new Set(), now))).toEqual(['b', 'c', 'a'])
+    })
+
+    it('puts the most recently archived first among archived products', () => {
+      const older = item('older', { usage_state: 'archived', archived_at: '2026-01-01T00:00:00Z' })
+      const newer = item('newer', { usage_state: 'archived', archived_at: '2026-05-01T00:00:00Z' })
+
+      expect(ids(sortShelfItems([older, newer], 'attention', new Set(), now))).toEqual(['newer', 'older'])
+    })
+
+    it('returns a new array and leaves the one it was given alone', () => {
+      const input = [unopened, expiredLongAgo]
+      const result = sortShelfItems(input, 'attention', new Set(), now)
+
+      expect(result).not.toBe(input)
+      expect(ids(input)).toEqual(['unopened', 'expired-long-ago'])
     })
   })
 })

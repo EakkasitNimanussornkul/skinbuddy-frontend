@@ -432,6 +432,14 @@ const SPEC_MAP = [
       'The component mounted with @vue/test-utils with reasons passed directly. Fixtures follow the SkinTypeReason shape from backend commit b4c7e66 on feat/skin-type-explanations: one reason per matched trait of the user code, in code order, each with the concern title and description when one exists. No store, no router, no network.',
     note: 'Why a skin-type alert fired. It used to say only that an ingredient triggers the user type, with no reason and no indication which letter matched. Each reason shows the concern and always the trait as a Flagged for label, so the twelve live triggers with no concern written yet still say which trait they are flagged for. A per-reason grade appears only with two or more reasons, since the backend grades the alert by its worst reason and one reason would only repeat the badge. The same change fixed the Safety Check report printing Severity High on every skin-type alert, which was accurate only while the backend graded them all High.',
   },
+  {
+    file: 'src/__tests__/components/ShelfStatusGuide.spec.ts',
+    feature: '#3 Skincare storage',
+    module: 'components/Shelf/ShelfStatusGuide',
+    prerequisite:
+      'The component mounted with @vue/test-utils with no props. It holds its own copy of the badge list and draws each with the ItemBadge component the shelf cards use. No store, no router, no network.',
+    note: 'The key to the shelf card badges, added on owner feedback that the shelf page did not say what each badge meant or where archived products had gone. It explains the five badges a card can show, the separate In Routine marker, that archived products are hidden from All and reached through the Archived filter, and the default Needs attention first order. It starts folded, because the shelf is visited often and a returning user does not need the key each time.',
+  },
 ]
 
 function runSuite() {

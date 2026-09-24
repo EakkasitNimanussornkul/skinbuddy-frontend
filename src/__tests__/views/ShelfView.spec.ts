@@ -557,4 +557,60 @@ describe('src/views/ShelfView.vue', () => {
       expect(wrapper.text()).toContain('No items match your current search or status filters.')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sorting', () => {
+    /** A calendar day `n` days from today, as the backend stores it. */
+    const days = (n: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() + n)
+      return toLocalDateString(d)
+    }
+
+    // Arrives in the order an edit could leave it in: the least urgent first.
+    const shelf = () => [
+      withProduct({ id: 'sealed', usage_state: 'unopened' }, { name: 'Calm Toner', brand: 'Klairs' }),
+      withProduct({ id: 'in-use', opened_date: days(-10) }, { name: 'Aloe Gel', brand: 'Zeta' }),
+      withProduct({ id: 'expiring', opened_date: days(-100), expiration_date: days(5) }, { name: 'Barrier Cream', brand: 'Beta' }),
+      withProduct({ id: 'expired', opened_date: days(-400), expiration_date: days(-3) }, { name: 'Daily Serum', brand: 'Alpha' }),
+    ]
+
+    it('lists expired first, then expiring, then active, then unopened, by default', async () => {
+      // Owner feedback: the shelf read as ordered by last update, because the
+      // request has no order and the view kept whatever it was given.
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      expect(shownIds(wrapper)).toEqual(['expired', 'expiring', 'in-use', 'sealed'])
+      expect((wrapper.get('select.shelf-sort').element as HTMLSelectElement).value).toBe('attention')
+    })
+
+    it('reorders when the user picks another sort', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      await wrapper.get('select.shelf-sort').setValue('name')
+      expect(shownIds(wrapper)).toEqual(['in-use', 'expiring', 'sealed', 'expired'])
+
+      await wrapper.get('select.shelf-sort').setValue('calm')
+      expect(shownIds(wrapper)).toEqual(['sealed', 'in-use', 'expiring', 'expired'])
+    })
+
+    it('sorts within the current filter rather than bringing hidden items back', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      await buttonWith(wrapper, 'Expired').trigger('click')
+      await wrapper.get('select.shelf-sort').setValue('name')
+
+      expect(shownIds(wrapper)).toEqual(['expired'])
+    })
+
+    it('puts the badge guide beside the filters', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue(shelf())
+      const wrapper = await mountShelf()
+
+      expect(wrapper.find('button.status-guide-toggle').exists()).toBe(true)
+    })
+  })
 })

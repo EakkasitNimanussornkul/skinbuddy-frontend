@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyShelf, removeFromShelf, resolveRoutineShelfIds, resolveShelfItemStatus } from '../api/shelfapi'
+import {
+  getMyShelf,
+  removeFromShelf,
+  resolveRoutineShelfIds,
+  resolveShelfItemStatus,
+  sortShelfItems,
+  SHELF_SORTS,
+  type ShelfSort,
+} from '../api/shelfapi'
 import { getRoutine } from '../api/routineApi'
 import { resolveCatalogState } from '../api/products'
 import { useToast } from '../composables/useToast'
 
 import ShelfCard from '../components/Shelf/ShelfCard.vue'
+import ShelfStatusGuide from '../components/Shelf/ShelfStatusGuide.vue'
 import ShelfQuickAddBanner from '../components/Shelf/ShelfQuickAddBanner.vue'
 import AddProductModal from '../components/Shelf/AddProductModal.vue'
 import ItemDetailsModal from '../components/Shelf/ItemDetailsModal.vue'
@@ -29,6 +38,8 @@ const { addToast } = useToast()
 const searchQuery = ref('')
 const activeCategory = ref('All')
 const activeStatus = ref('All')
+// Most urgent first unless the user picks another order.
+const activeSort = ref<ShelfSort>('attention')
 
 // "Active" is the lifecycle (opened and in use); "In Routine" is whether a step
 // of the active routine uses the item. They used to be one pill, "In Routine",
@@ -145,6 +156,13 @@ const filteredProducts = computed(() => {
   })
 })
 
+// Filtered, then ordered. Sorted here rather than trusted from the response:
+// GET /shelf/ has no ORDER BY, so rows arrived in whatever order the database
+// kept them, which moved an item every time it was edited.
+const sortedProducts = computed(() =>
+  sortShelfItems(filteredProducts.value, activeSort.value, routineShelfIds.value),
+)
+
 // Same four-state decision the catalogue makes, and reused rather than
 // reimplemented so the ordering cannot drift: `failed` is resolved before
 // `empty`, because a request that never completed says nothing about how many
@@ -244,10 +262,27 @@ const executeDelete = async () => {
           <FilterPills v-model="activeStatus" :options="statuses" variant="brand" />
         </div>
 
+        <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <ShelfStatusGuide />
+          </div>
+          <label class="flex items-center gap-2 shrink-0 text-xs font-bold text-brand-text-muted">
+            <span class="whitespace-nowrap">Sort by</span>
+            <select
+              v-model="activeSort"
+              class="shelf-sort w-full sm:w-60 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 text-xs font-bold rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer transition-all text-brand-text dark:text-stone-200"
+            >
+              <option v-for="option in SHELF_SORTS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+        </div>
+
         <!-- Grid Container -->
-        <div v-if="filteredProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
+        <div v-if="sortedProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
           <ShelfCard
-            v-for="item in filteredProducts"
+            v-for="item in sortedProducts"
             :key="item.id"
             :item="item"
             :in-routine="routineShelfIds.has(item.id)"

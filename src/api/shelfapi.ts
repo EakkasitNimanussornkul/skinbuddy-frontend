@@ -258,3 +258,80 @@ export const resolveRoutineShelfIds = (
 
   return ids
 }
+
+/**
+ * `attention` `calm` `expiry` `name` `brand`
+ *
+ * The shelf's sort orders. GET /shelf/ has no ORDER BY, so the shelf used to
+ * show rows in whatever order the database returned them - which moves a row
+ * whenever it is updated, and read to users as "most recently edited first".
+ */
+export type ShelfSort = 'attention' | 'calm' | 'expiry' | 'name' | 'brand'
+
+export const SHELF_SORTS: ReadonlyArray<{ value: ShelfSort; label: string }> = [
+  { value: 'attention', label: 'Needs attention first' },
+  { value: 'calm', label: 'Least urgent first' },
+  { value: 'expiry', label: 'Expiry date, soonest first' },
+  { value: 'name', label: 'Product name, A to Z' },
+  { value: 'brand', label: 'Brand, A to Z' },
+]
+
+// Owner's order: expired, then expiring, then what is in use. Unopened after
+// those - no clock is running on it - and archived last.
+const STATUS_RANK: Record<ShelfItemStatus, number> = {
+  Expired: 0,
+  'Expiring Soon': 1,
+  Active: 2,
+  Unopened: 3,
+  Archived: 4,
+}
+
+type SortableShelfItem = Parameters<typeof resolveShelfItemStatus>[0] & {
+  id: string
+  archived_at?: string | null
+  products?: { name?: string | null; brand?: string | null } | null
+}
+
+/** -1, 0 or 1, and safe for Infinity - `Infinity - Infinity` is NaN. */
+const compareNumbers = (a: number, b: number) => (a === b ? 0 : a < b ? -1 : 1)
+
+const compareText = (a: string | null | undefined, b: string | null | undefined) =>
+  (a ?? '').localeCompare(b ?? '', undefined, { sensitivity: 'base' })
+
+/**
+ * The shelf in the given order, as a new array.
+ *
+ * Within one status, items the routine uses come first ("Active & In Routine"),
+ * then the soonest expiry - an item with no expiry after every dated one - and
+ * then the name, so the order is fully decided and never depends on the order
+ * the rows arrived in. Archived items, which only share a status with each
+ * other, go most recently archived first.
+ */
+export const sortShelfItems = <T extends SortableShelfItem>(
+  items: readonly T[],
+  sort: ShelfSort,
+  routineIds: ReadonlySet<string> = new Set(),
+  now: Date = new Date(),
+): T[] => {
+  const status = new Map(items.map((item) => [item.id, STATUS_RANK[resolveShelfItemStatus(item, now)]]))
+  const daysLeft = new Map(items.map((item) => [item.id, daysUntilExpiry(item, now) ?? Infinity]))
+
+  const byName = (a: T, b: T) => compareText(a.products?.name, b.products?.name)
+  const inRoutineFirst = (a: T, b: T) => Number(routineIds.has(b.id)) - Number(routineIds.has(a.id))
+  const soonestFirst = (a: T, b: T) => compareNumbers(daysLeft.get(a.id)!, daysLeft.get(b.id)!)
+  const latestArchivedFirst = (a: T, b: T) => compareText(b.archived_at, a.archived_at)
+  const withinStatus = (a: T, b: T) =>
+    inRoutineFirst(a, b) || soonestFirst(a, b) || latestArchivedFirst(a, b) || byName(a, b)
+
+  const compare: Record<ShelfSort, (a: T, b: T) => number> = {
+    attention: (a, b) => compareNumbers(status.get(a.id)!, status.get(b.id)!) || withinStatus(a, b),
+    // The owner's order the other way round. Only the statuses are reversed;
+    // inside each one the order is the same as above.
+    calm: (a, b) => compareNumbers(status.get(b.id)!, status.get(a.id)!) || withinStatus(a, b),
+    expiry: (a, b) => soonestFirst(a, b) || byName(a, b),
+    name: (a, b) => byName(a, b) || compareText(a.products?.brand, b.products?.brand),
+    brand: (a, b) => compareText(a.products?.brand, b.products?.brand) || byName(a, b),
+  }
+
+  return [...items].sort(compare[sort])
+}
