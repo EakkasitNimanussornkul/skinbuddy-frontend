@@ -417,15 +417,27 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(await verdict(30)).toBe('Low match, use with care')
     })
 
-    it('draws a meter filled to the score, held inside its track', async () => {
+    it('keeps the circular score, its ring filled to the percentage and held to a full circle', async () => {
+      // Owner decision: the circle over a bar. The ring's circumference is 100,
+      // so the arc's dash length is the score itself.
       const { wrapper } = await mountHero(true, { product: { skin_match_score: 82.4 } })
-      const meter = wrapper.get('.match-meter')
+      const ring = wrapper.get('.match-ring')
 
-      expect(meter.attributes('aria-valuenow')).toBe('82')
-      expect(meter.get('div').attributes('style')).toContain('width: 82%')
+      expect(ring.attributes('aria-valuenow')).toBe('82')
+      expect(ring.get('.match-arc').attributes('stroke-dasharray')).toBe('82 100')
+      expect(ring.get('.match-percent').text()).toBe('82%')
 
       const { wrapper: over } = await mountHero(true, { product: { skin_match_score: 130 } })
-      expect(over.get('.match-meter div').attributes('style')).toContain('width: 100%')
+      expect(over.get('.match-arc').attributes('stroke-dasharray')).toBe('100 100')
+    })
+
+    it('colours the ring by band', async () => {
+      const arc = async (score: number) =>
+        (await mountHero(true, { product: { skin_match_score: score } })).wrapper.get('.match-arc').classes()
+
+      expect(await arc(91)).toContain('stroke-emerald-500')
+      expect(await arc(70)).toContain('stroke-amber-500')
+      expect(await arc(30)).toContain('stroke-semantic-error')
     })
 
     it('explains what the score is based on, in plain words', async () => {

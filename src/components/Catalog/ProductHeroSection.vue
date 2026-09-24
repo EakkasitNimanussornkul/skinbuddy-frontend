@@ -61,6 +61,7 @@ const matchBand = computed(() => {
       divider: 'border-emerald-500/20 dark:border-emerald-800/40',
       reason: 'text-emerald-900 dark:text-emerald-200',
       dot: 'bg-emerald-500',
+      arc: 'stroke-emerald-500',
       verdict: 'Great match',
     }
   }
@@ -74,6 +75,7 @@ const matchBand = computed(() => {
       divider: 'border-amber-500/20 dark:border-amber-800/40',
       reason: 'text-amber-900 dark:text-amber-200',
       dot: 'bg-amber-500',
+      arc: 'stroke-amber-500',
       verdict: 'Fair match',
     }
   }
@@ -87,6 +89,7 @@ const matchBand = computed(() => {
       divider: 'border-semantic-error/20',
       reason: 'text-brand-text dark:text-stone-200',
       dot: 'bg-semantic-error',
+      arc: 'stroke-semantic-error',
       verdict: 'Low match, use with care',
     }
   }
@@ -101,14 +104,15 @@ const matchBand = computed(() => {
     divider: 'border-brand-surface-border dark:border-stone-800',
     reason: 'text-brand-text-muted dark:text-stone-400',
     dot: 'bg-brand-text-muted',
+    arc: 'stroke-brand-text-muted',
     verdict: '',
   }
 })
 
 const hasMatchScore = computed(() => resolveMatchBand(props.product?.skin_match_score) !== 'unavailable')
 
-// The score as a whole number and as the width of the meter, held to 0-100 so a
-// stray value cannot draw a bar wider than its track.
+// The score as a whole number and as the length of the ring's arc, held to
+// 0-100 so a stray value cannot draw more than a full circle.
 const matchPercent = computed(() =>
   hasMatchScore.value ? Math.min(100, Math.max(0, Math.round(props.product.skin_match_score))) : 0,
 )
@@ -365,35 +369,51 @@ const handleCommitToShelf = async () => {
 
       <!-- Match Card: Authenticated User -->
       <div v-if="authStore.isAuthenticated" :class="['border-2 rounded-3xl p-6 space-y-4 shadow-2xs transition-colors', matchBand.card]">
-        <!-- Scored: on the product page the score is the subject, so it is drawn
-             large, said in words, shown as a meter and explained - where the
-             Explore card only has room for a badge (owner request). -->
-        <div v-if="hasMatchScore" class="match-scored space-y-3">
-          <h4 :class="['text-base font-black', matchBand.heading]">Your Skin Match</h4>
-          <div class="flex items-end justify-between gap-4">
-            <p :class="['match-percent font-mono font-black text-4xl sm:text-5xl leading-none', matchBand.heading]">
-              {{ matchPercent }}<span class="text-2xl sm:text-3xl">%</span>
-            </p>
-            <span :class="['match-verdict text-xs sm:text-sm font-bold px-3 py-1 rounded-full border bg-white/70 dark:bg-stone-900/60', matchBand.ring]">
-              {{ matchBand.verdict }}
-            </span>
-          </div>
+        <!-- Scored: the circular score, as before, made larger and drawn as a ring
+             that fills to the percentage in the band's colour - the owner kept
+             the circle over a bar. Beside it the score is said in words and
+             explained, because on the product page it is the subject rather
+             than a badge. The ring's radius gives a circumference of 100, so
+             the arc's dash length is the percentage itself. -->
+        <div v-if="hasMatchScore" class="match-scored flex items-center gap-5">
           <div
-            class="match-meter h-2.5 w-full rounded-full bg-white/70 dark:bg-stone-900/60 overflow-hidden"
+            class="match-ring relative w-24 h-24 sm:w-28 sm:h-28 shrink-0"
             role="meter"
             aria-label="Skin match"
             :aria-valuenow="matchPercent"
             aria-valuemin="0"
             aria-valuemax="100"
           >
-            <div :class="['h-full rounded-full transition-[width] duration-700 ease-out', matchBand.dot]" :style="{ width: `${matchPercent}%` }"></div>
-          </div>
-          <p :class="['match-basis flex items-start gap-2 text-xs leading-relaxed', matchBand.body]">
-            <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg viewBox="0 0 36 36" class="w-full h-full -rotate-90" aria-hidden="true">
+              <circle cx="18" cy="18" r="15.9155" fill="none" stroke-width="3.2" class="stroke-white/80 dark:stroke-stone-900/70" />
+              <circle
+                cx="18"
+                cy="18"
+                r="15.9155"
+                fill="none"
+                stroke-width="3.2"
+                stroke-linecap="round"
+                :stroke-dasharray="`${matchPercent} 100`"
+                :class="['match-arc transition-[stroke-dasharray] duration-700 ease-out', matchBand.arc]"
+              />
             </svg>
-            <span>{{ MATCH_SCORE_BASIS }}</span>
-          </p>
+            <span :class="['match-percent absolute inset-0 flex items-center justify-center font-mono font-black text-2xl sm:text-3xl', matchBand.heading]">
+              {{ matchPercent }}%
+            </span>
+          </div>
+
+          <div class="min-w-0 space-y-2">
+            <h4 :class="['text-base font-black', matchBand.heading]">Your Skin Match</h4>
+            <span :class="['match-verdict inline-block text-xs sm:text-sm font-bold px-3 py-1 rounded-full border bg-white/70 dark:bg-stone-900/60', matchBand.ring]">
+              {{ matchBand.verdict }}
+            </span>
+            <p :class="['match-basis flex items-start gap-2 text-xs leading-relaxed', matchBand.body]">
+              <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{{ MATCH_SCORE_BASIS }}</span>
+            </p>
+          </div>
         </div>
 
         <div v-else class="flex items-center justify-between gap-4">
