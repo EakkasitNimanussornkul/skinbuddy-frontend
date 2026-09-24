@@ -440,6 +440,14 @@ const SPEC_MAP = [
       'The component mounted with @vue/test-utils with no props. It holds its own copy of the badge list and draws each with the ItemBadge component the shelf cards use. No store, no router, no network.',
     note: 'The key to the shelf card badges, added on owner feedback that the shelf page did not say what each badge meant or where archived products had gone. It explains the five badges a card can show, the separate In Routine marker, that archived products are hidden from All and reached through the Archived filter, and the default Needs attention first order. It starts folded, because the shelf is visited often and a returning user does not need the key each time.',
   },
+  {
+    file: 'src/__tests__/components/ExploreProductCard.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/ExploreProductCard',
+    prerequisite:
+      'The component mounted with @vue/test-utils with a product passed directly, its skin_match_score set per case. The badge wording and palette come from components/Catalog/matchBadge.ts, which the recommendation cards also use. No store, no router, no network.',
+    note: 'One card in the Explore grid. On owner feedback the skin match badge moved from a 10px pill in the card footer to the top right of the card and was enlarged, since it is the one figure on the card that is about the viewer rather than the product. A score nobody computed, for a guest or a user with no skin type, stays small and reads Score Unavailable rather than 0 percent. The recommendation cards on the same page draw the same score with the same label and palette.',
+  },
 ]
 
 function runSuite() {

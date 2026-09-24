@@ -3,6 +3,7 @@ import { computed, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '../Shared/EmptyState.vue'
 import CollapseTransition from './CollapseTransition.vue'
+import { describeMatchBadge } from '../Catalog/matchBadge'
 
 // loading and failed are optional so the existing prop contract still holds for
 // any caller that only passes userSkinType and products.
@@ -86,6 +87,11 @@ const cardClass = computed(() => (props.compact ? 'p-3' : 'p-4 sm:p-5'))
 // The single biggest contributor to the widget's height, so it is the one that
 // moves most: 144/176px down to 96/112px.
 const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-44'))
+
+// Both hosts pass pickTopRecommendations' output, which is ordered by match
+// score, best first - so a card's position is its rank. The badge is the Explore
+// card's, so the same score reads the same way on both.
+const matchOf = (prod: { skin_match_score?: number | null }) => describeMatchBadge(prod?.skin_match_score)
 </script>
 
 <template>
@@ -177,12 +183,24 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
       <!-- Active Grid Render State -->
       <div v-else-if="products && products.length > 0" :class="[gridClass, 'animate-fade-in']">
         <div
-          v-for="prod in products"
+          v-for="(prod, idx) in products"
           :key="prod.id"
           :class="['bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 group', cardClass]"
         >
           <router-link :to="`/product/${prod.slug}`" :class="compact ? 'space-y-2 block' : 'space-y-3 block'">
-            <div :class="['w-full bg-brand-bg-light dark:bg-stone-900 rounded-2xl p-3 flex items-center justify-center border border-brand-surface-border/50 dark:border-stone-800 overflow-hidden', thumbClass]">
+            <div :class="['relative w-full bg-brand-bg-light dark:bg-stone-900 rounded-2xl p-3 flex items-center justify-center border border-brand-surface-border/50 dark:border-stone-800 overflow-hidden', thumbClass]">
+              <span
+                class="rec-rank absolute top-2 left-2 z-10 min-w-6 h-6 px-1.5 rounded-full bg-brand-primary text-white text-[11px] font-black font-mono flex items-center justify-center shadow-sm"
+                :aria-label="`Rank ${idx + 1}`"
+              >
+                #{{ idx + 1 }}
+              </span>
+              <span
+                v-if="matchOf(prod).percent !== null"
+                :class="['rec-match absolute top-2 right-2 z-10 text-[10px] sm:text-[11px] font-black font-mono px-2 py-0.5 rounded-full border shadow-sm backdrop-blur-sm', matchOf(prod).class]"
+              >
+                {{ matchOf(prod).label }}
+              </span>
               <img v-if="prod.image_url" :src="prod.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform" />
               <svg v-else class="w-8 h-8 text-brand-text-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />

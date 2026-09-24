@@ -309,6 +309,41 @@ watch(
 
 </div>
 
+      <!-- 1. Recommended products for you, above the search and the filter
+           panel. Owner decision: the filters sit directly over the grid they
+           filter, so what a user narrows is what they see next, and the
+           shortlist - ranked, with each match shown - comes first on its own.
+
+           Hidden entirely for guests and for users with no skin type: an
+           anonymous catalogue response carries no match score, so there would
+           be nothing to rank and an empty state would say nothing useful.
+
+           Compact, without the rule, and collapsible - open by default, folded
+           on request. `hide-divider` because this host already draws its own
+           bordered card. Folded, the frame shrinks to a slim bar: most of a
+           folded section's height was this card's padding and large radius. -->
+      <div
+        v-if="showRecommendations"
+        :class="[
+          'bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 shadow-sm transition-all duration-200',
+          recommendationsCollapsed ? 'px-4 sm:px-5 py-2.5 rounded-2xl' : 'p-5 sm:p-6 rounded-[2.5rem]',
+        ]"
+      >
+        <SkinTypeRecommendationsWidget
+          v-model:collapsed="recommendationsCollapsed"
+          :user-skin-type="authStore.user?.skin_type || ''"
+          :products="recommendedProducts"
+          :loading="recommendationsLoading"
+          :failed="recommendationsFailed"
+          hide-catalog-link
+          compact
+          hide-divider
+          collapsible
+          subheading="Ranked against your Baumann profile. Browse the full registry below."
+          @retry="loadRecommendations"
+        />
+      </div>
+
       <!-- Mobile/Tablet Search Input.
            No `@search-submit` binding, and that is the fix rather than an
            omission. Despite its name, the child emits that event from a watcher
@@ -384,43 +419,6 @@ watch(
           <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
             Every product in the catalog, filtered by your selections above.
           </p>
-        </div>
-
-        <!-- Recommended products for you, directly under the catalogue heading
-             and above its grid, so "All Formulations" is the first thing the
-             page announces and the recommendations read as a shortlist within it.
-
-             Hidden entirely for guests and for users with no skin type: an
-             anonymous catalogue response carries no match score, so there would
-             be nothing to rank and an empty state would say nothing useful.
-
-             Compact, without the rule, and collapsible. It sits between the
-             heading and the grid the user came for, so it is foldable - open by
-             default, folded on request. `hide-divider` because this host already
-             draws its own bordered card, so the widget's rule was a line inside
-             a box. -->
-        <!-- Folded, the frame shrinks to a slim bar: most of a folded section's
-             height was this card's padding and large radius, not the widget. -->
-        <div
-          v-if="showRecommendations"
-          :class="[
-            'bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 shadow-sm transition-all duration-200',
-            recommendationsCollapsed ? 'px-4 sm:px-5 py-2.5 rounded-2xl' : 'p-5 sm:p-6 rounded-[2.5rem]',
-          ]"
-        >
-          <SkinTypeRecommendationsWidget
-            v-model:collapsed="recommendationsCollapsed"
-            :user-skin-type="authStore.user?.skin_type || ''"
-            :products="recommendedProducts"
-            :loading="recommendationsLoading"
-            :failed="recommendationsFailed"
-            hide-catalog-link
-            compact
-            hide-divider
-            collapsible
-            subheading="Ranked against your Baumann profile. Browse the full registry below."
-            @retry="loadRecommendations"
-          />
         </div>
 
       <!-- Loading Tracker -->

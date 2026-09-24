@@ -3,6 +3,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createMemoryHistory, type Router } from 'vue-router'
 
 import SkinTypeRecommendationsWidget from '../../components/Shared/SkinTypeRecommendationsWidget.vue'
+import { describeMatchBadge } from '../../components/Catalog/matchBadge'
 
 const recommendation = (overrides: Record<string, unknown> = {}) => ({
   id: 'p-1',
@@ -251,6 +252,44 @@ describe('src/components/Shared/SkinTypeRecommendationsWidget.vue', () => {
       expect(toggle(wrapper).exists()).toBe(false)
       expect(wrapper.get('h3').text()).toBe('Recommended products for you')
       expect(wrapper.get('h4').isVisible()).toBe(true)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('rank and match', () => {
+    // As both hosts pass them: pickTopRecommendations' output, best first.
+    const ranked = () => [
+      recommendation({ id: 'p-a', slug: 'a', name: 'First', skin_match_score: 94 }),
+      recommendation({ id: 'p-b', slug: 'b', name: 'Second', skin_match_score: 71.6 }),
+      recommendation({ id: 'p-c', slug: 'c', name: 'Third', skin_match_score: 40 }),
+    ]
+
+    it('numbers each card by its place in the ranking', async () => {
+      // Owner request: show the recommendations by rank.
+      const { wrapper } = await mountWidget({ products: ranked() })
+
+      expect(wrapper.findAll('.rec-rank').map((r) => r.text())).toEqual(['#1', '#2', '#3'])
+      expect(wrapper.findAll('.rec-rank').map((r) => r.attributes('aria-label'))).toEqual(['Rank 1', 'Rank 2', 'Rank 3'])
+    })
+
+    it('shows each card its match, worded as the Explore card words it', async () => {
+      const { wrapper } = await mountWidget({ products: ranked() })
+
+      expect(wrapper.findAll('.rec-match').map((m) => m.text())).toEqual(['94% Match', '72% Match', '40% Caution'])
+    })
+
+    it('draws the match in the Explore card palette, so one score reads one way on the page', async () => {
+      const { wrapper } = await mountWidget({ products: ranked() })
+
+      const expected = describeMatchBadge(71.6).class.split(' ')
+      expect(wrapper.findAll('.rec-match')[1]!.classes()).toEqual(expect.arrayContaining(expected))
+    })
+
+    it('omits the match rather than printing a figure nobody computed', async () => {
+      const { wrapper } = await mountWidget({ products: [recommendation({ skin_match_score: null })] })
+
+      expect(wrapper.find('.rec-match').exists()).toBe(false)
+      expect(wrapper.get('.rec-rank').text()).toBe('#1')
     })
   })
 })

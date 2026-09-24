@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { resolveMatchBand } from '../../api/products'
+import { describeMatchBadge } from './matchBadge'
 
 const props = defineProps<{
   product: any
@@ -8,32 +8,9 @@ const props = defineProps<{
 
 const emit = defineEmits(['inspect'])
 
-// Semantic match info using your color palette. Thresholds come from
-// resolveMatchBand rather than being repeated here - three components render
-// this score and each used to carry its own copy (FE-DEF-12).
-const matchInfo = computed(() => {
-  const score = props.product?.skin_match_score
-  const band = resolveMatchBand(score)
-
-  if (band === 'unavailable') {
-    return {
-      label: 'Score Unavailable',
-      class: 'bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-brand-surface-border dark:border-stone-700'
-    }
-  }
-  if (band === 'strong') return {
-    label: `${Math.round(score)}% Match`,
-    class: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
-  }
-  if (band === 'moderate') return {
-    label: `${Math.round(score)}% Match`,
-    class: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
-  }
-  return {
-    label: `${Math.round(score)}% Caution`,
-    class: 'bg-semantic-error/5 text-semantic-error dark:bg-semantic-error/10 border-semantic-error/20'
-  }
-})
+// The skin match badge. Thresholds are resolveMatchBand's (FE-DEF-12), and the
+// look is shared with the recommendation cards on the same page.
+const matchInfo = computed(() => describeMatchBadge(props.product?.skin_match_score))
 
 // Build dynamic overview summary fallback string from components
 const ingredientsSummary = computed(() => {
@@ -54,6 +31,25 @@ const ingredientsSummary = computed(() => {
       class="w-full bg-brand-surface-light dark:bg-brand-surface-dark rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm flex flex-col sm:flex-row gap-5 p-5 hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 text-left group cursor-pointer relative"
     >
 
+      <!-- Skin match badge, top right of the card. It was a 10px pill in the
+           card's footer, easy to miss (owner feedback); it is the one figure on
+           the card that is about the viewer rather than the product. On narrow
+           screens it sits over the image's corner. -->
+      <span
+        :class="[
+          'match-badge absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
+          // A score nobody computed (a guest, or no skin type) stays small: it
+          // is a note, not a result to draw the eye to.
+          matchInfo.band === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-3 py-1.5',
+          matchInfo.class,
+        ]"
+      >
+        <svg v-if="matchInfo.band !== 'unavailable'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {{ matchInfo.label }}
+      </span>
+
       <!-- Left Box: Large Scaled Premium Asset Frame -->
       <div class="w-full sm:w-44 md:w-48 aspect-[4/3] sm:aspect-square bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-surface-border/60 dark:border-stone-800 flex items-center justify-center p-4 flex-shrink-0 group-hover:scale-[1.02] transition-transform overflow-hidden relative">
         <div class="absolute inset-0 bg-brand-primary/0 group-hover:bg-brand-primary/5 transition-colors pointer-events-none" />
@@ -66,8 +62,10 @@ const ingredientsSummary = computed(() => {
       <!-- Right Box: Rich Dynamic Specifications Engine Context Columns -->
       <div class="flex-1 flex flex-col justify-between min-w-0 py-1 space-y-3">
 
-        <!-- Row 1: Brand Identifier & Product Name -->
-        <div class="flex items-start justify-between gap-4 w-full">
+        <!-- Row 1: Brand Identifier & Product Name. Padded on the right from sm
+             up, where the match badge sits above this row, so a long name wraps
+             before it reaches the badge. -->
+        <div class="flex items-start justify-between gap-4 w-full sm:pr-32">
           <div class="min-w-0">
             <span class="text-[10px] font-bold text-brand-text-muted dark:text-stone-400 uppercase tracking-widest block truncate">
               {{ product.brand || 'Curated Formulation' }}
@@ -98,12 +96,6 @@ const ingredientsSummary = computed(() => {
           {{ product.description || ingredientsSummary }}
         </p>
 
-        <!-- Row 4: Match Pill Footer Layer Badge anchor -->
-        <div class="pt-1 flex items-center justify-between w-full">
-          <span :class="['text-[10px] font-black px-2.5 py-0.5 rounded-full border font-mono tracking-wide shadow-2xs', matchInfo.class]">
-            {{ matchInfo.label }}
-          </span>
-        </div>
 
       </div>
 

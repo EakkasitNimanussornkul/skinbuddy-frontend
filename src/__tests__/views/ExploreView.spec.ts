@@ -235,18 +235,23 @@ describe('src/views/ExploreView.vue', () => {
       expect(wrapper.findComponent(SkinTypeRecommendationsWidget).props('failed')).toBe(true)
     })
 
-    it('places the recommendations directly under the catalogue heading, above the grid', async () => {
+    it('places the recommendations above the filters, so the filters sit directly over their grid', async () => {
+      // Owner decision, reversing the earlier placement under the catalogue
+      // heading: what a user narrows with the filters should be the next thing
+      // they see, not a shortlist the filters do not touch.
       const { wrapper } = await mountExplore('/explore', { authenticated: true })
 
-      const heading = wrapper.findAll('h3').find((h) => h.text() === 'All Formulations')!
       const widget = wrapper.findComponent(SkinTypeRecommendationsWidget)
+      const brandFilter = wrapper.get('select')
+      const heading = wrapper.findAll('h3').find((h) => h.text() === 'All Formulations')!
       const firstCard = cards(wrapper)[0]!
 
-      // Document order: heading, then recommendations, then the grid.
+      // Document order: recommendations, filters, catalogue heading, grid.
       const follows = (a: Element, b: Element) =>
         !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
-      expect(follows(heading.element, widget.element)).toBe(true)
-      expect(follows(widget.element, firstCard.element)).toBe(true)
+      expect(follows(widget.element, brandFilter.element)).toBe(true)
+      expect(follows(brandFilter.element, heading.element)).toBe(true)
+      expect(follows(heading.element, firstCard.element)).toBe(true)
     })
 
     it('asks the widget to be foldable here', async () => {
