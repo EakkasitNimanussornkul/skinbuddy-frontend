@@ -9,6 +9,7 @@ import {
   resolveMatchBand,
   type CompareResponse,
 } from '../../api/products'
+import { MATCH_BADGE_CLASS } from '../Catalog/matchBadge'
 import { useAuthStore } from '../../stores/auth'
 
 const props = defineProps<{ data: CompareResponse }>()
@@ -18,15 +19,9 @@ const authStore = useAuthStore()
 // Badge styles per match band. Thresholds come from resolveMatchBand rather
 // than being repeated here - three components render this score and each used
 // to carry its own copy (FE-DEF-12).
-const getMatchBadgeStyles = (product: any) => {
-  const band = resolveMatchBand(product?.skin_match_score)
-  if (band === 'unavailable') {
-    return 'bg-stone-100 dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700'
-  }
-  if (band === 'strong') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-  if (band === 'moderate') return 'bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20'
-  return 'bg-semantic-error/5 text-semantic-error border-semantic-error/20'
-}
+// The palette is the Explore card's, so one score looks the same on every
+// screen - this copy had amber for 60-84 after the owner moved it to teal.
+const getMatchBadgeStyles = (product: any) => MATCH_BADGE_CLASS[resolveMatchBand(product?.skin_match_score)]
 
 // FE-DEF-31: this read "Failed to calculate score" for every product without
 // one. The backend returns null whenever it has no skin type to score against,

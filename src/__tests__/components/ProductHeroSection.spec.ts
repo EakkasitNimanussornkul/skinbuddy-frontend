@@ -413,7 +413,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
         (await mountHero(true, { product: { skin_match_score: score } })).wrapper.get('.match-verdict').text()
 
       expect(await verdict(91)).toBe('Great match')
-      expect(await verdict(70)).toBe('Fair match')
+      expect(await verdict(70)).toBe('Good match')
       expect(await verdict(30)).toBe('Low match, use with care')
     })
 
@@ -436,7 +436,8 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
         (await mountHero(true, { product: { skin_match_score: score } })).wrapper.get('.match-arc').classes()
 
       expect(await arc(91)).toContain('stroke-emerald-500')
-      expect(await arc(70)).toContain('stroke-amber-500')
+      // Teal, not amber: the owner read amber as a warning for a good match.
+      expect(await arc(70)).toContain('stroke-teal-500')
       expect(await arc(30)).toContain('stroke-semantic-error')
     })
 
@@ -461,6 +462,52 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
 
       expect(wrapper.text()).toContain('Sign in and take the skin quiz to see how well this product suits your skin.')
       expect(wrapper.text()).not.toContain('Baumann')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match reasons (both sides)', () => {
+    it('lists what counted against the score, not only what counted for it', async () => {
+      // Backend feat/percentage-skin-match: a low score often has no
+      // match_reasons at all (OSPT with a retinol serum, 33.3%), so reading only
+      // those left "Why this score" empty exactly when it was needed most.
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 33.3,
+          match_reasons: [],
+          caution_reasons: ['Retinol: Retinoid Purging & Flaking (High)', 'Phenoxyethanol: Preservative Sensitivity (Medium)'],
+        },
+      })
+
+      expect(wrapper.get('.match-why').text()).toBe('Why this score')
+      expect(wrapper.find('.match-helps').exists()).toBe(false)
+      expect(wrapper.get('.match-watch-heading').text()).toBe('Watch out for')
+      expect(wrapper.findAll('.match-cautions li').map((li) => li.text())).toEqual([
+        'Retinol: Retinoid Purging & Flaking (High)',
+        'Phenoxyethanol: Preservative Sensitivity (Medium)',
+      ])
+    })
+
+    it('shows what suits the skin first, then what to watch out for', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 72.5,
+          match_reasons: ['Suits dry skin: Glycerin, Squalane.'],
+          caution_reasons: ['Phenoxyethanol: Preservative Sensitivity (Medium)'],
+        },
+      })
+      const helps = wrapper.get('.match-helps')
+      const cautions = wrapper.get('.match-cautions')
+
+      expect(helps.text()).toContain('Suits dry skin: Glycerin, Squalane.')
+      expect(!!(helps.element.compareDocumentPosition(cautions.element) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+    })
+
+    it('reads a response from before the change, which carries no caution_reasons', async () => {
+      const { wrapper } = await mountHero(true, { product: { match_reasons: ['Suits dry skin.'] } })
+
+      expect(wrapper.find('.match-cautions').exists()).toBe(false)
+      expect(wrapper.get('.match-helps').text()).toContain('Suits dry skin.')
     })
   })
 })

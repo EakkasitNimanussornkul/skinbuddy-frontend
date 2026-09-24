@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import CompareIdentityHeader from '../../components/Compare/CompareIdentityHeader.vue'
 import { MATCH_SCORE_BASIS, type CompareResponse } from '../../api/products'
+import { describeMatchBadge } from '../../components/Catalog/matchBadge'
 import { useAuthStore } from '../../stores/auth'
 
 const product = (overrides: Record<string, unknown> = {}) => ({
@@ -136,6 +137,20 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
       expect(badges(wrapper)[0]).toBe('Take the skin quiz')
       expect(explanation(wrapper)).toContain('Take the skin quiz to see how this suits your skin.')
       expect(explanation(wrapper)).not.toContain('could not be scored')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match badge palette', () => {
+    it('draws each score in the Explore card palette, 60-84 in teal rather than amber', () => {
+      // Owner decision: amber read as a warning for what is usually a good match.
+      // This screen kept its own copy of the palette and still drew it amber.
+      const wrapper = mountHeader(compareData({ skin_match_score: 90 }, { skin_match_score: 70 }))
+      const chips = wrapper.findAll('span').filter((s) => s.text().endsWith('% Match'))
+
+      expect(chips[0]!.classes()).toEqual(expect.arrayContaining(describeMatchBadge(90).class.split(' ')))
+      expect(chips[1]!.classes()).toEqual(expect.arrayContaining(describeMatchBadge(70).class.split(' ')))
+      expect(chips[1]!.classes().some((c) => c.includes('amber') || c.includes('warning'))).toBe(false)
     })
   })
 })

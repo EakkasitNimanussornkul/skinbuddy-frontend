@@ -66,17 +66,19 @@ const matchBand = computed(() => {
     }
   }
 
+  // Teal, a green, not amber (owner decision): amber read as a warning, and a
+  // score in this band usually means the product suits the user well.
   if (band === 'moderate') {
     return {
-      card: 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-500/20 dark:border-amber-800/40',
-      heading: 'text-amber-900 dark:text-amber-200',
-      body: 'text-amber-700 dark:text-amber-400',
-      ring: 'border-amber-500 text-amber-800 dark:text-amber-200',
-      divider: 'border-amber-500/20 dark:border-amber-800/40',
-      reason: 'text-amber-900 dark:text-amber-200',
-      dot: 'bg-amber-500',
-      arc: 'stroke-amber-500',
-      verdict: 'Fair match',
+      card: 'bg-teal-500/10 dark:bg-teal-950/20 border-teal-500/20 dark:border-teal-800/40',
+      heading: 'text-teal-900 dark:text-teal-200',
+      body: 'text-teal-700 dark:text-teal-300',
+      ring: 'border-teal-500 text-teal-800 dark:text-teal-200',
+      divider: 'border-teal-500/20 dark:border-teal-800/40',
+      reason: 'text-teal-900 dark:text-teal-200',
+      dot: 'bg-teal-500',
+      arc: 'stroke-teal-500',
+      verdict: 'Good match',
     }
   }
 
@@ -110,6 +112,20 @@ const matchBand = computed(() => {
 })
 
 const hasMatchScore = computed(() => resolveMatchBand(props.product?.skin_match_score) !== 'unavailable')
+
+// Both sides of the score. match_reasons name what suits the viewer's skin;
+// caution_reasons, from backend feat/percentage-skin-match, name each
+// ingredient that counted against it ("Phenoxyethanol: Preservative
+// Sensitivity (Medium)"), most serious first. A low score often has no
+// match_reasons at all, so reading only those left "Why this score" empty
+// exactly when the user most needs it. Read defensively: an older response
+// carries no caution_reasons.
+const matchReasons = computed<string[]>(() =>
+  Array.isArray(props.product?.match_reasons) ? props.product.match_reasons : [],
+)
+const cautionReasons = computed<string[]>(() =>
+  Array.isArray(props.product?.caution_reasons) ? props.product.caution_reasons : [],
+)
 
 // The score as a whole number and as the length of the ring's arc, held to
 // 0-100 so a stray value cannot draw more than a full circle.
@@ -435,15 +451,33 @@ const handleCommitToShelf = async () => {
 
         <!-- Match Reasons or Failure Explanation -->
         <div
-          v-if="!hasMatchScore || product.match_reasons?.length"
+          v-if="!hasMatchScore || matchReasons.length || cautionReasons.length"
           :class="['space-y-2 pt-3 border-t text-xs', matchBand.divider]"
         >
           <template v-if="hasMatchScore">
             <p :class="['match-why text-[11px] font-bold uppercase tracking-wider', matchBand.heading]">Why this score</p>
-            <div v-for="(reason, i) in (product.match_reasons || [])" :key="i" :class="['flex items-start gap-2.5', matchBand.reason]">
-              <span :class="['w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0', matchBand.dot]"></span>
-              <span class="leading-relaxed">{{ reason }}</span>
-            </div>
+
+            <!-- What suits the viewer's skin, then what counted against it. -->
+            <ul v-if="matchReasons.length" class="match-helps space-y-2">
+              <li v-for="(reason, i) in matchReasons" :key="i" class="flex items-start gap-2.5 text-brand-text dark:text-stone-200">
+                <svg class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <span class="leading-relaxed">{{ reason }}</span>
+              </li>
+            </ul>
+
+            <template v-if="cautionReasons.length">
+              <p class="match-watch-heading text-[11px] font-bold text-brand-text-muted dark:text-stone-400 pt-1">Watch out for</p>
+              <ul class="match-cautions space-y-2">
+                <li v-for="(reason, i) in cautionReasons" :key="i" class="flex items-start gap-2.5 text-brand-text dark:text-stone-200">
+                  <svg class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span class="leading-relaxed">{{ reason }}</span>
+                </li>
+              </ul>
+            </template>
           </template>
 
           <div v-else class="text-brand-text-muted dark:text-stone-400 italic text-[11px]">
