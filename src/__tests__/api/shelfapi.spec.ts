@@ -494,16 +494,20 @@ describe('src/api/shelfapi.ts', () => {
       ...fields,
     })
 
-    const expiredLongAgo = item('expired-long-ago', { expiration_date: '2026-03-01' })
-    const expiredRecently = item('expired-recently', { expiration_date: '2026-05-01' })
+    // Named against their expiry order, so a name tiebreak cannot stand in for
+    // the expiry one.
+    const expiredLongAgo = item('expired-long-ago', { expiration_date: '2026-03-01' }, 'Zeta Peel')
+    const expiredRecently = item('expired-recently', { expiration_date: '2026-05-01' }, 'Alpha Peel')
     const expiringSoon = item('expiring-soon', { opened_date: '2026-01-01', expiration_date: '2026-06-10' })
     const activeInRoutine = item('active-in-routine', { opened_date: '2026-05-01' }, 'Zinc Serum')
     const activeDated = item('active-dated', { opened_date: '2026-05-01', expiration_date: '2026-12-01' }, 'Aloe Gel')
     const unopened = item('unopened', { usage_state: 'unopened' }, 'Calm Toner')
     const unopenedInRoutine = item('unopened-in-routine', { usage_state: 'unopened' }, 'Daily Cream')
+    // Ties with 'unopened' on everything but the name.
+    const unopenedTwo = item('unopened-two', { usage_state: 'unopened' }, 'Aqua Mist')
     const routine = new Set(['active-in-routine', 'unopened-in-routine'])
 
-    const shelf = [unopened, activeDated, expiringSoon, unopenedInRoutine, expiredRecently, activeInRoutine, expiredLongAgo]
+    const shelf = [unopened, activeDated, expiringSoon, unopenedInRoutine, expiredRecently, activeInRoutine, unopenedTwo, expiredLongAgo]
     const ids = (items: { id: string }[]) => items.map((i) => i.id)
 
     it('lists expired, then expiring, then active with routine products first, then unopened', () => {
@@ -516,6 +520,7 @@ describe('src/api/shelfapi.ts', () => {
         'active-in-routine',
         'active-dated',
         'unopened-in-routine',
+        'unopened-two',
         'unopened',
       ])
     })
@@ -530,6 +535,7 @@ describe('src/api/shelfapi.ts', () => {
     it('reverses the statuses for least urgent first, keeping the order inside each', () => {
       expect(ids(sortShelfItems(shelf, 'calm', routine, now))).toEqual([
         'unopened-in-routine',
+        'unopened-two',
         'unopened',
         'active-in-routine',
         'active-dated',
@@ -546,6 +552,7 @@ describe('src/api/shelfapi.ts', () => {
         'expiring-soon',
         'active-dated',
         // No date: by name.
+        'unopened-two',
         'unopened',
         'unopened-in-routine',
         'active-in-routine',
@@ -554,16 +561,17 @@ describe('src/api/shelfapi.ts', () => {
 
     it('sorts by product name and by brand, ignoring case', () => {
       const a = item('a', {}, 'aloe gel', 'Zeta')
-      const b = item('b', {}, 'Barrier Cream', 'alpha')
-      const c = item('c', {}, 'Cleanser', 'Alpha')
+      // b and c differ only in the case of their brand, so the name decides.
+      const b = item('b', {}, 'Barrier Cream', 'Alpha')
+      const c = item('c', {}, 'Cleanser', 'alpha')
 
       expect(ids(sortShelfItems([c, b, a], 'name', new Set(), now))).toEqual(['a', 'b', 'c'])
       expect(ids(sortShelfItems([a, c, b], 'brand', new Set(), now))).toEqual(['b', 'c', 'a'])
     })
 
     it('puts the most recently archived first among archived products', () => {
-      const older = item('older', { usage_state: 'archived', archived_at: '2026-01-01T00:00:00Z' })
-      const newer = item('newer', { usage_state: 'archived', archived_at: '2026-05-01T00:00:00Z' })
+      const older = item('older', { usage_state: 'archived', archived_at: '2026-01-01T00:00:00Z' }, 'Alpha Toner')
+      const newer = item('newer', { usage_state: 'archived', archived_at: '2026-05-01T00:00:00Z' }, 'Zeta Toner')
 
       expect(ids(sortShelfItems([older, newer], 'attention', new Set(), now))).toEqual(['newer', 'older'])
     })

@@ -606,6 +606,17 @@ describe('src/views/ShelfView.vue', () => {
       expect(shownIds(wrapper)).toEqual(['expired'])
     })
 
+    it('puts routine products first among active ones', async () => {
+      vi.mocked(getMyShelf).mockResolvedValue([
+        withProduct({ id: 'aloe', product_id: 'p-aloe', opened_date: days(-10) }, { name: 'Aloe Gel' }),
+        withProduct({ id: 'zinc', product_id: 'p-zinc', opened_date: days(-10) }, { name: 'Zinc Serum' }),
+      ])
+      vi.mocked(getRoutine).mockResolvedValue({ routine: { id: 'r-1' }, steps: [{ shelf_item_id: 'zinc', product_id: 'p-zinc' }] })
+      const wrapper = await mountShelf()
+
+      expect(shownIds(wrapper)).toEqual(['zinc', 'aloe'])
+    })
+
     it('puts the badge guide beside the filters', async () => {
       vi.mocked(getMyShelf).mockResolvedValue(shelf())
       const wrapper = await mountShelf()
