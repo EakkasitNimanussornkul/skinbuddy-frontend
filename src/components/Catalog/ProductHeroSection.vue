@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import {
   describeMatchAvailability,
+  MATCH_SCORE_BASIS,
   resolveMatchAvailability,
   resolveMatchBand,
 } from '../../api/products'
@@ -60,6 +61,7 @@ const matchBand = computed(() => {
       divider: 'border-emerald-500/20 dark:border-emerald-800/40',
       reason: 'text-emerald-900 dark:text-emerald-200',
       dot: 'bg-emerald-500',
+      verdict: 'Great match',
     }
   }
 
@@ -72,6 +74,7 @@ const matchBand = computed(() => {
       divider: 'border-amber-500/20 dark:border-amber-800/40',
       reason: 'text-amber-900 dark:text-amber-200',
       dot: 'bg-amber-500',
+      verdict: 'Fair match',
     }
   }
 
@@ -84,6 +87,7 @@ const matchBand = computed(() => {
       divider: 'border-semantic-error/20',
       reason: 'text-brand-text dark:text-stone-200',
       dot: 'bg-semantic-error',
+      verdict: 'Low match, use with care',
     }
   }
 
@@ -97,10 +101,17 @@ const matchBand = computed(() => {
     divider: 'border-brand-surface-border dark:border-stone-800',
     reason: 'text-brand-text-muted dark:text-stone-400',
     dot: 'bg-brand-text-muted',
+    verdict: '',
   }
 })
 
 const hasMatchScore = computed(() => resolveMatchBand(props.product?.skin_match_score) !== 'unavailable')
+
+// The score as a whole number and as the width of the meter, held to 0-100 so a
+// stray value cannot draw a bar wider than its track.
+const matchPercent = computed(() =>
+  hasMatchScore.value ? Math.min(100, Math.max(0, Math.round(props.product.skin_match_score))) : 0,
+)
 
 // FE-DEF-31, applied here. The card below renders only for a signed-in user, so
 // it looked as though it had already caught the case CompareIdentityHeader was
@@ -136,7 +147,7 @@ const matchBadgeLabel = computed(() =>
 // pointed at the wrong thing.
 const matchDetail = computed(() =>
   matchAvailability.value === 'no-profile'
-    ? 'This score is computed against your Baumann skin type, and yours is not on file yet. Nothing about this product failed.'
+    ? 'Your match is worked out from your skin type, which is not on file yet. Nothing about this product failed.'
     : 'This formula could not be scored against your profile. It may have incomplete ingredient metadata in the catalog.',
 )
 
@@ -354,29 +365,47 @@ const handleCommitToShelf = async () => {
 
       <!-- Match Card: Authenticated User -->
       <div v-if="authStore.isAuthenticated" :class="['border-2 rounded-3xl p-6 space-y-4 shadow-2xs transition-colors', matchBand.card]">
-        <div class="flex items-center justify-between gap-4">
+        <!-- Scored: on the product page the score is the subject, so it is drawn
+             large, said in words, shown as a meter and explained - where the
+             Explore card only has room for a badge (owner request). -->
+        <div v-if="hasMatchScore" class="match-scored space-y-3">
+          <h4 :class="['text-base font-black', matchBand.heading]">Your Skin Match</h4>
+          <div class="flex items-end justify-between gap-4">
+            <p :class="['match-percent font-mono font-black text-4xl sm:text-5xl leading-none', matchBand.heading]">
+              {{ matchPercent }}<span class="text-2xl sm:text-3xl">%</span>
+            </p>
+            <span :class="['match-verdict text-xs sm:text-sm font-bold px-3 py-1 rounded-full border bg-white/70 dark:bg-stone-900/60', matchBand.ring]">
+              {{ matchBand.verdict }}
+            </span>
+          </div>
+          <div
+            class="match-meter h-2.5 w-full rounded-full bg-white/70 dark:bg-stone-900/60 overflow-hidden"
+            role="meter"
+            aria-label="Skin match"
+            :aria-valuenow="matchPercent"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div :class="['h-full rounded-full transition-[width] duration-700 ease-out', matchBand.dot]" :style="{ width: `${matchPercent}%` }"></div>
+          </div>
+          <p :class="['match-basis flex items-start gap-2 text-xs leading-relaxed', matchBand.body]">
+            <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ MATCH_SCORE_BASIS }}</span>
+          </p>
+        </div>
+
+        <div v-else class="flex items-center justify-between gap-4">
           <div>
-            <h4 :class="['text-base font-black', matchBand.heading]">
-              {{ hasMatchScore ? 'Skin Match Compatibility' : 'Compatibility Status' }}
-            </h4>
+            <h4 :class="['text-base font-black', matchBand.heading]">Compatibility Status</h4>
             <p :class="['text-xs mt-0.5', matchBand.body]">
-              {{ hasMatchScore
-                ? 'Compatibility evaluation for your active Baumann skin profile.'
-                : describeMatchAvailability(matchAvailability) }}
+              {{ describeMatchAvailability(matchAvailability) }}
             </p>
           </div>
 
-          <!-- Dynamic Score vs Failure Circle -->
           <div class="flex-shrink-0">
             <div
-              v-if="hasMatchScore"
-              :class="['w-14 h-14 rounded-full border-4 flex items-center justify-center font-mono font-black text-lg bg-white dark:bg-stone-900 shadow-sm', matchBand.ring]"
-            >
-              {{ Math.round(product.skin_match_score) }}%
-            </div>
-
-            <div
-              v-else
               class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-brand-surface-light dark:bg-stone-800 text-[10px] font-bold font-mono text-brand-text-muted uppercase tracking-wider text-center"
             >
               {{ matchBadgeLabel }}
@@ -385,8 +414,12 @@ const handleCommitToShelf = async () => {
         </div>
 
         <!-- Match Reasons or Failure Explanation -->
-        <div :class="['space-y-2 pt-3 border-t text-xs', matchBand.divider]">
+        <div
+          v-if="!hasMatchScore || product.match_reasons?.length"
+          :class="['space-y-2 pt-3 border-t text-xs', matchBand.divider]"
+        >
           <template v-if="hasMatchScore">
+            <p :class="['match-why text-[11px] font-bold uppercase tracking-wider', matchBand.heading]">Why this score</p>
             <div v-for="(reason, i) in (product.match_reasons || [])" :key="i" :class="['flex items-start gap-2.5', matchBand.reason]">
               <span :class="['w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0', matchBand.dot]"></span>
               <span class="leading-relaxed">{{ reason }}</span>
@@ -403,7 +436,7 @@ const handleCommitToShelf = async () => {
       <div v-else class="bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 rounded-3xl p-6 flex items-center justify-between gap-4">
         <div>
           <h4 class="text-sm font-bold text-brand-text dark:text-stone-200">Skin Compatibility Score</h4>
-          <p class="text-xs text-brand-text-muted mt-0.5">Log in to analyze this formula against your Baumann skin profile.</p>
+          <p class="text-xs text-brand-text-muted mt-0.5">Sign in and take the skin quiz to see how well this product suits your skin.</p>
         </div>
         <button
           @click="authStore.triggerLoginPopup('Sign in to view your personalized skin compatibility score.')"

@@ -11,6 +11,7 @@ vi.mock('../../api/shelfapi', async (importOriginal) => ({
 
 import { analyzeProduct, addToShelf } from '../../api/shelfapi'
 import { toLocalDateString } from '../../api/dates'
+import { MATCH_SCORE_BASIS } from '../../api/products'
 import ProductHeroSection from '../../components/Catalog/ProductHeroSection.vue'
 import SafetyWarningModal from '../../components/Shelf/SafetyWarningModal.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -155,8 +156,8 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
     it('shows the score when the backend computed one', async () => {
       const { wrapper } = await mountHero()
 
-      expect(wrapper.text()).toContain('82%')
-      expect(wrapper.text()).toContain('Skin Match Compatibility')
+      expect(wrapper.get('.match-percent').text()).toBe('82%')
+      expect(wrapper.text()).toContain('Your Skin Match')
     })
 
     it('tells a user with no skin type to take the quiz, and blames nothing', async () => {
@@ -401,6 +402,53 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(configuratorOpen(wrapper)).toBe(true)
       expect(wrapper.emitted('shelf-updated')).toBeUndefined()
       expect(lastToast()!.message).toBe('Could not save product.')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match card (clarity)', () => {
+    it('says the score in words as well as in numbers, by band', async () => {
+      // Owner request: clearer on the product page than on the Explore badge.
+      const verdict = async (score: number) =>
+        (await mountHero(true, { product: { skin_match_score: score } })).wrapper.get('.match-verdict').text()
+
+      expect(await verdict(91)).toBe('Great match')
+      expect(await verdict(70)).toBe('Fair match')
+      expect(await verdict(30)).toBe('Low match, use with care')
+    })
+
+    it('draws a meter filled to the score, held inside its track', async () => {
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 82.4 } })
+      const meter = wrapper.get('.match-meter')
+
+      expect(meter.attributes('aria-valuenow')).toBe('82')
+      expect(meter.get('div').attributes('style')).toContain('width: 82%')
+
+      const { wrapper: over } = await mountHero(true, { product: { skin_match_score: 130 } })
+      expect(over.get('.match-meter div').attributes('style')).toContain('width: 100%')
+    })
+
+    it('explains what the score is based on, in plain words', async () => {
+      const { wrapper } = await mountHero()
+
+      expect(wrapper.get('.match-basis').text()).toBe(MATCH_SCORE_BASIS)
+      expect(wrapper.text()).not.toContain('Baumann')
+    })
+
+    it('titles the reasons, and draws no empty section when there are none', async () => {
+      const { wrapper } = await mountHero(true, { product: { match_reasons: ['Contains ceramides for dry skin.'] } })
+      expect(wrapper.get('.match-why').text()).toBe('Why this score')
+      expect(wrapper.text()).toContain('Contains ceramides for dry skin.')
+
+      const { wrapper: none } = await mountHero(true, { product: { match_reasons: [] } })
+      expect(none.find('.match-why').exists()).toBe(false)
+    })
+
+    it('tells a visitor in plain words how to get a score', async () => {
+      const { wrapper } = await mountHero(false, { product: { skin_match_score: null } })
+
+      expect(wrapper.text()).toContain('Sign in and take the skin quiz to see how well this product suits your skin.')
+      expect(wrapper.text()).not.toContain('Baumann')
     })
   })
 })
