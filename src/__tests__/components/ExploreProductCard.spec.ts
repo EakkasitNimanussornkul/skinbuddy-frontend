@@ -88,16 +88,25 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
   describe('limited information', () => {
     const limited = { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true }
 
-    it('flags a score resting on very few ingredients beside the badge', () => {
+    it('reads Not enough info instead of a percentage, with the real score on hover', () => {
+      // Owner decision: a 100% built on one ingredient is not shown as one.
       const wrapper = mountCard({ skin_match_score: 100, match_breakdown: limited })
 
-      expect(wrapper.get('.match-limited').text()).toBe('Limited info')
-      expect(wrapper.get('.match-limited').attributes('title')).toContain('only 1 of its 6 ingredients')
+      expect(badge(wrapper).text()).toBe('Not enough info')
+      expect(badge(wrapper).attributes('title')).toBe(
+        'Not enough info to judge a match: 100% Match from only 1 of its 6 ingredients.',
+      )
+      expect(wrapper.find('.match-fraction').exists()).toBe(false)
     })
 
-    it('adds nothing for a well-founded score, or for no score', () => {
-      expect(mountCard({ match_breakdown: { ...limited, considered: 7, limited: false } }).find('.match-limited').exists()).toBe(false)
-      expect(mountCard({ skin_match_score: null, match_breakdown: limited }).find('.match-limited').exists()).toBe(false)
+    it('shows the fraction beside a well-founded score, and nothing extra for no score', () => {
+      const scored = mountCard({ skin_match_score: 86, match_breakdown: { ...limited, helpful: 6, considered: 7, limited: false } })
+      expect(badge(scored).text()).toBe('86% Match')
+      expect(scored.get('.match-fraction').text()).toBe('6 of 7 suit you')
+
+      const none = mountCard({ skin_match_score: null, match_breakdown: limited })
+      expect(badge(none).text()).toBe('Score Unavailable')
+      expect(none.find('.match-fraction').exists()).toBe(false)
     })
   })
 })

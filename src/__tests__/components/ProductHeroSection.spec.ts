@@ -531,9 +531,10 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(wrapper.find('.match-limited').exists()).toBe(false)
     })
 
-    it('flags a score resting on very few ingredients rather than hiding it', async () => {
-      // Owner decision. Live: the BHA exfoliant scores 100.0 for OSPT on one
-      // ingredient of six.
+    it('withholds a score resting on very few ingredients, says why, and shows it on request', async () => {
+      // Owner decision, reversing "flag, don't hide": a 100% built on one
+      // ingredient is not trustworthy, flagged or not. Live: the BHA exfoliant
+      // for OSPT, on one ingredient of six.
       const { wrapper } = await mountHero(true, {
         product: {
           skin_match_score: 100,
@@ -541,8 +542,28 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
         },
       })
 
+      expect(wrapper.find('.match-percent').exists()).toBe(false)
+      expect(wrapper.get('.match-withheld-badge').text()).toBe('Not enough info')
+      expect(wrapper.get('.match-withheld-reason').text()).toBe(
+        'Not enough of its ingredients relate to your skin type to judge a match: only 1 of its 6 ingredients.',
+      )
+
+      await wrapper.get('button.match-reveal').trigger('click')
+
       expect(wrapper.get('.match-percent').text()).toBe('100%')
       expect(wrapper.get('.match-limited').text()).toContain('only 1 of its 6 ingredients relates to your skin type')
+
+      await wrapper.get('button.match-hide').trigger('click')
+
+      expect(wrapper.find('.match-percent').exists()).toBe(false)
+    })
+
+    it('draws a withheld score in the neutral palette, not the colour of a verdict it is not showing', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: { skin_match_score: 100, match_breakdown: breakdown({ considered: 1, limited: true }) },
+      })
+
+      expect(wrapper.get('.match-withheld').element.parentElement!.className).not.toContain('emerald')
     })
 
     it('says why there is no score when nothing in the product relates to the skin type', async () => {
@@ -555,6 +576,13 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
 
       expect(wrapper.text()).toContain('None of its 9 ingredients are known to suit or trouble your skin type')
       expect(wrapper.text()).not.toContain('incomplete ingredient metadata')
+    })
+
+    it('shows the fraction the percentage is built on inside the ring', async () => {
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 76.9, match_breakdown: breakdown() } })
+
+      expect(wrapper.get('.match-percent').text()).toBe('77%')
+      expect(wrapper.get('.match-ring-fraction').text()).toBe('6 of 7')
     })
 
     it('reads a response without a breakdown as before', async () => {

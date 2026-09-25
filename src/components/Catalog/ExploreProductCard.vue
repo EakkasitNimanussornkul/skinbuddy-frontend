@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { describeMatchBadge } from './matchBadge'
-import { MATCH_SCORE_BASIS, describeLimitedMatch, readMatchBreakdown } from '../../api/products'
+import { describeMatchDisplay } from './matchBadge'
+import { MATCH_SCORE_BASIS } from '../../api/products'
 
 const props = defineProps<{
   product: any
@@ -11,13 +11,17 @@ const emit = defineEmits(['inspect'])
 
 // The skin match badge. Thresholds are resolveMatchBand's (FE-DEF-12), and the
 // look is shared with the recommendation cards on the same page.
-const matchInfo = computed(() => describeMatchBadge(props.product?.skin_match_score))
+//
+// A score resting on fewer than three ingredients reads "Not enough info"
+// rather than a percentage (owner decision: a 100% built on one ingredient is
+// not trustworthy, flagged or not). The real figure stays one hover away, and
+// the product page offers it in full.
+const matchInfo = computed(() => describeMatchDisplay(props.product?.skin_match_score, props.product?.match_breakdown))
 
-// A score resting on fewer than three ingredients is flagged, not hidden (owner
-// decision). The backend decides what counts as limited.
-const limitedNote = computed(() => {
-  const breakdown = readMatchBreakdown(props.product?.match_breakdown)
-  return breakdown?.limited && matchInfo.value.band !== 'unavailable' ? describeLimitedMatch(breakdown) : null
+const badgeTitle = computed(() => {
+  if (matchInfo.value.kind === 'limited') return `Not enough info to judge a match: ${matchInfo.value.hiddenLabel}.`
+  if (matchInfo.value.kind === 'scored') return MATCH_SCORE_BASIS
+  return undefined
 })
 
 // Build dynamic overview summary fallback string from components
@@ -45,26 +49,29 @@ const ingredientsSummary = computed(() => {
            screens it sits over the image's corner. -->
       <div class="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
         <span
-          :title="matchInfo.band === 'unavailable' ? undefined : MATCH_SCORE_BASIS"
+          :title="badgeTitle"
           :class="[
             'match-badge inline-flex items-center gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
             // A score nobody computed (a guest, or no skin type) stays small: it
             // is a note, not a result to draw the eye to.
-            matchInfo.band === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-3 py-1.5',
+            matchInfo.kind === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-3 py-1.5',
             matchInfo.class,
           ]"
         >
-          <svg v-if="matchInfo.band !== 'unavailable'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg v-if="matchInfo.kind === 'scored'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <svg v-else-if="matchInfo.kind === 'limited'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           {{ matchInfo.label }}
         </span>
+        <!-- What the percentage is built on, beside it (owner request). -->
         <span
-          v-if="limitedNote"
-          :title="limitedNote"
-          class="match-limited text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm backdrop-blur-sm"
+          v-if="matchInfo.kind === 'scored' && matchInfo.fraction"
+          class="match-fraction text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm backdrop-blur-sm"
         >
-          Limited info
+          {{ matchInfo.fraction }}
         </span>
       </div>
 

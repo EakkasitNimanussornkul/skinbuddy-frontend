@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import {
   describeMatchAvailability,
   MATCH_SCORE_BASIS,
+  NOT_ENOUGH_INFO,
   describeLimitedMatch,
   describeMatchWorking,
+  describeNotEnoughToScore,
   describeNothingToScore,
   readMatchBreakdown,
   resolveMatchAvailability,
@@ -54,7 +56,9 @@ const productDescription = computed(() => {
 // resolveMatchBand so this cannot drift from ExploreProductCard and
 // CompareIdentityHeader again.
 const matchBand = computed(() => {
-  const band = resolveMatchBand(props.product?.skin_match_score)
+  // A withheld score (see isScoreWithheld) is drawn in the neutral palette, so
+  // the card does not colour a verdict it is not showing.
+  const band = isScoreWithheld.value ? 'unavailable' : resolveMatchBand(props.product?.skin_match_score)
 
   if (band === 'strong') {
     return {
@@ -135,6 +139,15 @@ const cautionReasons = computed<string[]>(() =>
 // the number is not taken on trust - owner request. Absent from an older
 // response, which then reads as before.
 const matchBreakdown = computed(() => readMatchBreakdown(props.product?.match_breakdown))
+
+// Owner decision: a score resting on fewer than three relevant ingredients is
+// withheld by default - a 100% built on one ingredient is not trustworthy,
+// flagged or not - and shown only if the user asks for it. Reset for each
+// product, so asking once does not reveal the next product's thin score.
+const isLimitedScore = computed(() => hasMatchScore.value && matchBreakdown.value?.limited === true)
+const revealLimitedScore = ref(false)
+watch(() => props.product?.id, () => { revealLimitedScore.value = false })
+const isScoreWithheld = computed(() => isLimitedScore.value && !revealLimitedScore.value)
 
 // The score as a whole number and as the length of the ring's arc, held to
 // 0-100 so a stray value cannot draw more than a full circle.
@@ -406,7 +419,7 @@ const handleCommitToShelf = async () => {
              explained, because on the product page it is the subject rather
              than a badge. The ring's radius gives a circumference of 100, so
              the arc's dash length is the percentage itself. -->
-        <div v-if="hasMatchScore" class="match-scored flex items-center gap-5">
+        <div v-if="hasMatchScore && !isScoreWithheld" class="match-scored flex items-center gap-5">
           <div
             class="match-ring relative w-24 h-24 sm:w-28 sm:h-28 shrink-0"
             role="meter"
@@ -428,9 +441,15 @@ const handleCommitToShelf = async () => {
                 :class="['match-arc transition-[stroke-dasharray] duration-700 ease-out', matchBand.arc]"
               />
             </svg>
-            <span :class="['match-percent absolute inset-0 flex items-center justify-center font-mono font-black text-2xl sm:text-3xl', matchBand.heading]">
-              {{ matchPercent }}%
-            </span>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span :class="['match-percent font-mono font-black text-2xl sm:text-3xl leading-none', matchBand.heading]">
+                {{ matchPercent }}%
+              </span>
+              <!-- The fraction the percentage is built on (owner request). -->
+              <span v-if="matchBreakdown" :class="['match-ring-fraction mt-1 font-mono text-[10px] font-bold', matchBand.body]">
+                {{ matchBreakdown.helpful }} of {{ matchBreakdown.considered }}
+              </span>
+            </div>
           </div>
 
           <div class="min-w-0 space-y-2">
@@ -457,7 +476,40 @@ const handleCommitToShelf = async () => {
               </svg>
               <span>{{ describeLimitedMatch(matchBreakdown) }}</span>
             </p>
+            <button
+              v-if="isLimitedScore"
+              type="button"
+              class="match-hide text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+              @click="revealLimitedScore = false"
+            >
+              Hide the score
+            </button>
           </div>
+        </div>
+
+        <!-- Withheld: a score resting on too few ingredients. No percentage by
+             default, the reason instead, and the score one click away for a
+             user who wants it anyway (owner decision). -->
+        <div v-else-if="isScoreWithheld" class="match-withheld space-y-3">
+          <div class="flex items-center justify-between gap-4">
+            <h4 :class="['text-base font-black', matchBand.heading]">Your Skin Match</h4>
+            <span class="match-withheld-badge inline-flex items-center gap-1.5 text-xs font-black font-mono px-3 py-1.5 rounded-full border bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-brand-surface-border dark:border-stone-700">
+              <svg class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ NOT_ENOUGH_INFO }}
+            </span>
+          </div>
+          <p :class="['match-withheld-reason text-xs leading-relaxed', matchBand.body]">
+            {{ describeNotEnoughToScore(matchBreakdown!) }}
+          </p>
+          <button
+            type="button"
+            class="match-reveal text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+            @click="revealLimitedScore = true"
+          >
+            Show the score anyway
+          </button>
         </div>
 
         <div v-else class="flex items-center justify-between gap-4">
@@ -483,7 +535,7 @@ const handleCommitToShelf = async () => {
           :class="['space-y-2 pt-3 border-t text-xs', matchBand.divider]"
         >
           <template v-if="hasMatchScore">
-            <p :class="['match-why text-[11px] font-bold uppercase tracking-wider', matchBand.heading]">Why this score</p>
+            <p :class="['match-why text-[11px] font-bold uppercase tracking-wider', matchBand.heading]">{{ isScoreWithheld ? 'What we found' : 'Why this score' }}</p>
 
             <!-- What suits the viewer's skin, then what counted against it. -->
             <ul v-if="matchReasons.length" class="match-helps space-y-2">

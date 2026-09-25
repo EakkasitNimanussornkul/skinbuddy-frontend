@@ -1,4 +1,11 @@
-import { resolveMatchBand, type MatchBand } from '../../api/products'
+import {
+  NOT_ENOUGH_INFO,
+  describeMatchFraction,
+  readMatchBreakdown,
+  resolveMatchBand,
+  type MatchBand,
+  type MatchBreakdown,
+} from '../../api/products'
 
 /**
  * The label and palette of a skin match score badge.
@@ -28,4 +35,48 @@ export const describeMatchBadge = (score: number | null | undefined) => {
     percent === null ? 'Score Unavailable' : band === 'weak' ? `${percent}% Caution` : `${percent}% Match`
 
   return { band, percent, label, class: MATCH_BADGE_CLASS[band] }
+}
+
+/**
+ * `scored`      a score with enough behind it: percentage, band and fraction
+ * `limited`     a score resting on fewer than three relevant ingredients -
+ *               withheld by default (owner decision), in the neutral palette
+ * `unavailable` no score was computed
+ *
+ * A limited score keeps its real percentage in `percent` and `hiddenLabel`, so
+ * a screen can offer it on request rather than lose it.
+ */
+export type MatchDisplayKind = 'scored' | 'limited' | 'unavailable'
+
+export interface MatchDisplay {
+  kind: MatchDisplayKind
+  band: MatchBand
+  percent: number | null
+  label: string
+  class: string
+  breakdown: MatchBreakdown | null
+  fraction: string | null
+  hiddenLabel: string | null
+}
+
+export const describeMatchDisplay = (score: number | null | undefined, rawBreakdown: unknown): MatchDisplay => {
+  const badge = describeMatchBadge(score)
+  const breakdown = readMatchBreakdown(rawBreakdown)
+
+  if (badge.band === 'unavailable') {
+    return { kind: 'unavailable', ...badge, breakdown, fraction: null, hiddenLabel: null }
+  }
+  if (breakdown?.limited) {
+    return {
+      kind: 'limited',
+      band: 'unavailable',
+      percent: badge.percent,
+      label: NOT_ENOUGH_INFO,
+      class: MATCH_BADGE_CLASS.unavailable,
+      breakdown,
+      fraction: describeMatchFraction(breakdown),
+      hiddenLabel: `${badge.label} from only ${breakdown.considered} of its ${breakdown.total_ingredients} ingredients`,
+    }
+  }
+  return { kind: 'scored', ...badge, breakdown, fraction: breakdown ? describeMatchFraction(breakdown) : null, hiddenLabel: null }
 }

@@ -3,8 +3,7 @@ import { computed, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '../Shared/EmptyState.vue'
 import CollapseTransition from './CollapseTransition.vue'
-import { describeMatchBadge } from '../Catalog/matchBadge'
-import { describeLimitedMatch, readMatchBreakdown } from '../../api/products'
+import { describeMatchDisplay } from '../Catalog/matchBadge'
 
 // loading and failed are optional so the existing prop contract still holds for
 // any caller that only passes userSkinType and products.
@@ -92,14 +91,12 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
 // Both hosts pass pickTopRecommendations' output, which is ordered by match
 // score, best first - so a card's position is its rank. The badge is the Explore
 // card's, so the same score reads the same way on both.
-const matchOf = (prod: { skin_match_score?: number | null }) => describeMatchBadge(prod?.skin_match_score)
-
-// A rank resting on fewer than three ingredients is flagged beside the name,
-// since a 100% built on one ingredient otherwise tops the list unremarked.
-const limitedOf = (prod: { match_breakdown?: unknown }) => {
-  const breakdown = readMatchBreakdown(prod?.match_breakdown)
-  return breakdown?.limited ? describeLimitedMatch(breakdown) : null
-}
+//
+// A limited score reads "Not enough info", as on the Explore card. Both hosts
+// leave limited scores out of the ranking already (pickTopRecommendations), so
+// this only keeps the widget honest if one is ever passed in.
+const matchOf = (prod: { skin_match_score?: number | null; match_breakdown?: unknown }) =>
+  describeMatchDisplay(prod?.skin_match_score, prod?.match_breakdown)
 </script>
 
 <template>
@@ -204,7 +201,7 @@ const limitedOf = (prod: { match_breakdown?: unknown }) => {
                 #{{ idx + 1 }}
               </span>
               <span
-                v-if="matchOf(prod).percent !== null"
+                v-if="matchOf(prod).kind !== 'unavailable'"
                 :class="['rec-match absolute top-2 right-2 z-10 text-[10px] sm:text-[11px] font-black font-mono px-2 py-0.5 rounded-full border shadow-sm backdrop-blur-sm', matchOf(prod).class]"
               >
                 {{ matchOf(prod).label }}
@@ -219,12 +216,12 @@ const limitedOf = (prod: { match_breakdown?: unknown }) => {
               <h4 class="font-serif font-bold text-xs sm:text-sm text-brand-text dark:text-white line-clamp-2 mt-0.5 group-hover:text-brand-primary transition-colors">
                 {{ prod.name }}
               </h4>
+              <!-- What the percentage is built on (owner request). -->
               <span
-                v-if="limitedOf(prod)"
-                :title="limitedOf(prod)!"
-                class="rec-limited inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted"
+                v-if="matchOf(prod).kind === 'scored' && matchOf(prod).fraction"
+                class="rec-fraction block mt-1 text-[10px] font-bold text-brand-text-muted"
               >
-                Limited info
+                {{ matchOf(prod).fraction }}
               </span>
             </div>
           </router-link>

@@ -295,8 +295,9 @@ describe('src/components/Shared/SkinTypeRecommendationsWidget.vue', () => {
 
   // Appended last, so adding it moves no group ID already cited in this file.
   describe('limited information', () => {
-    it('flags a recommendation whose score rests on very few ingredients', async () => {
-      // A 100% on one ingredient otherwise tops the ranking unremarked.
+    it('reads Not enough info for a limited score, and shows the fraction under a well-founded one', async () => {
+      // Both hosts leave limited scores out of the ranking; this pins that the
+      // widget still does not print one as a percentage if it is handed one.
       const { wrapper } = await mountWidget({
         products: [
           recommendation({
@@ -314,7 +315,8 @@ describe('src/components/Shared/SkinTypeRecommendationsWidget.vue', () => {
         ],
       })
 
-      expect(wrapper.findAll('.rec-limited').map((r) => r.text())).toEqual(['Limited info'])
+      expect(wrapper.findAll('.rec-match').map((m) => m.text())).toEqual(['Not enough info', '90% Match'])
+      expect(wrapper.findAll('.rec-fraction').map((f) => f.text())).toEqual(['9 of 10 suit you'])
     })
   })
 })

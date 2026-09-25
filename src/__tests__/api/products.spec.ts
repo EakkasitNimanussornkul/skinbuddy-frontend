@@ -863,37 +863,35 @@ describe('src/api/products.ts', () => {
       ...(limited === undefined ? {} : { match_breakdown: breakdown(limited) }),
     })
 
-    it('ranks every well-founded score above a limited one, whatever the numbers', () => {
+    it('leaves a limited score out, whatever its number', () => {
       // Owner decision. Live: the BHA exfoliant reads 100% for OSPT on one
-      // ingredient of six, and ranked by score alone it took #1.
+      // ingredient of six, and ranked by score it took #1. The page withholds
+      // that score by default, so it is no basis for a recommendation.
       const result = pickTopRecommendations([
         product('thin-100', 100, true),
         product('solid-77', 76.9, false),
         product('solid-45', 45.5, false),
       ])
 
-      expect(result.map((p) => p.id)).toEqual(['solid-77', 'solid-45', 'thin-100'])
+      expect(result.map((p) => p.id)).toEqual(['solid-77', 'solid-45'])
     })
 
-    it('orders limited scores by score among themselves', () => {
+    it('recommends nothing rather than a limited score when every score is limited', () => {
       const result = pickTopRecommendations([product('thin-40', 40, true), product('thin-100', 100, true)])
 
-      expect(result.map((p) => p.id)).toEqual(['thin-100', 'thin-40'])
+      expect(result).toEqual([])
     })
 
-    it('lets a limited score fill the list, and leaves it out once well-founded ones fill it', () => {
-      const four = [product('a', 50, false), product('b', 60, false), product('c', 70, false)]
+    it('does not use a limited score to fill a short list', () => {
+      const three = [product('a', 50, false), product('b', 60, false), product('c', 70, false)]
 
-      expect(pickTopRecommendations([...four, product('thin', 100, true)]).map((p) => p.id)).toEqual(['c', 'b', 'a', 'thin'])
-      expect(
-        pickTopRecommendations([...four, product('d', 40, false), product('thin', 100, true)]).map((p) => p.id),
-      ).toEqual(['c', 'b', 'a', 'd'])
+      expect(pickTopRecommendations([...three, product('thin', 100, true)]).map((p) => p.id)).toEqual(['c', 'b', 'a'])
     })
 
-    it('ranks a product without a breakdown as well-founded, as before the field existed', () => {
+    it('keeps a product without a breakdown, as before the field existed', () => {
       const result = pickTopRecommendations([product('thin', 100, true), product('older-response', 60)])
 
-      expect(result.map((p) => p.id)).toEqual(['older-response', 'thin'])
+      expect(result.map((p) => p.id)).toEqual(['older-response'])
     })
   })
 })

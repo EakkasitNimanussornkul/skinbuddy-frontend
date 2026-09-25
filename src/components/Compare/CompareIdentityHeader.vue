@@ -6,10 +6,9 @@ import {
   describeMatchAvailability,
   resolveComparisonSimilarity,
   resolveMatchAvailability,
-  resolveMatchBand,
   type CompareResponse,
 } from '../../api/products'
-import { MATCH_BADGE_CLASS } from '../Catalog/matchBadge'
+import { describeMatchDisplay } from '../Catalog/matchBadge'
 import { useAuthStore } from '../../stores/auth'
 
 const props = defineProps<{ data: CompareResponse }>()
@@ -21,7 +20,18 @@ const authStore = useAuthStore()
 // to carry its own copy (FE-DEF-12).
 // The palette is the Explore card's, so one score looks the same on every
 // screen - this copy had amber for 60-84 after the owner moved it to teal.
-const getMatchBadgeStyles = (product: any) => MATCH_BADGE_CLASS[resolveMatchBand(product?.skin_match_score)]
+//
+// A score resting on fewer than three relevant ingredients reads "Not enough
+// info" in the neutral palette, as on the Explore card and the product page
+// (owner decision); the real figure is in the badge's hover text.
+type MatchSource = { skin_match_score?: number | null; match_breakdown?: unknown } | null | undefined
+const matchDisplay = (product: MatchSource) => describeMatchDisplay(product?.skin_match_score, product?.match_breakdown)
+const getMatchBadgeStyles = (product: MatchSource) => matchDisplay(product).class
+
+const matchBadgeTitle = (product: MatchSource) => {
+  const display = matchDisplay(product)
+  return display.kind === 'limited' ? `Not enough info to judge a match: ${display.hiddenLabel}.` : undefined
+}
 
 // FE-DEF-31: this read "Failed to calculate score" for every product without
 // one. The backend returns null whenever it has no skin type to score against,
@@ -34,6 +44,7 @@ const matchAvailability = (score: number | null | undefined) =>
 
 const formatMatchScore = (product: any) => {
   const availability = matchAvailability(product?.skin_match_score)
+  if (availability === 'scored' && matchDisplay(product).kind === 'limited') return matchDisplay(product).label
   if (availability === 'scored') return `${Math.round(product.skin_match_score)}% Match`
   if (availability === 'signed-out') return 'Sign in to score'
   if (availability === 'no-profile') return 'Take the skin quiz'
@@ -157,14 +168,28 @@ const getProductDescription = (product: any) => {
       <!-- Match Score Matrix Layer -->
       <div class="bg-white dark:bg-brand-surface-dark">
         <div class="grid grid-cols-2 divide-x divide-brand-surface-border dark:divide-stone-800/60 py-4.5">
-          <div class="flex justify-center items-center px-2">
-            <span :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_a)]">
+          <div class="flex flex-col justify-center items-center gap-1 px-2">
+            <span
+              :title="matchBadgeTitle(data.product_a)"
+              :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_a)]"
+            >
               {{ formatMatchScore(data.product_a) }}
             </span>
+            <!-- What the percentage is built on (owner request). -->
+            <span v-if="matchDisplay(data.product_a).kind === 'scored' && matchDisplay(data.product_a).fraction" class="match-fraction text-[10px] font-bold text-brand-text-muted">
+              {{ matchDisplay(data.product_a).fraction }}
+            </span>
           </div>
-          <div class="flex justify-center items-center px-2">
-            <span :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_b)]">
+          <div class="flex flex-col justify-center items-center gap-1 px-2">
+            <span
+              :title="matchBadgeTitle(data.product_b)"
+              :class="['text-xs font-black px-4 py-1.5 rounded-full border font-mono tracking-wide shadow-2xs text-center', getMatchBadgeStyles(data.product_b)]"
+            >
               {{ formatMatchScore(data.product_b) }}
+            </span>
+            <!-- What the percentage is built on (owner request). -->
+            <span v-if="matchDisplay(data.product_b).kind === 'scored' && matchDisplay(data.product_b).fraction" class="match-fraction text-[10px] font-bold text-brand-text-muted">
+              {{ matchDisplay(data.product_b).fraction }}
             </span>
           </div>
         </div>
