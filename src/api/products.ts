@@ -72,9 +72,23 @@ export interface ScoredProduct {
   brand?: string
   image_url?: string | null
   skin_match_score?: number | null
+  match_breakdown?: unknown
 }
 
-export const pickTopRecommendations = <T extends { skin_match_score?: number | null }>(
+/**
+ * Limited scores are left out of the recommendations.
+ *
+ * Owner decision. With the unsmoothed ratio a score resting on one ingredient
+ * can read 100% - the BHA exfoliant for OSPT, on one ingredient of six - and
+ * ranked by score it took #1. Ranking it last still recommended it; a score the
+ * page withholds by default ("Not enough info") is no basis for "recommended
+ * for you". `limited` is the backend's call (match_breakdown); a product
+ * without a breakdown counts as well-founded, as every product did before the
+ * field existed.
+ */
+const isLimited = (p: { match_breakdown?: unknown }) => readMatchBreakdown(p.match_breakdown)?.limited === true
+
+export const pickTopRecommendations = <T extends { skin_match_score?: number | null; match_breakdown?: unknown }>(
   products: T[],
   limit: number = 4,
 ): T[] => {
@@ -85,7 +99,7 @@ export const pickTopRecommendations = <T extends { skin_match_score?: number | n
   return products
     .filter(
       (p): p is T & { skin_match_score: number } =>
-        !!p && typeof p.skin_match_score === 'number' && !Number.isNaN(p.skin_match_score),
+        !!p && typeof p.skin_match_score === 'number' && !Number.isNaN(p.skin_match_score) && !isLimited(p),
     )
     .sort((a, b) => b.skin_match_score - a.skin_match_score)
     .slice(0, limit)
@@ -174,6 +188,15 @@ export const MATCH_SCORE_BASIS =
   "% Match is how well a product's ingredients suit your skin type, based on your skin quiz. It's personal to you, not a rating of the product."
 
 /**
+ * What the score cannot do, said wherever the score is explained (owner
+ * request). It reads catalogue tags only - not concentration, formulation or
+ * anything about the user's skin beyond their quiz type - so it is a guide,
+ * and a user with a real concern is pointed to a dermatologist.
+ */
+export const MATCH_SCORE_DISCLAIMER =
+  "% Match is a guide, not a guarantee or medical advice. It can't account for everything about your skin, so please check with a dermatologist about any skin concern or reaction."
+
+/**
  * `scored`      a score was computed and can be shown
  * `signed-out`  nobody is signed in, so there is no profile to score against
  * `no-profile`  signed in, but the skin quiz has not been taken
@@ -212,6 +235,83 @@ export const describeMatchAvailability = (availability: MatchAvailability): stri
   if (availability === 'not-scored') return 'This formula could not be scored against your profile.'
   return ''
 }
+
+/**
+ * The counts behind a skin match score, from backend feat/percentage-skin-match
+ * (ae1b9c9). The score is helpful / (helpful + concern_weight) x 100, unsmoothed.
+ *
+ * Owner request: the score lacked transparency, so the product page shows its
+ * working. Null for a viewer with no skin type. For a viewer with one, it is
+ * present even when the score is null - `considered` is then 0, and the page
+ * can say why rather than only "not scored".
+ *
+ * `considered` is its own field on purpose: an ingredient can be helpful and a
+ * concern at once (niacinamide for OSPT), so helpful + concerns can exceed it.
+ * `limited` is decided by the backend (fewer than 3 considered), so the
+ * threshold is not repeated here.
+ */
+export interface MatchBreakdown {
+  helpful: number
+  concerns: number
+  concern_weight: number
+  considered: number
+  total_ingredients: number
+  limited: boolean
+}
+
+/** A breakdown as sent, or null for anything that is not one. */
+export const readMatchBreakdown = (value: unknown): MatchBreakdown | null => {
+  const b = value as Partial<MatchBreakdown> | null | undefined
+  const counts = [b?.helpful, b?.concerns, b?.considered, b?.total_ingredients]
+  if (!b || counts.some((n) => typeof n !== 'number' || !Number.isFinite(n))) return null
+  return {
+    helpful: b.helpful!,
+    concerns: b.concerns!,
+    concern_weight: typeof b.concern_weight === 'number' ? b.concern_weight : 0,
+    considered: b.considered!,
+    total_ingredients: b.total_ingredients!,
+    limited: b.limited === true,
+  }
+}
+
+const ingredients = (n: number) => (n === 1 ? '1 ingredient' : `${n} ingredients`)
+
+/**
+ * The working behind a score, in one plain sentence: "Based on 7 of its 26
+ * ingredients: 6 suit your skin type, 2 may not."
+ */
+export const describeMatchWorking = (b: MatchBreakdown): string => {
+  const helps = b.helpful === 0 ? 'none suit your skin type' : `${b.helpful} ${b.helpful === 1 ? 'suits' : 'suit'} your skin type`
+  const concerns = b.concerns === 0 ? 'none are a concern for it' : `${b.concerns} may not suit it`
+  return `Based on ${b.considered} of its ${ingredients(b.total_ingredients)}: ${helps}, ${concerns}.`
+}
+
+/** The owner's note for a score resting on very few ingredients. */
+export const describeLimitedMatch = (b: MatchBreakdown): string =>
+  `Limited information: only ${b.considered} of its ${ingredients(b.total_ingredients)} ${b.considered === 1 ? 'relates' : 'relate'} to your skin type, so treat this score as a rough guide.`
+
+/**
+ * The fraction a score is built on, shown beside the percentage so every
+ * number carries its own evidence (owner request): "6 of 7 suit you".
+ */
+export const describeMatchFraction = (b: MatchBreakdown): string => `${b.helpful} of ${b.considered} suit you`
+
+/** The badge text for a score withheld by default because it rests on too little. */
+export const NOT_ENOUGH_INFO = 'Not enough info'
+
+/**
+ * Why a limited score is withheld, for the product page: the owner found a 100%
+ * built on one ingredient untrustworthy, flagged or not, so no percentage is
+ * shown unless the user asks for it.
+ */
+export const describeNotEnoughToScore = (b: MatchBreakdown): string =>
+  `Not enough of its ingredients relate to your skin type to judge a match: only ${b.considered} of its ${ingredients(b.total_ingredients)}.`
+
+/** Why a product has no score for a viewer who does have a skin type. */
+export const describeNothingToScore = (b: MatchBreakdown): string =>
+  b.total_ingredients === 1
+    ? 'Its one ingredient is not known to suit or trouble your skin type, so there is nothing to score it on.'
+    : `None of its ${ingredients(b.total_ingredients)} are known to suit or trouble your skin type, so there is nothing to score it on.`
 
 /**
  * `unavailable` no overlap figure could be computed for this pair

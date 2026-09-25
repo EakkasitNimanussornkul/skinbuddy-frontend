@@ -11,7 +11,7 @@ vi.mock('../../api/shelfapi', async (importOriginal) => ({
 
 import { analyzeProduct, addToShelf } from '../../api/shelfapi'
 import { toLocalDateString } from '../../api/dates'
-import { MATCH_SCORE_BASIS } from '../../api/products'
+import { MATCH_SCORE_BASIS, MATCH_SCORE_DISCLAIMER } from '../../api/products'
 import ProductHeroSection from '../../components/Catalog/ProductHeroSection.vue'
 import SafetyWarningModal from '../../components/Shelf/SafetyWarningModal.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -413,7 +413,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
         (await mountHero(true, { product: { skin_match_score: score } })).wrapper.get('.match-verdict').text()
 
       expect(await verdict(91)).toBe('Great match')
-      expect(await verdict(70)).toBe('Fair match')
+      expect(await verdict(70)).toBe('Good match')
       expect(await verdict(30)).toBe('Low match, use with care')
     })
 
@@ -436,7 +436,8 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
         (await mountHero(true, { product: { skin_match_score: score } })).wrapper.get('.match-arc').classes()
 
       expect(await arc(91)).toContain('stroke-emerald-500')
-      expect(await arc(70)).toContain('stroke-amber-500')
+      // Teal, not amber: the owner read amber as a warning for a good match.
+      expect(await arc(70)).toContain('stroke-teal-500')
       expect(await arc(30)).toContain('stroke-semantic-error')
     })
 
@@ -461,6 +462,155 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
 
       expect(wrapper.text()).toContain('Sign in and take the skin quiz to see how well this product suits your skin.')
       expect(wrapper.text()).not.toContain('Baumann')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match reasons (both sides)', () => {
+    it('lists what counted against the score, not only what counted for it', async () => {
+      // Backend feat/percentage-skin-match: a low score often has no
+      // match_reasons at all (OSPT with a retinol serum, 33.3%), so reading only
+      // those left "Why this score" empty exactly when it was needed most.
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 33.3,
+          match_reasons: [],
+          caution_reasons: ['Retinol: Retinoid Purging & Flaking (High)', 'Phenoxyethanol: Preservative Sensitivity (Medium)'],
+        },
+      })
+
+      expect(wrapper.get('.match-why').text()).toBe('Why this score')
+      expect(wrapper.find('.match-helps').exists()).toBe(false)
+      expect(wrapper.get('.match-watch-heading').text()).toBe('Watch out for')
+      expect(wrapper.findAll('.match-cautions li').map((li) => li.text())).toEqual([
+        'Retinol: Retinoid Purging & Flaking (High)',
+        'Phenoxyethanol: Preservative Sensitivity (Medium)',
+      ])
+    })
+
+    it('shows what suits the skin first, then what to watch out for', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 72.5,
+          match_reasons: ['Suits dry skin: Glycerin, Squalane.'],
+          caution_reasons: ['Phenoxyethanol: Preservative Sensitivity (Medium)'],
+        },
+      })
+      const helps = wrapper.get('.match-helps')
+      const cautions = wrapper.get('.match-cautions')
+
+      expect(helps.text()).toContain('Suits dry skin: Glycerin, Squalane.')
+      expect(!!(helps.element.compareDocumentPosition(cautions.element) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+    })
+
+    it('reads a response from before the change, which carries no caution_reasons', async () => {
+      const { wrapper } = await mountHero(true, { product: { match_reasons: ['Suits dry skin.'] } })
+
+      expect(wrapper.find('.match-cautions').exists()).toBe(false)
+      expect(wrapper.get('.match-helps').text()).toContain('Suits dry skin.')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match working', () => {
+    const breakdown = (overrides: Record<string, unknown> = {}) => ({
+      helpful: 6,
+      concerns: 2,
+      concern_weight: 0.9,
+      considered: 7,
+      total_ingredients: 26,
+      limited: false,
+      ...overrides,
+    })
+
+    it('shows the working under the score, so the number is not taken on trust', async () => {
+      // Owner request: the score lacked transparency.
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 76.9, match_breakdown: breakdown() } })
+
+      expect(wrapper.get('.match-working').text()).toBe('Based on 7 of its 26 ingredients: 6 suit your skin type, 2 may not suit it.')
+      expect(wrapper.find('.match-limited').exists()).toBe(false)
+    })
+
+    it('withholds a score resting on very few ingredients, says why, and shows it on request', async () => {
+      // Owner decision, reversing "flag, don't hide": a 100% built on one
+      // ingredient is not trustworthy, flagged or not. Live: the BHA exfoliant
+      // for OSPT, on one ingredient of six.
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 100,
+          match_breakdown: breakdown({ helpful: 1, concerns: 0, considered: 1, total_ingredients: 6, limited: true }),
+        },
+      })
+
+      expect(wrapper.find('.match-percent').exists()).toBe(false)
+      expect(wrapper.get('.match-withheld-badge').text()).toBe('Not enough info')
+      expect(wrapper.get('.match-withheld-reason').text()).toBe(
+        'Not enough of its ingredients relate to your skin type to judge a match: only 1 of its 6 ingredients.',
+      )
+
+      await wrapper.get('button.match-reveal').trigger('click')
+
+      expect(wrapper.get('.match-percent').text()).toBe('100%')
+      expect(wrapper.get('.match-limited').text()).toContain('only 1 of its 6 ingredients relates to your skin type')
+
+      await wrapper.get('button.match-hide').trigger('click')
+
+      expect(wrapper.find('.match-percent').exists()).toBe(false)
+    })
+
+    it('draws a withheld score in the neutral palette, not the colour of a verdict it is not showing', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: { skin_match_score: 100, match_breakdown: breakdown({ considered: 1, limited: true }) },
+      })
+
+      expect(wrapper.get('.match-withheld').element.parentElement!.className).not.toContain('emerald')
+    })
+
+    it('says why there is no score when nothing in the product relates to the skin type', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: null,
+          match_breakdown: breakdown({ helpful: 0, concerns: 0, considered: 0, total_ingredients: 9 }),
+        },
+      })
+
+      expect(wrapper.text()).toContain('None of its 9 ingredients are known to suit or trouble your skin type')
+      expect(wrapper.text()).not.toContain('incomplete ingredient metadata')
+    })
+
+    it('shows the fraction the percentage is built on inside the ring', async () => {
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 76.9, match_breakdown: breakdown() } })
+
+      expect(wrapper.get('.match-percent').text()).toBe('77%')
+      expect(wrapper.get('.match-ring-fraction').text()).toBe('6 of 7')
+    })
+
+    it('reads a response without a breakdown as before', async () => {
+      const { wrapper } = await mountHero()
+
+      expect(wrapper.find('.match-working').exists()).toBe(false)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match disclaimer', () => {
+    it('says beside a score that it is a guide and to see a dermatologist', async () => {
+      // Owner request: the score is not certain, and should not read as advice.
+      const { wrapper } = await mountHero()
+
+      expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
+      expect(MATCH_SCORE_DISCLAIMER).toContain('dermatologist')
+    })
+
+    it('says it when the score is withheld too', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 100,
+          match_breakdown: { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true },
+        },
+      })
+
+      expect(wrapper.find('.match-withheld .match-disclaimer').exists()).toBe(true)
     })
   })
 })

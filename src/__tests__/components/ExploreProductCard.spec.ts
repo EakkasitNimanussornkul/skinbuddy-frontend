@@ -3,6 +3,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 
 import ExploreProductCard from '../../components/Catalog/ExploreProductCard.vue'
 import { MATCH_SCORE_BASIS } from '../../api/products'
+import { MATCH_BADGE_CLASS } from '../../components/Catalog/matchBadge'
 
 const product = (overrides: Record<string, unknown> = {}) => ({
   id: 'p-1',
@@ -29,7 +30,8 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       // Owner feedback: the 10px footer pill was easy to miss.
       const wrapper = mountCard()
 
-      expect(badge(wrapper).classes()).toEqual(expect.arrayContaining(['absolute', 'top-4', 'right-4']))
+      // Positioned by its wrapper, which also holds the limited-information note.
+      expect(badge(wrapper).element.parentElement!.className).toContain('absolute top-4 right-4')
       expect(wrapper.findAll('.match-badge')).toHaveLength(1)
     })
 
@@ -80,6 +82,35 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       expect(wrapper.get('.card-description').classes()).toEqual(expect.arrayContaining(['text-sm', 'line-clamp-3']))
       expect(wrapper.get('.card-tags').classes()).toContain('text-sm')
       expect(wrapper.get('h3').classes()).toContain('text-lg')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('limited information', () => {
+    const limited = { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true }
+
+    it('reads Not enough info instead of a percentage, with the real score on hover', () => {
+      // Owner decision: a 100% built on one ingredient is not shown as one.
+      const wrapper = mountCard({ skin_match_score: 100, match_breakdown: limited })
+
+      expect(badge(wrapper).text()).toBe('Not enough info')
+      // Grey, not the green a 100% would be drawn in: no verdict is being shown.
+      expect(badge(wrapper).classes()).toEqual(expect.arrayContaining(MATCH_BADGE_CLASS.unavailable.split(' ')))
+      expect(badge(wrapper).classes().some((c) => c.includes('emerald'))).toBe(false)
+      expect(badge(wrapper).attributes('title')).toBe(
+        'Not enough info to judge a match: 100% Match from only 1 of its 6 ingredients.',
+      )
+      expect(wrapper.find('.match-fraction').exists()).toBe(false)
+    })
+
+    it('shows the fraction beside a well-founded score, and nothing extra for no score', () => {
+      const scored = mountCard({ skin_match_score: 86, match_breakdown: { ...limited, helpful: 6, considered: 7, limited: false } })
+      expect(badge(scored).text()).toBe('86% Match')
+      expect(scored.get('.match-fraction').text()).toBe('6 of 7 suit you')
+
+      const none = mountCard({ skin_match_score: null, match_breakdown: limited })
+      expect(badge(none).text()).toBe('Score Unavailable')
+      expect(none.find('.match-fraction').exists()).toBe(false)
     })
   })
 })

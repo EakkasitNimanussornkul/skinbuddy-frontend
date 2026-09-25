@@ -3,7 +3,8 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import CompareIdentityHeader from '../../components/Compare/CompareIdentityHeader.vue'
-import { MATCH_SCORE_BASIS, type CompareResponse } from '../../api/products'
+import { MATCH_SCORE_BASIS, MATCH_SCORE_DISCLAIMER, type CompareResponse } from '../../api/products'
+import { describeMatchBadge } from '../../components/Catalog/matchBadge'
 import { useAuthStore } from '../../stores/auth'
 
 const product = (overrides: Record<string, unknown> = {}) => ({
@@ -136,6 +137,68 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
       expect(badges(wrapper)[0]).toBe('Take the skin quiz')
       expect(explanation(wrapper)).toContain('Take the skin quiz to see how this suits your skin.')
       expect(explanation(wrapper)).not.toContain('could not be scored')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match badge palette', () => {
+    it('draws each score in the Explore card palette, 60-84 in teal rather than amber', () => {
+      // Owner decision: amber read as a warning for what is usually a good match.
+      // This screen kept its own copy of the palette and still drew it amber.
+      const wrapper = mountHeader(compareData({ skin_match_score: 90 }, { skin_match_score: 70 }))
+      const chips = wrapper.findAll('span').filter((s) => s.text().endsWith('% Match'))
+
+      expect(chips[0]!.classes()).toEqual(expect.arrayContaining(describeMatchBadge(90).class.split(' ')))
+      expect(chips[1]!.classes()).toEqual(expect.arrayContaining(describeMatchBadge(70).class.split(' ')))
+      expect(chips[1]!.classes().some((c) => c.includes('amber') || c.includes('warning'))).toBe(false)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('limited scores and the fraction', () => {
+    const breakdown = (helpful: number, considered: number, limited: boolean) => ({
+      helpful,
+      concerns: 0,
+      concern_weight: 0,
+      considered,
+      total_ingredients: 20,
+      limited,
+    })
+
+    it('reads Not enough info for a score resting on too few ingredients, with the real one on hover', () => {
+      // Owner decision, as on the Explore card and the product page.
+      const wrapper = mountHeader(
+        compareData(
+          { skin_match_score: 100, match_breakdown: breakdown(1, 1, true) },
+          { skin_match_score: 70, match_breakdown: breakdown(7, 10, false) },
+        ),
+      )
+      const chips = wrapper.findAll('span.font-mono')
+
+      expect(chips[0]!.text()).toBe('Not enough info')
+      expect(chips[0]!.attributes('title')).toBe('Not enough info to judge a match: 100% Match from only 1 of its 20 ingredients.')
+      expect(chips[1]!.text()).toBe('70% Match')
+      expect(chips[1]!.attributes('title')).toBeUndefined()
+    })
+
+    it('shows the fraction under a well-founded score only', () => {
+      const wrapper = mountHeader(
+        compareData(
+          { skin_match_score: 100, match_breakdown: breakdown(1, 1, true) },
+          { skin_match_score: 70, match_breakdown: breakdown(7, 10, false) },
+        ),
+      )
+
+      expect(wrapper.findAll('.match-fraction').map((f) => f.text())).toEqual(['7 of 10 suit you'])
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match disclaimer', () => {
+    it('says under the pair that the score is a guide and to see a dermatologist', () => {
+      const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
+
+      expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
   })
 })

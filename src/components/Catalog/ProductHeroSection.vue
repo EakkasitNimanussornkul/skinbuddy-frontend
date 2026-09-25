@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import {
   describeMatchAvailability,
   MATCH_SCORE_BASIS,
+  MATCH_SCORE_DISCLAIMER,
+  NOT_ENOUGH_INFO,
+  describeLimitedMatch,
+  describeMatchWorking,
+  describeNotEnoughToScore,
+  describeNothingToScore,
+  readMatchBreakdown,
   resolveMatchAvailability,
   resolveMatchBand,
 } from '../../api/products'
@@ -50,7 +57,9 @@ const productDescription = computed(() => {
 // resolveMatchBand so this cannot drift from ExploreProductCard and
 // CompareIdentityHeader again.
 const matchBand = computed(() => {
-  const band = resolveMatchBand(props.product?.skin_match_score)
+  // A withheld score (see isScoreWithheld) is drawn in the neutral palette, so
+  // the card does not colour a verdict it is not showing.
+  const band = isScoreWithheld.value ? 'unavailable' : resolveMatchBand(props.product?.skin_match_score)
 
   if (band === 'strong') {
     return {
@@ -66,17 +75,19 @@ const matchBand = computed(() => {
     }
   }
 
+  // Teal, a green, not amber (owner decision): amber read as a warning, and a
+  // score in this band usually means the product suits the user well.
   if (band === 'moderate') {
     return {
-      card: 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-500/20 dark:border-amber-800/40',
-      heading: 'text-amber-900 dark:text-amber-200',
-      body: 'text-amber-700 dark:text-amber-400',
-      ring: 'border-amber-500 text-amber-800 dark:text-amber-200',
-      divider: 'border-amber-500/20 dark:border-amber-800/40',
-      reason: 'text-amber-900 dark:text-amber-200',
-      dot: 'bg-amber-500',
-      arc: 'stroke-amber-500',
-      verdict: 'Fair match',
+      card: 'bg-teal-500/10 dark:bg-teal-950/20 border-teal-500/20 dark:border-teal-800/40',
+      heading: 'text-teal-900 dark:text-teal-200',
+      body: 'text-teal-700 dark:text-teal-300',
+      ring: 'border-teal-500 text-teal-800 dark:text-teal-200',
+      divider: 'border-teal-500/20 dark:border-teal-800/40',
+      reason: 'text-teal-900 dark:text-teal-200',
+      dot: 'bg-teal-500',
+      arc: 'stroke-teal-500',
+      verdict: 'Good match',
     }
   }
 
@@ -110,6 +121,34 @@ const matchBand = computed(() => {
 })
 
 const hasMatchScore = computed(() => resolveMatchBand(props.product?.skin_match_score) !== 'unavailable')
+
+// Both sides of the score. match_reasons name what suits the viewer's skin;
+// caution_reasons, from backend feat/percentage-skin-match, name each
+// ingredient that counted against it ("Phenoxyethanol: Preservative
+// Sensitivity (Medium)"), most serious first. A low score often has no
+// match_reasons at all, so reading only those left "Why this score" empty
+// exactly when the user most needs it. Read defensively: an older response
+// carries no caution_reasons.
+const matchReasons = computed<string[]>(() =>
+  Array.isArray(props.product?.match_reasons) ? props.product.match_reasons : [],
+)
+const cautionReasons = computed<string[]>(() =>
+  Array.isArray(props.product?.caution_reasons) ? props.product.caution_reasons : [],
+)
+
+// The working behind the score (backend feat/percentage-skin-match), shown so
+// the number is not taken on trust - owner request. Absent from an older
+// response, which then reads as before.
+const matchBreakdown = computed(() => readMatchBreakdown(props.product?.match_breakdown))
+
+// Owner decision: a score resting on fewer than three relevant ingredients is
+// withheld by default - a 100% built on one ingredient is not trustworthy,
+// flagged or not - and shown only if the user asks for it. Reset for each
+// product, so asking once does not reveal the next product's thin score.
+const isLimitedScore = computed(() => hasMatchScore.value && matchBreakdown.value?.limited === true)
+const revealLimitedScore = ref(false)
+watch(() => props.product?.id, () => { revealLimitedScore.value = false })
+const isScoreWithheld = computed(() => isLimitedScore.value && !revealLimitedScore.value)
 
 // The score as a whole number and as the length of the ring's arc, held to
 // 0-100 so a stray value cannot draw more than a full circle.
@@ -149,11 +188,17 @@ const matchBadgeLabel = computed(() =>
 // incomplete ingredient data is a real candidate. For 'no-profile' the cause is
 // known and is not the product, so naming the product at all would be a guess
 // pointed at the wrong thing.
-const matchDetail = computed(() =>
-  matchAvailability.value === 'no-profile'
-    ? 'Your match is worked out from your skin type, which is not on file yet. Nothing about this product failed.'
-    : 'This formula could not be scored against your profile. It may have incomplete ingredient metadata in the catalog.',
-)
+//
+// With the backend's breakdown, 'not-scored' has a known cause too: when none
+// of the ingredients says anything about the viewer's type there is nothing to
+// score, and the catalogue is not at fault either.
+const matchDetail = computed(() => {
+  if (matchAvailability.value === 'no-profile') {
+    return 'Your match is worked out from your skin type, which is not on file yet. Nothing about this product failed.'
+  }
+  if (matchBreakdown.value?.considered === 0) return describeNothingToScore(matchBreakdown.value)
+  return 'This formula could not be scored against your profile. It may have incomplete ingredient metadata in the catalog.'
+})
 
 const isConfiguringAdd = ref(false)
 const isSaving = ref(false)
@@ -375,7 +420,7 @@ const handleCommitToShelf = async () => {
              explained, because on the product page it is the subject rather
              than a badge. The ring's radius gives a circumference of 100, so
              the arc's dash length is the percentage itself. -->
-        <div v-if="hasMatchScore" class="match-scored flex items-center gap-5">
+        <div v-if="hasMatchScore && !isScoreWithheld" class="match-scored flex items-center gap-5">
           <div
             class="match-ring relative w-24 h-24 sm:w-28 sm:h-28 shrink-0"
             role="meter"
@@ -397,9 +442,15 @@ const handleCommitToShelf = async () => {
                 :class="['match-arc transition-[stroke-dasharray] duration-700 ease-out', matchBand.arc]"
               />
             </svg>
-            <span :class="['match-percent absolute inset-0 flex items-center justify-center font-mono font-black text-2xl sm:text-3xl', matchBand.heading]">
-              {{ matchPercent }}%
-            </span>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span :class="['match-percent font-mono font-black text-2xl sm:text-3xl leading-none', matchBand.heading]">
+                {{ matchPercent }}%
+              </span>
+              <!-- The fraction the percentage is built on (owner request). -->
+              <span v-if="matchBreakdown" :class="['match-ring-fraction mt-1 font-mono text-[10px] font-bold', matchBand.body]">
+                {{ matchBreakdown.helpful }} of {{ matchBreakdown.considered }}
+              </span>
+            </div>
           </div>
 
           <div class="min-w-0 space-y-2">
@@ -413,7 +464,65 @@ const handleCommitToShelf = async () => {
               </svg>
               <span>{{ MATCH_SCORE_BASIS }}</span>
             </p>
+            <p v-if="matchBreakdown" :class="['match-working text-xs font-semibold leading-relaxed', matchBand.heading]">
+              {{ describeMatchWorking(matchBreakdown) }}
+            </p>
+            <!-- The owner chose to flag a thin score rather than hide it. -->
+            <p
+              v-if="matchBreakdown?.limited"
+              class="match-limited flex items-start gap-2 text-xs leading-relaxed rounded-xl px-3 py-2 bg-white/70 dark:bg-stone-900/60 border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-200"
+            >
+              <svg class="w-4 h-4 shrink-0 mt-px text-brand-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{{ describeLimitedMatch(matchBreakdown) }}</span>
+            </p>
+            <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+              <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
+            </p>
+            <button
+              v-if="isLimitedScore"
+              type="button"
+              class="match-hide text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+              @click="revealLimitedScore = false"
+            >
+              Hide the score
+            </button>
           </div>
+        </div>
+
+        <!-- Withheld: a score resting on too few ingredients. No percentage by
+             default, the reason instead, and the score one click away for a
+             user who wants it anyway (owner decision). -->
+        <div v-else-if="isScoreWithheld" class="match-withheld space-y-3">
+          <div class="flex items-center justify-between gap-4">
+            <h4 :class="['text-base font-black', matchBand.heading]">Your Skin Match</h4>
+            <span class="match-withheld-badge inline-flex items-center gap-1.5 text-xs font-black font-mono px-3 py-1.5 rounded-full border bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-brand-surface-border dark:border-stone-700">
+              <svg class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ NOT_ENOUGH_INFO }}
+            </span>
+          </div>
+          <p :class="['match-withheld-reason text-xs leading-relaxed', matchBand.body]">
+            {{ describeNotEnoughToScore(matchBreakdown!) }}
+          </p>
+          <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+            <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
+          </p>
+          <button
+            type="button"
+            class="match-reveal text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+            @click="revealLimitedScore = true"
+          >
+            Show the score anyway
+          </button>
         </div>
 
         <div v-else class="flex items-center justify-between gap-4">
@@ -435,15 +544,33 @@ const handleCommitToShelf = async () => {
 
         <!-- Match Reasons or Failure Explanation -->
         <div
-          v-if="!hasMatchScore || product.match_reasons?.length"
+          v-if="!hasMatchScore || matchReasons.length || cautionReasons.length"
           :class="['space-y-2 pt-3 border-t text-xs', matchBand.divider]"
         >
           <template v-if="hasMatchScore">
-            <p :class="['match-why text-[11px] font-bold uppercase tracking-wider', matchBand.heading]">Why this score</p>
-            <div v-for="(reason, i) in (product.match_reasons || [])" :key="i" :class="['flex items-start gap-2.5', matchBand.reason]">
-              <span :class="['w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0', matchBand.dot]"></span>
-              <span class="leading-relaxed">{{ reason }}</span>
-            </div>
+            <p :class="['match-why text-[11px] font-bold uppercase tracking-wider', matchBand.heading]">{{ isScoreWithheld ? 'What we found' : 'Why this score' }}</p>
+
+            <!-- What suits the viewer's skin, then what counted against it. -->
+            <ul v-if="matchReasons.length" class="match-helps space-y-2">
+              <li v-for="(reason, i) in matchReasons" :key="i" class="flex items-start gap-2.5 text-brand-text dark:text-stone-200">
+                <svg class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <span class="leading-relaxed">{{ reason }}</span>
+              </li>
+            </ul>
+
+            <template v-if="cautionReasons.length">
+              <p class="match-watch-heading text-[11px] font-bold text-brand-text-muted dark:text-stone-400 pt-1">Watch out for</p>
+              <ul class="match-cautions space-y-2">
+                <li v-for="(reason, i) in cautionReasons" :key="i" class="flex items-start gap-2.5 text-brand-text dark:text-stone-200">
+                  <svg class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span class="leading-relaxed">{{ reason }}</span>
+                </li>
+              </ul>
+            </template>
           </template>
 
           <div v-else class="text-brand-text-muted dark:text-stone-400 italic text-[11px]">
