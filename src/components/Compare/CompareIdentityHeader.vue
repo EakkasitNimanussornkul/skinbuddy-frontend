@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import {
   MATCH_SCORE_BASIS,
+  MATCH_SCORE_DISCLAIMER,
   countProductIngredients,
   describeMatchAvailability,
   resolveComparisonSimilarity,
@@ -201,6 +202,9 @@ const getProductDescription = (product: any) => {
           <p class="text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 font-medium max-w-xl mx-auto">
             <span class="font-bold uppercase tracking-widest text-brand-text dark:text-stone-300">Skin Match</span>
             &mdash; {{ matchExplanation }}
+          </p>
+          <p class="match-disclaimer mt-1 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 max-w-xl mx-auto">
+            {{ MATCH_SCORE_DISCLAIMER }}
           </p>
         </div>
       </div>

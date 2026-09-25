@@ -3,7 +3,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import CompareIdentityHeader from '../../components/Compare/CompareIdentityHeader.vue'
-import { MATCH_SCORE_BASIS, type CompareResponse } from '../../api/products'
+import { MATCH_SCORE_BASIS, MATCH_SCORE_DISCLAIMER, type CompareResponse } from '../../api/products'
 import { describeMatchBadge } from '../../components/Catalog/matchBadge'
 import { useAuthStore } from '../../stores/auth'
 
@@ -190,6 +190,15 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
       )
 
       expect(wrapper.findAll('.match-fraction').map((f) => f.text())).toEqual(['7 of 10 suit you'])
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match disclaimer', () => {
+    it('says under the pair that the score is a guide and to see a dermatologist', () => {
+      const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
+
+      expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
   })
 })

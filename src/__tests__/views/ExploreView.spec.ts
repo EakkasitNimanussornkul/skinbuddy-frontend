@@ -9,7 +9,7 @@ vi.mock('../../api/products.ts', async (importOriginal) => ({
   searchProducts: vi.fn(),
 }))
 
-import { searchProducts, MATCH_SCORE_BASIS } from '../../api/products.ts'
+import { searchProducts, MATCH_SCORE_BASIS, MATCH_SCORE_DISCLAIMER } from '../../api/products.ts'
 import ExploreView from '../../views/ExploreView.vue'
 import SearchAutocompleteInput from '../../components/Shared/SearchAutocompleteInput.vue'
 import SkinTypeRecommendationsWidget from '../../components/Shared/SkinTypeRecommendationsWidget.vue'
@@ -534,6 +534,15 @@ describe('src/views/ExploreView.vue', () => {
       resolve([catalogProduct()])
       await flushPromises()
       expect(region().attributes('style') ?? '').not.toContain('min-height')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match disclaimer', () => {
+    it('adds to the % Match note that it is a guide and to see a dermatologist', async () => {
+      const { wrapper } = await mountExplore('/explore', { authenticated: true })
+
+      expect(wrapper.get('.match-explainer .match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
   })
 })

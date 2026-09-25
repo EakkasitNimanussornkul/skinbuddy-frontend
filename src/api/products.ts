@@ -188,6 +188,15 @@ export const MATCH_SCORE_BASIS =
   "% Match is how well a product's ingredients suit your skin type, based on your skin quiz. It's personal to you, not a rating of the product."
 
 /**
+ * What the score cannot do, said wherever the score is explained (owner
+ * request). It reads catalogue tags only - not concentration, formulation or
+ * anything about the user's skin beyond their quiz type - so it is a guide,
+ * and a user with a real concern is pointed to a dermatologist.
+ */
+export const MATCH_SCORE_DISCLAIMER =
+  "% Match is a guide, not a guarantee or medical advice. It can't account for everything about your skin, so please check with a dermatologist about any skin concern or reaction."
+
+/**
  * `scored`      a score was computed and can be shown
  * `signed-out`  nobody is signed in, so there is no profile to score against
  * `no-profile`  signed in, but the skin quiz has not been taken

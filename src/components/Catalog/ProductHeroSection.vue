@@ -4,6 +4,7 @@ import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import {
   describeMatchAvailability,
   MATCH_SCORE_BASIS,
+  MATCH_SCORE_DISCLAIMER,
   NOT_ENOUGH_INFO,
   describeLimitedMatch,
   describeMatchWorking,
@@ -476,6 +477,12 @@ const handleCommitToShelf = async () => {
               </svg>
               <span>{{ describeLimitedMatch(matchBreakdown) }}</span>
             </p>
+            <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+              <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
+            </p>
             <button
               v-if="isLimitedScore"
               type="button"
@@ -502,6 +509,12 @@ const handleCommitToShelf = async () => {
           </div>
           <p :class="['match-withheld-reason text-xs leading-relaxed', matchBand.body]">
             {{ describeNotEnoughToScore(matchBreakdown!) }}
+          </p>
+          <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+            <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
           </p>
           <button
             type="button"

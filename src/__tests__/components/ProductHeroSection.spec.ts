@@ -11,7 +11,7 @@ vi.mock('../../api/shelfapi', async (importOriginal) => ({
 
 import { analyzeProduct, addToShelf } from '../../api/shelfapi'
 import { toLocalDateString } from '../../api/dates'
-import { MATCH_SCORE_BASIS } from '../../api/products'
+import { MATCH_SCORE_BASIS, MATCH_SCORE_DISCLAIMER } from '../../api/products'
 import ProductHeroSection from '../../components/Catalog/ProductHeroSection.vue'
 import SafetyWarningModal from '../../components/Shelf/SafetyWarningModal.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -589,6 +589,28 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       const { wrapper } = await mountHero()
 
       expect(wrapper.find('.match-working').exists()).toBe(false)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match disclaimer', () => {
+    it('says beside a score that it is a guide and to see a dermatologist', async () => {
+      // Owner request: the score is not certain, and should not read as advice.
+      const { wrapper } = await mountHero()
+
+      expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
+      expect(MATCH_SCORE_DISCLAIMER).toContain('dermatologist')
+    })
+
+    it('says it when the score is withheld too', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 100,
+          match_breakdown: { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true },
+        },
+      })
+
+      expect(wrapper.find('.match-withheld .match-disclaimer').exists()).toBe(true)
     })
   })
 })
