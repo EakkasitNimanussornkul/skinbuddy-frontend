@@ -127,5 +127,9 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       expect(wrapper.find('.match-fraction').exists()).toBe(false)
       expect(wrapper.text()).not.toContain('100%')
     })
+
+    it('shows 99% rather than rounding 99.6 up to 100%', () => {
+      expect(badge(mountCard({ skin_match_score: 99.6 })).text()).toBe('99% Match')
+    })
   })
 })
