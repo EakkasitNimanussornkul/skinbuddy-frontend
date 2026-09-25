@@ -639,7 +639,10 @@ describe('src/api/safety.ts', () => {
       w.details![0] = { ...w.details![0]!, sources: [sourceRef('rule')] }
 
       expect(warningSources(w).map((e) => e.source.id)).toEqual(['rule'])
-      expect(warningSources(skinAlert('x'))).toEqual([])
+      // A skin-type alert's sources are on its reasons; even a detail carrying
+      // sources must not be shown a second time as the alert's own.
+      const skin = { ...skinAlert('x'), details: [{ ...distinctPair('High', 'X', 'y'), sources: [sourceRef('leak')] }] }
+      expect(warningSources(skin)).toEqual([])
       expect(warningSources({ alert_type: 'Interaction', details: undefined })).toEqual([])
     })
   })
