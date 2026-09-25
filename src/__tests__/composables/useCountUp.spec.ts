@@ -4,13 +4,13 @@ import { defineComponent, h, nextTick, ref } from 'vue'
 
 import { useCountUp } from '../../composables/useCountUp'
 
-/** A component that counts up to `target` and prints the rounded value. */
+/** A component that counts up to `target` and prints the exact value, unrounded. */
 const mountCounter = (initial: number, duration = 900) => {
   const target = ref(initial)
   const Counter = defineComponent({
     setup() {
       const value = useCountUp(() => target.value, duration)
-      return () => h('span', Math.round(value.value))
+      return () => h('span', String(value.value))
     },
   })
   const wrapper = mount(Counter)
@@ -61,6 +61,7 @@ describe('src/composables/useCountUp.ts', () => {
 
       vi.advanceTimersByTime(1000)
       await nextTick()
+      // Exactly, not to the nearest whole number.
       expect(read()).toBe(82)
     })
 
@@ -73,14 +74,20 @@ describe('src/composables/useCountUp.ts', () => {
       expect(read()).toBeGreaterThan(70)
     })
 
-    it('moves from where it is when the target changes, as a reveal does', async () => {
-      const { target, read } = mountCounter(0)
+    it('moves from where it is when the target changes, not from 0 again', async () => {
+      const { target, read } = mountCounter(50)
       vi.advanceTimersByTime(1000)
       await nextTick()
-      expect(read()).toBe(0)
+      expect(read()).toBe(50)
 
       target.value = 60
       await nextTick()
+      vi.advanceTimersByTime(50)
+      await nextTick()
+      // Early in the second climb it is between the two, not back near 0.
+      expect(read()).toBeGreaterThanOrEqual(50)
+      expect(read()).toBeLessThan(60)
+
       vi.advanceTimersByTime(1000)
       await nextTick()
       expect(read()).toBe(60)
