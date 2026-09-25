@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import EmptyState from '../Shared/EmptyState.vue'
 import CollapseTransition from './CollapseTransition.vue'
 import { describeMatchBadge } from '../Catalog/matchBadge'
+import { describeLimitedMatch, readMatchBreakdown } from '../../api/products'
 
 // loading and failed are optional so the existing prop contract still holds for
 // any caller that only passes userSkinType and products.
@@ -92,6 +93,13 @@ const thumbClass = computed(() => (props.compact ? 'h-24 sm:h-28' : 'h-36 sm:h-4
 // score, best first - so a card's position is its rank. The badge is the Explore
 // card's, so the same score reads the same way on both.
 const matchOf = (prod: { skin_match_score?: number | null }) => describeMatchBadge(prod?.skin_match_score)
+
+// A rank resting on fewer than three ingredients is flagged beside the name,
+// since a 100% built on one ingredient otherwise tops the list unremarked.
+const limitedOf = (prod: { match_breakdown?: unknown }) => {
+  const breakdown = readMatchBreakdown(prod?.match_breakdown)
+  return breakdown?.limited ? describeLimitedMatch(breakdown) : null
+}
 </script>
 
 <template>
@@ -211,6 +219,13 @@ const matchOf = (prod: { skin_match_score?: number | null }) => describeMatchBad
               <h4 class="font-serif font-bold text-xs sm:text-sm text-brand-text dark:text-white line-clamp-2 mt-0.5 group-hover:text-brand-primary transition-colors">
                 {{ prod.name }}
               </h4>
+              <span
+                v-if="limitedOf(prod)"
+                :title="limitedOf(prod)!"
+                class="rec-limited inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted"
+              >
+                Limited info
+              </span>
             </div>
           </router-link>
 

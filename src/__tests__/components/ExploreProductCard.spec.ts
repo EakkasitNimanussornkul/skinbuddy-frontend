@@ -29,7 +29,8 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       // Owner feedback: the 10px footer pill was easy to miss.
       const wrapper = mountCard()
 
-      expect(badge(wrapper).classes()).toEqual(expect.arrayContaining(['absolute', 'top-4', 'right-4']))
+      // Positioned by its wrapper, which also holds the limited-information note.
+      expect(badge(wrapper).element.parentElement!.className).toContain('absolute top-4 right-4')
       expect(wrapper.findAll('.match-badge')).toHaveLength(1)
     })
 
@@ -80,6 +81,23 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       expect(wrapper.get('.card-description').classes()).toEqual(expect.arrayContaining(['text-sm', 'line-clamp-3']))
       expect(wrapper.get('.card-tags').classes()).toContain('text-sm')
       expect(wrapper.get('h3').classes()).toContain('text-lg')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('limited information', () => {
+    const limited = { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true }
+
+    it('flags a score resting on very few ingredients beside the badge', () => {
+      const wrapper = mountCard({ skin_match_score: 100, match_breakdown: limited })
+
+      expect(wrapper.get('.match-limited').text()).toBe('Limited info')
+      expect(wrapper.get('.match-limited').attributes('title')).toContain('only 1 of its 6 ingredients')
+    })
+
+    it('adds nothing for a well-founded score, or for no score', () => {
+      expect(mountCard({ match_breakdown: { ...limited, considered: 7, limited: false } }).find('.match-limited').exists()).toBe(false)
+      expect(mountCard({ skin_match_score: null, match_breakdown: limited }).find('.match-limited').exists()).toBe(false)
     })
   })
 })

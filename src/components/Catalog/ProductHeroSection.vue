@@ -4,6 +4,10 @@ import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import {
   describeMatchAvailability,
   MATCH_SCORE_BASIS,
+  describeLimitedMatch,
+  describeMatchWorking,
+  describeNothingToScore,
+  readMatchBreakdown,
   resolveMatchAvailability,
   resolveMatchBand,
 } from '../../api/products'
@@ -127,6 +131,11 @@ const cautionReasons = computed<string[]>(() =>
   Array.isArray(props.product?.caution_reasons) ? props.product.caution_reasons : [],
 )
 
+// The working behind the score (backend feat/percentage-skin-match), shown so
+// the number is not taken on trust - owner request. Absent from an older
+// response, which then reads as before.
+const matchBreakdown = computed(() => readMatchBreakdown(props.product?.match_breakdown))
+
 // The score as a whole number and as the length of the ring's arc, held to
 // 0-100 so a stray value cannot draw more than a full circle.
 const matchPercent = computed(() =>
@@ -165,11 +174,17 @@ const matchBadgeLabel = computed(() =>
 // incomplete ingredient data is a real candidate. For 'no-profile' the cause is
 // known and is not the product, so naming the product at all would be a guess
 // pointed at the wrong thing.
-const matchDetail = computed(() =>
-  matchAvailability.value === 'no-profile'
-    ? 'Your match is worked out from your skin type, which is not on file yet. Nothing about this product failed.'
-    : 'This formula could not be scored against your profile. It may have incomplete ingredient metadata in the catalog.',
-)
+//
+// With the backend's breakdown, 'not-scored' has a known cause too: when none
+// of the ingredients says anything about the viewer's type there is nothing to
+// score, and the catalogue is not at fault either.
+const matchDetail = computed(() => {
+  if (matchAvailability.value === 'no-profile') {
+    return 'Your match is worked out from your skin type, which is not on file yet. Nothing about this product failed.'
+  }
+  if (matchBreakdown.value?.considered === 0) return describeNothingToScore(matchBreakdown.value)
+  return 'This formula could not be scored against your profile. It may have incomplete ingredient metadata in the catalog.'
+})
 
 const isConfiguringAdd = ref(false)
 const isSaving = ref(false)
@@ -428,6 +443,19 @@ const handleCommitToShelf = async () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>{{ MATCH_SCORE_BASIS }}</span>
+            </p>
+            <p v-if="matchBreakdown" :class="['match-working text-xs font-semibold leading-relaxed', matchBand.heading]">
+              {{ describeMatchWorking(matchBreakdown) }}
+            </p>
+            <!-- The owner chose to flag a thin score rather than hide it. -->
+            <p
+              v-if="matchBreakdown?.limited"
+              class="match-limited flex items-start gap-2 text-xs leading-relaxed rounded-xl px-3 py-2 bg-white/70 dark:bg-stone-900/60 border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-200"
+            >
+              <svg class="w-4 h-4 shrink-0 mt-px text-brand-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{{ describeLimitedMatch(matchBreakdown) }}</span>
             </p>
           </div>
         </div>

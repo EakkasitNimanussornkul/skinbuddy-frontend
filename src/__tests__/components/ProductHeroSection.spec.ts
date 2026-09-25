@@ -510,4 +510,57 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(wrapper.get('.match-helps').text()).toContain('Suits dry skin.')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match working', () => {
+    const breakdown = (overrides: Record<string, unknown> = {}) => ({
+      helpful: 6,
+      concerns: 2,
+      concern_weight: 0.9,
+      considered: 7,
+      total_ingredients: 26,
+      limited: false,
+      ...overrides,
+    })
+
+    it('shows the working under the score, so the number is not taken on trust', async () => {
+      // Owner request: the score lacked transparency.
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 76.9, match_breakdown: breakdown() } })
+
+      expect(wrapper.get('.match-working').text()).toBe('Based on 7 of its 26 ingredients: 6 suit your skin type, 2 may not suit it.')
+      expect(wrapper.find('.match-limited').exists()).toBe(false)
+    })
+
+    it('flags a score resting on very few ingredients rather than hiding it', async () => {
+      // Owner decision. Live: the BHA exfoliant scores 100.0 for OSPT on one
+      // ingredient of six.
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 100,
+          match_breakdown: breakdown({ helpful: 1, concerns: 0, considered: 1, total_ingredients: 6, limited: true }),
+        },
+      })
+
+      expect(wrapper.get('.match-percent').text()).toBe('100%')
+      expect(wrapper.get('.match-limited').text()).toContain('only 1 of its 6 ingredients relates to your skin type')
+    })
+
+    it('says why there is no score when nothing in the product relates to the skin type', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: null,
+          match_breakdown: breakdown({ helpful: 0, concerns: 0, considered: 0, total_ingredients: 9 }),
+        },
+      })
+
+      expect(wrapper.text()).toContain('None of its 9 ingredients are known to suit or trouble your skin type')
+      expect(wrapper.text()).not.toContain('incomplete ingredient metadata')
+    })
+
+    it('reads a response without a breakdown as before', async () => {
+      const { wrapper } = await mountHero()
+
+      expect(wrapper.find('.match-working').exists()).toBe(false)
+    })
+  })
 })

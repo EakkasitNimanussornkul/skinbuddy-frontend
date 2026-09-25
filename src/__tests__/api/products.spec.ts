@@ -32,6 +32,10 @@ import {
   getProductBySlug,
   getProductById,
   getProductComparison,
+  readMatchBreakdown,
+  describeMatchWorking,
+  describeLimitedMatch,
+  describeNothingToScore,
 } from '../../api/products'
 
 const unauthorized = { response: { status: 401 } }
@@ -773,5 +777,73 @@ describe('src/api/products.ts', () => {
     // resolveSimilarityBand comment names as the right fix for a filtered basis -
     // a null score beside two populated lists would be described as having no
     // ingredient list on record.
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match breakdown', () => {
+    // The shape from backend feat/percentage-skin-match (ae1b9c9).
+    const breakdown = (overrides: Record<string, unknown> = {}) => ({
+      helpful: 6,
+      concerns: 2,
+      concern_weight: 0.9,
+      considered: 7,
+      total_ingredients: 26,
+      limited: false,
+      ...overrides,
+    })
+
+    it('reads a breakdown as sent, and nothing that is not one', () => {
+      expect(readMatchBreakdown(breakdown())).toEqual(breakdown())
+      expect(readMatchBreakdown(null)).toBeNull()
+      expect(readMatchBreakdown(undefined)).toBeNull()
+      expect(readMatchBreakdown({ helpful: 1 })).toBeNull()
+      expect(readMatchBreakdown(breakdown({ considered: 'seven' }))).toBeNull()
+    })
+
+    it('treats a missing limited flag as not limited rather than guessing', () => {
+      const withoutFlag: Record<string, unknown> = breakdown({ limited: true })
+      delete withoutFlag.limited
+      expect(readMatchBreakdown(withoutFlag)!.limited).toBe(false)
+    })
+
+    it('states the working in one plain sentence', () => {
+      expect(describeMatchWorking(readMatchBreakdown(breakdown())!)).toBe(
+        'Based on 7 of its 26 ingredients: 6 suit your skin type, 2 may not suit it.',
+      )
+    })
+
+    it('reads considered from its own field, since one ingredient can count on both sides', () => {
+      // Niacinamide for OSPT: suits oily, flagged for sensitive. helpful plus
+      // concerns is 2, but only 1 ingredient was considered.
+      const sentence = describeMatchWorking(
+        readMatchBreakdown(breakdown({ helpful: 1, concerns: 1, considered: 1, total_ingredients: 6 }))!,
+      )
+
+      expect(sentence).toBe('Based on 1 of its 6 ingredients: 1 suits your skin type, 1 may not suit it.')
+    })
+
+    it('says none rather than zero', () => {
+      expect(describeMatchWorking(readMatchBreakdown(breakdown({ helpful: 0, concerns: 1, considered: 1 }))!)).toBe(
+        'Based on 1 of its 26 ingredients: none suit your skin type, 1 may not suit it.',
+      )
+      expect(
+        describeMatchWorking(readMatchBreakdown(breakdown({ helpful: 24, concerns: 0, considered: 24, total_ingredients: 52 }))!),
+      ).toBe('Based on 24 of its 52 ingredients: 24 suit your skin type, none are a concern for it.')
+    })
+
+    it('flags a score resting on very few ingredients', () => {
+      expect(describeLimitedMatch(readMatchBreakdown(breakdown({ considered: 1, total_ingredients: 6, limited: true }))!)).toBe(
+        'Limited information: only 1 of its 6 ingredients relates to your skin type, so treat this score as a rough guide.',
+      )
+    })
+
+    it('says why there is nothing to score, without blaming the catalogue', () => {
+      expect(describeNothingToScore(readMatchBreakdown(breakdown({ considered: 0, total_ingredients: 9 }))!)).toBe(
+        'None of its 9 ingredients are known to suit or trouble your skin type, so there is nothing to score it on.',
+      )
+      expect(describeNothingToScore(readMatchBreakdown(breakdown({ considered: 0, total_ingredients: 1 }))!)).toBe(
+        'Its one ingredient is not known to suit or trouble your skin type, so there is nothing to score it on.',
+      )
+    })
   })
 })

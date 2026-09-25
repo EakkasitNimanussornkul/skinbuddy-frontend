@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { describeMatchBadge } from './matchBadge'
-import { MATCH_SCORE_BASIS } from '../../api/products'
+import { MATCH_SCORE_BASIS, describeLimitedMatch, readMatchBreakdown } from '../../api/products'
 
 const props = defineProps<{
   product: any
@@ -12,6 +12,13 @@ const emit = defineEmits(['inspect'])
 // The skin match badge. Thresholds are resolveMatchBand's (FE-DEF-12), and the
 // look is shared with the recommendation cards on the same page.
 const matchInfo = computed(() => describeMatchBadge(props.product?.skin_match_score))
+
+// A score resting on fewer than three ingredients is flagged, not hidden (owner
+// decision). The backend decides what counts as limited.
+const limitedNote = computed(() => {
+  const breakdown = readMatchBreakdown(props.product?.match_breakdown)
+  return breakdown?.limited && matchInfo.value.band !== 'unavailable' ? describeLimitedMatch(breakdown) : null
+})
 
 // Build dynamic overview summary fallback string from components
 const ingredientsSummary = computed(() => {
@@ -36,21 +43,30 @@ const ingredientsSummary = computed(() => {
            card's footer, easy to miss (owner feedback); it is the one figure on
            the card that is about the viewer rather than the product. On narrow
            screens it sits over the image's corner. -->
-      <span
-        :title="matchInfo.band === 'unavailable' ? undefined : MATCH_SCORE_BASIS"
-        :class="[
-          'match-badge absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
-          // A score nobody computed (a guest, or no skin type) stays small: it
-          // is a note, not a result to draw the eye to.
-          matchInfo.band === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-3 py-1.5',
-          matchInfo.class,
-        ]"
-      >
-        <svg v-if="matchInfo.band !== 'unavailable'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        {{ matchInfo.label }}
-      </span>
+      <div class="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+        <span
+          :title="matchInfo.band === 'unavailable' ? undefined : MATCH_SCORE_BASIS"
+          :class="[
+            'match-badge inline-flex items-center gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
+            // A score nobody computed (a guest, or no skin type) stays small: it
+            // is a note, not a result to draw the eye to.
+            matchInfo.band === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-3 py-1.5',
+            matchInfo.class,
+          ]"
+        >
+          <svg v-if="matchInfo.band !== 'unavailable'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {{ matchInfo.label }}
+        </span>
+        <span
+          v-if="limitedNote"
+          :title="limitedNote"
+          class="match-limited text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm backdrop-blur-sm"
+        >
+          Limited info
+        </span>
+      </div>
 
       <!-- Left Box: Large Scaled Premium Asset Frame -->
       <div class="w-full sm:w-44 md:w-48 aspect-[4/3] sm:aspect-square bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-surface-border/60 dark:border-stone-800 flex items-center justify-center p-4 flex-shrink-0 group-hover:scale-[1.02] transition-transform overflow-hidden relative">
