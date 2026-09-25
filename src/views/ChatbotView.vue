@@ -18,6 +18,17 @@ const isLoading = ref(false)
 const chatContainer = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
+// UC-13 / SRS-47: the chat accepts English text only. Any character outside the
+// Basic Latin (ASCII) range — Thai, CJK, emoji, etc. — makes the input invalid,
+// so a non-English query never reaches the model. The text field is the only
+// input, so "no multimodal data" is enforced by construction.
+const NON_ENGLISH_RE = /[\u0080-\uFFFF]/
+const isEnglishOnly = (text: string) => !NON_ENGLISH_RE.test(text)
+const inputError = ref('')
+const canSend = computed(
+    () => !!userInput.value.trim() && !isLoading.value && isEnglishOnly(userInput.value),
+)
+
 // Common opening questions, shown until the user sends their first message.
 // Tapping one fills the input so it can still be edited before sending.
 const SUGGESTED_QUESTIONS = [
@@ -178,6 +189,13 @@ const sendMessage = async () => {
 
     const currentMessage = userInput.value.trim()
 
+    // UC-13 / SRS-47: reject non-English input before it is sent anywhere.
+    if (!isEnglishOnly(currentMessage)) {
+        inputError.value = 'Please type your message in English only.'
+        return
+    }
+    inputError.value = ''
+
     // If we're gathering routine concerns, the next message drives generation.
     if (routineStage.value === 'awaiting-concerns') {
         chatStore.messages.push({ role: 'user', text: currentMessage })
@@ -321,9 +339,9 @@ const sendMessage = async () => {
 
             <div class="flex gap-2 items-center relative">
                 <input ref="inputRef" v-model="userInput" type="text" placeholder="Ask about your routine…"
-                    @keydown.enter.prevent="sendMessage" :disabled="isLoading"
+                    @input="inputError = ''" @keydown.enter.prevent="sendMessage" :disabled="isLoading"
                     class="flex-1 bg-brand-bg-light dark:bg-brand-bg-dark border border-stone-200 dark:border-stone-700 rounded-full py-3 pl-5 pr-12 text-sm text-brand-text dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 dark:focus:ring-orange-400/30 transition-all disabled:opacity-50" />
-                <button @click="sendMessage" :disabled="!userInput.trim() || isLoading"
+                <button @click="sendMessage" :disabled="!canSend"
                     class="absolute right-1.5 top-1.5 w-9 h-9 bg-brand-primary hover:bg-orange-800 active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-all shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -331,6 +349,11 @@ const sendMessage = async () => {
                     </svg>
                 </button>
             </div>
+            <!-- UC-13 / SRS-47: English-only feedback -->
+            <p v-if="inputError || (userInput.trim() && !isEnglishOnly(userInput))"
+                class="mt-1.5 ml-4 text-[11px] text-red-500 dark:text-red-400">
+                {{ inputError || 'Please type your message in English only.' }}
+            </p>
         </footer>
 
         <!-- UC-15 SRS-62: confirmation before applying a routine -->
