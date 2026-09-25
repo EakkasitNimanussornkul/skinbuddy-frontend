@@ -55,6 +55,20 @@ const useSuggestion = (question: string) => {
 // follow-up question and is waiting for the user's next message to generate.
 const routineStage = ref<'idle' | 'awaiting-concerns' | 'generating'>('idle')
 
+// Tap-to-answer replies for the follow-up question, so the bot can ask briefly
+// instead of listing examples. Each sends at once; typing still works.
+const FOCUS_REPLIES = ['Acne', 'Dryness', 'Sensitivity', 'Anti-aging', 'Dark spots', 'Keep it balanced']
+const ADJUST_REPLIES = ['Fewer steps', 'Gentler on my skin', 'Only products I own', 'Focus on acne']
+const quickReplies = ref<string[]>([])
+const showQuickReplies = computed(
+    () => routineStage.value === 'awaiting-concerns' && !isLoading.value && quickReplies.value.length > 0,
+)
+
+const sendQuickReply = (reply: string) => {
+    userInput.value = reply
+    sendMessage()
+}
+
 const scrollToBottom = async () => {
     await nextTick()
     if (chatContainer.value) {
@@ -65,6 +79,7 @@ const scrollToBottom = async () => {
 const startNewChat = () => {
     chatStore.resetChat()
     routineStage.value = 'idle'
+    quickReplies.value = []
 }
 
 // UC-15 step 1-3: opened from the routine page -> auto-send + ask follow-up.
@@ -72,8 +87,9 @@ const startRoutineFlow = () => {
     chatStore.messages.push({ role: 'user', text: 'Make me a skincare routine' })
     chatStore.messages.push({
         role: 'bot',
-        text: 'I\'d love to build one from the products in your storage! 🌿 Any specific concerns you\'d like to focus on — like acne, dryness, sensitivity, or anti-aging? Or just say "no" for a balanced routine.',
+        text: 'Happy to build one! 🌿 What should it focus on?',
     })
+    quickReplies.value = FOCUS_REPLIES
     routineStage.value = 'awaiting-concerns'
     scrollToBottom()
 }
@@ -180,7 +196,8 @@ const applyProposedRoutine = async (msg: any) => {
 
 // UC-15 A2: user asks to adjust -> loop back to the follow-up question.
 const adjustProposedRoutine = () => {
-    chatStore.messages.push({ role: 'bot', text: 'No problem — what would you like to change or focus on?' })
+    chatStore.messages.push({ role: 'bot', text: 'No problem — what would you like to change?' })
+    quickReplies.value = ADJUST_REPLIES
     routineStage.value = 'awaiting-concerns'
     scrollToBottom()
 }
@@ -319,6 +336,8 @@ const sendMessage = async () => {
                         style="animation-delay: 0.15s" />
                     <div class="w-2 h-2 bg-brand-primary/50 dark:bg-orange-400/50 rounded-full animate-bounce"
                         style="animation-delay: 0.3s" />
+                    <span v-if="routineStage === 'generating'"
+                        class="ml-1.5 text-xs text-brand-text-muted dark:text-stone-400">Picking your products…</span>
                 </div>
             </div>
         </main>
@@ -336,6 +355,16 @@ const sendMessage = async () => {
                     <button v-for="q in SUGGESTED_QUESTIONS" :key="q" @click="useSuggestion(q)" type="button"
                         class="shrink-0 whitespace-nowrap text-xs font-semibold text-brand-primary dark:text-orange-400 bg-brand-primary/10 dark:bg-orange-900/20 hover:bg-brand-primary/20 dark:hover:bg-orange-900/40 active:scale-[0.97] px-3.5 py-2 rounded-full border border-brand-primary/20 dark:border-orange-700/30 transition-all cursor-pointer">
                         {{ q }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick replies to the routine follow-up question (UC-15) -->
+            <div v-if="showQuickReplies" class="mb-2.5">
+                <div class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">
+                    <button v-for="r in quickReplies" :key="r" @click="sendQuickReply(r)" type="button"
+                        class="shrink-0 whitespace-nowrap text-xs font-semibold text-brand-primary dark:text-orange-400 bg-brand-primary/10 dark:bg-orange-900/20 hover:bg-brand-primary/20 dark:hover:bg-orange-900/40 active:scale-[0.97] px-3.5 py-2 rounded-full border border-brand-primary/20 dark:border-orange-700/30 transition-all cursor-pointer">
+                        {{ r }}
                     </button>
                 </div>
             </div>
