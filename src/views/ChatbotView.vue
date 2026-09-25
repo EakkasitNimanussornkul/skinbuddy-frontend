@@ -6,6 +6,7 @@ import { useChatStore } from '@/stores/chatStore'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import RoutineProposalCard from '@/components/Routine/RoutineProposalCard.vue'
+import ChatMarkdown from '@/components/Chat/ChatMarkdown.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 const chatStore = useChatStore()
@@ -275,13 +276,15 @@ const sendMessage = async () => {
                     />
                 </div>
 
-                <!-- Bubble -->
-                <div v-else :class="[
-                    'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm',
-                    msg.role === 'user'
-                        ? 'bg-brand-primary text-white rounded-br-sm'
-                        : 'bg-brand-surface-light dark:bg-brand-surface-dark text-brand-text dark:text-stone-200 rounded-bl-sm border border-stone-200 dark:border-stone-700'
-                ]">
+                <!-- Bot bubble: the reply is Markdown (answer template in chat_service.py) -->
+                <div v-else-if="msg.role === 'bot'"
+                    class="max-w-[85%] rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm bg-brand-surface-light dark:bg-brand-surface-dark text-brand-text dark:text-stone-200 border border-stone-200 dark:border-stone-700">
+                    <ChatMarkdown :text="msg.text" />
+                </div>
+
+                <!-- User bubble: plain text, line breaks kept -->
+                <div v-else
+                    class="max-w-[75%] rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed shadow-sm bg-brand-primary text-white whitespace-pre-wrap break-words">
                     {{ msg.text }}
                 </div>
 
