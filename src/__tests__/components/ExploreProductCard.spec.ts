@@ -3,6 +3,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 
 import ExploreProductCard from '../../components/Catalog/ExploreProductCard.vue'
 import { MATCH_SCORE_BASIS } from '../../api/products'
+import { MATCH_BADGE_CLASS } from '../../components/Catalog/matchBadge'
 
 const product = (overrides: Record<string, unknown> = {}) => ({
   id: 'p-1',
@@ -93,6 +94,9 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       const wrapper = mountCard({ skin_match_score: 100, match_breakdown: limited })
 
       expect(badge(wrapper).text()).toBe('Not enough info')
+      // Grey, not the green a 100% would be drawn in: no verdict is being shown.
+      expect(badge(wrapper).classes()).toEqual(expect.arrayContaining(MATCH_BADGE_CLASS.unavailable.split(' ')))
+      expect(badge(wrapper).classes().some((c) => c.includes('emerald'))).toBe(false)
       expect(badge(wrapper).attributes('title')).toBe(
         'Not enough info to judge a match: 100% Match from only 1 of its 6 ingredients.',
       )
