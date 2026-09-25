@@ -46,8 +46,9 @@ const matchAvailability = (score: number | null | undefined) =>
 
 const formatMatchScore = (product: any) => {
   const availability = matchAvailability(product?.skin_match_score)
-  if (availability === 'scored' && matchDisplay(product).kind === 'limited') return matchDisplay(product).label
-  if (availability === 'scored') return `${Math.round(product.skin_match_score)}% Match`
+  // The shared label: a percentage, Not enough info, or the counted wording for
+  // a score at either end - never 100% (owner decision).
+  if (availability === 'scored') return matchDisplay(product).label
   if (availability === 'signed-out') return 'Sign in to score'
   if (availability === 'no-profile') return 'Take the skin quiz'
   return 'Not scored'

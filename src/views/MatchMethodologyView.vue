@@ -144,6 +144,9 @@ const DATA_SOURCES: DataSource[] = [
         <p class="method-example text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed">
           For example, 6 ingredients that suit you and 1 Moderate concern: 6 ÷ (6 + 0.6) = 91%. Next to each score you will see what it is built on, such as "6 of 7 suit you".
         </p>
+        <p class="method-whole text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed">
+          We never show 100%. When every relevant ingredient suits you we say so instead, for example "All 11 relevant ingredients suit your skin type", because a perfect score would suggest more certainty than ingredient tags can give.
+        </p>
         <p class="method-limited text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed">
           If fewer than 3 of a product's ingredients relate to your skin type, there is too little to judge, so we show "Not enough info" instead of a percentage. You can still choose to see it on the product page.
         </p>

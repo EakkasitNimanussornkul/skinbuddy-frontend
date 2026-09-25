@@ -1,6 +1,8 @@
 import {
   NOT_ENOUGH_INFO,
   describeMatchFraction,
+  describeWholeMatch,
+  displayMatchPercent,
   readMatchBreakdown,
   resolveMatchBand,
   type MatchBand,
@@ -30,7 +32,7 @@ export const MATCH_BADGE_CLASS: Record<MatchBand, string> = {
 
 export const describeMatchBadge = (score: number | null | undefined) => {
   const band = resolveMatchBand(score)
-  const percent = band === 'unavailable' ? null : Math.round(score as number)
+  const percent = band === 'unavailable' ? null : displayMatchPercent(score as number)
   const label =
     percent === null ? 'Score Unavailable' : band === 'weak' ? `${percent}% Caution` : `${percent}% Match`
 
@@ -59,6 +61,15 @@ export interface MatchDisplay {
   hiddenLabel: string | null
 }
 
+// What a withheld score would have said, for hover text. A score at either end
+// keeps its counted wording here too, so "100%" is not printed even on request.
+const limitedHiddenLabel = (score: number | null | undefined, label: string, b: MatchBreakdown) => {
+  const whole = describeWholeMatch(score, b)
+  return whole
+    ? `${whole.short}, but only ${b.considered} of its ${b.total_ingredients} ingredients ${b.considered === 1 ? 'relates' : 'relate'} to your skin type`
+    : `${label} from only ${b.considered} of its ${b.total_ingredients} ingredients`
+}
+
 export const describeMatchDisplay = (score: number | null | undefined, rawBreakdown: unknown): MatchDisplay => {
   const badge = describeMatchBadge(score)
   const breakdown = readMatchBreakdown(rawBreakdown)
@@ -75,8 +86,14 @@ export const describeMatchDisplay = (score: number | null | undefined, rawBreakd
       class: MATCH_BADGE_CLASS.unavailable,
       breakdown,
       fraction: describeMatchFraction(breakdown),
-      hiddenLabel: `${badge.label} from only ${breakdown.considered} of its ${breakdown.total_ingredients} ingredients`,
+      hiddenLabel: limitedHiddenLabel(score, badge.label, breakdown),
     }
+  }
+  // A score at either end reads as its counts, never "100%" or "0%" (owner
+  // decision). The badge then says it all, so no separate fraction is shown.
+  const whole = describeWholeMatch(score, breakdown)
+  if (whole) {
+    return { kind: 'scored', ...badge, label: whole.short, breakdown, fraction: null, hiddenLabel: null }
   }
   return { kind: 'scored', ...badge, breakdown, fraction: breakdown ? describeMatchFraction(breakdown) : null, hiddenLabel: null }
 }

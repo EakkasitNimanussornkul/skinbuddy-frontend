@@ -11,6 +11,8 @@ import {
   describeMatchWorking,
   describeNotEnoughToScore,
   describeNothingToScore,
+  describeWholeMatch,
+  displayMatchPercent,
   readMatchBreakdown,
   resolveMatchAvailability,
   resolveMatchBand,
@@ -154,7 +156,13 @@ const isScoreWithheld = computed(() => isLimitedScore.value && !revealLimitedSco
 // The score as a whole number and as the length of the ring's arc, held to
 // 0-100 so a stray value cannot draw more than a full circle.
 const matchPercent = computed(() =>
-  hasMatchScore.value ? Math.min(100, Math.max(0, Math.round(props.product.skin_match_score))) : 0,
+  hasMatchScore.value ? displayMatchPercent(props.product.skin_match_score) : 0,
+)
+
+// A score at either end is said as its counts, never "100%" or "0%" (owner
+// decision): "All 11 relevant ingredients suit your skin type."
+const matchWhole = computed(() =>
+  hasMatchScore.value ? describeWholeMatch(props.product.skin_match_score, matchBreakdown.value) : null,
 )
 
 // FE-DEF-31, applied here. The card below renders only for a signed-in user, so
@@ -427,6 +435,7 @@ const handleCommitToShelf = async () => {
             role="meter"
             aria-label="Skin match"
             :aria-valuenow="matchPercent"
+            :aria-valuetext="matchWhole ? matchWhole.long : `${matchPercent}%`"
             aria-valuemin="0"
             aria-valuemax="100"
           >
@@ -444,7 +453,10 @@ const handleCommitToShelf = async () => {
               />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span :class="['match-percent font-mono font-black text-2xl sm:text-3xl leading-none', matchBand.heading]">
+              <span v-if="matchWhole" :class="['match-whole-mark font-black text-xl sm:text-2xl leading-none', matchBand.heading]">
+                {{ matchPercent >= 100 ? 'All' : 'None' }}
+              </span>
+              <span v-else :class="['match-percent font-mono font-black text-2xl sm:text-3xl leading-none', matchBand.heading]">
                 {{ matchPercent }}%
               </span>
               <!-- The fraction the percentage is built on (owner request). -->
@@ -459,6 +471,9 @@ const handleCommitToShelf = async () => {
             <span :class="['match-verdict inline-block text-xs sm:text-sm font-bold px-3 py-1 rounded-full border bg-white/70 dark:bg-stone-900/60', matchBand.ring]">
               {{ matchBand.verdict }}
             </span>
+            <p v-if="matchWhole" :class="['match-whole text-sm font-bold leading-snug', matchBand.heading]">
+              {{ matchWhole.long }}
+            </p>
             <p :class="['match-basis flex items-start gap-2 text-xs leading-relaxed', matchBand.body]">
               <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

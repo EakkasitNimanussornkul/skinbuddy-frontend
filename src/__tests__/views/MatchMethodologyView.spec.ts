@@ -145,4 +145,14 @@ describe('src/views/MatchMethodologyView.vue', () => {
       expect(back).toHaveBeenCalledTimes(1)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('scores at either end', () => {
+    it('says a perfect score is never shown as 100%, and why', async () => {
+      const { wrapper } = await mountPage()
+
+      expect(wrapper.get('.method-whole').text()).toContain('We never show 100%.')
+      expect(wrapper.get('.method-whole').text()).toContain('All 11 relevant ingredients suit your skin type')
+    })
+  })
 })

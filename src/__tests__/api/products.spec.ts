@@ -36,6 +36,8 @@ import {
   describeMatchWorking,
   describeLimitedMatch,
   describeNothingToScore,
+  describeWholeMatch,
+  displayMatchPercent,
 } from '../../api/products'
 
 const unauthorized = { response: { status: 401 } }
@@ -892,6 +894,53 @@ describe('src/api/products.ts', () => {
       const result = pickTopRecommendations([product('thin', 100, true), product('older-response', 60)])
 
       expect(result.map((p) => p.id)).toEqual(['older-response'])
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('scores at either end', () => {
+    const breakdown = (considered: number) => ({
+      helpful: considered,
+      concerns: 0,
+      concern_weight: 0,
+      considered,
+      total_ingredients: 30,
+      limited: considered < 3,
+    })
+
+    it('says a perfect score as its counts rather than 100%', () => {
+      // Owner decision: keep the plain ratio, never print 100%. Live example:
+      // DRNT with the Moisturising Cream, 11 of 11.
+      expect(describeWholeMatch(100, breakdown(11))).toEqual({
+        short: 'All 11 suit you',
+        long: 'All 11 relevant ingredients suit your skin type.',
+      })
+    })
+
+    it('says a zero score the same way, as the mirror case', () => {
+      expect(describeWholeMatch(0, breakdown(4))).toEqual({
+        short: 'None of 4 suit you',
+        long: 'None of its 4 relevant ingredients suit your skin type.',
+      })
+    })
+
+    it('words a single ingredient without "All 1"', () => {
+      expect(describeWholeMatch(100, breakdown(1))!.long).toBe('Its one relevant ingredient suits your skin type.')
+      expect(describeWholeMatch(0, breakdown(1))!.short).toBe('0 of 1 suits you')
+    })
+
+    it('leaves every score in between, and a score without its counts, to the percentage', () => {
+      expect(describeWholeMatch(99.9, breakdown(11))).toBeNull()
+      expect(describeWholeMatch(0.1, breakdown(11))).toBeNull()
+      expect(describeWholeMatch(100, null)).toBeNull()
+    })
+
+    it('never rounds a score short of either end onto it', () => {
+      expect(displayMatchPercent(99.6)).toBe(99)
+      expect(displayMatchPercent(0.4)).toBe(1)
+      expect(displayMatchPercent(86.4)).toBe(86)
+      expect(displayMatchPercent(100)).toBe(100)
+      expect(displayMatchPercent(0)).toBe(0)
     })
   })
 })
