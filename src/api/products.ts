@@ -193,6 +193,9 @@ export const MATCH_SCORE_BASIS =
  * anything about the user's skin beyond their quiz type - so it is a guide,
  * and a user with a real concern is pointed to a dermatologist.
  */
+/** The page explaining the score and naming where its data comes from. */
+export const MATCH_METHOD_PATH = '/how-match-works'
+
 export const MATCH_SCORE_DISCLAIMER =
   "% Match is a guide, not a guarantee or medical advice. It can't account for everything about your skin, so please check with a dermatologist about any skin concern or reaction."
 

@@ -3,6 +3,7 @@ import { ref, computed, useId } from 'vue'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import CollapseTransition from '../Shared/CollapseTransition.vue'
+import SourceStatusNote from '../Shared/SourceStatusNote.vue'
 
 const props = defineProps<{
   ingredients?: Array<{
@@ -119,6 +120,8 @@ const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value
           @more="activeSteps.showMore"
           @less="activeSteps.showLess"
         />
+
+        <SourceStatusNote v-if="activeSteps.visible.value.length > 0" />
       </div>
     </CollapseTransition>
   </div>

@@ -201,4 +201,15 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
       expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match sources link', () => {
+    const target = (el: { attributes: (name: string) => string | undefined }) => el.attributes('href') ?? el.attributes('to')
+
+    it('links from under the pair to how the score is calculated and our sources', () => {
+      const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
+
+      expect(target(wrapper.get('.match-how-link'))).toBe('/how-match-works')
+    })
+  })
 })

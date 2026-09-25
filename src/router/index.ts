@@ -9,6 +9,7 @@ import ErrorView from '../views/ErrorView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import HomeView from '../views/HomeView.vue'
 import ProductDetailView from '../views/ProductDetailView.vue'
+import MatchMethodologyView from '../views/MatchMethodologyView.vue'
 import RoutineView from '../views/RoutineView.vue'
 import RoutineHistoryView from '../views/RoutineHistoryView.vue'
 import SettingsView from '../views/SettingsView.vue'
@@ -97,6 +98,13 @@ const router = createRouter({
       path: '/product/:slug',
       name: 'ProductDetail',
       component: ProductDetailView,
+    },
+    {
+      // How % Match works and where its data comes from. Public: a guest sees
+      // the score explained on Explore too.
+      path: '/how-match-works',
+      name: 'match-methodology',
+      component: MatchMethodologyView,
     },
     {
       path: '/compare',

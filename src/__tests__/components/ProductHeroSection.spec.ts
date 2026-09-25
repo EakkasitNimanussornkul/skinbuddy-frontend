@@ -613,4 +613,27 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(wrapper.find('.match-withheld .match-disclaimer').exists()).toBe(true)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match sources link', () => {
+    const target = (el: { attributes: (name: string) => string | undefined }) => el.attributes('href') ?? el.attributes('to')
+
+    it('links from the score to how it is calculated and where the data comes from', async () => {
+      // Owner request: say what the score is based on, with sources.
+      const { wrapper } = await mountHero()
+
+      expect(target(wrapper.get('.match-how-link'))).toBe('/how-match-works')
+    })
+
+    it('links from a withheld score too', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 100,
+          match_breakdown: { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true },
+        },
+      })
+
+      expect(target(wrapper.get('.match-withheld .match-how-link'))).toBe('/how-match-works')
+    })
+  })
 })

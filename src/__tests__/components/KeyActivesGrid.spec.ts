@@ -105,4 +105,15 @@ describe('src/components/Shelf/KeyActivesGrid.vue', () => {
       expect(names(wrapper)).toHaveLength(8)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('source status', () => {
+    it('labels the active notes as not yet checked, and says nothing when there are none', () => {
+      const withActives = mountGrid(actives(1))
+      expect(withActives.get('.source-status-note').text()).toContain('not yet checked against a published source')
+
+      const empty = mountGrid([])
+      expect(empty.find('.source-status-note').exists()).toBe(false)
+    })
+  })
 })
