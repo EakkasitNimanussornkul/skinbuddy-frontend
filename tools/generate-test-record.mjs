@@ -456,6 +456,14 @@ const SPEC_MAP = [
       'No router instance and no components - scrollBehavior is a pure function over the target and source routes and the saved position, called directly with plain objects carrying only the fields it reads.',
     note: 'Where the window goes after a navigation. On owner report, each Explore category chip scrolled the page back to the top, away from the grid being filtered, because the chip writes the category into the address and every address change scrolled to the top. A route marked keepScrollOnQueryChange, which only Explore is, now keeps its place when only the query changes. Back and forward still restore the saved position and every other navigation still starts at the top.',
   },
+  {
+    file: 'src/__tests__/views/MatchMethodologyView.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/MatchMethodologyView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, reached from another route so the back control has somewhere to return to. The wording it shares with the rest of the app is imported from api/products.ts. No store, no network.',
+    note: 'How % Match works, and where the data shown in the app comes from. Added on owner request for transparency and sources. Each source is credited only for what it supplied: the backend traced the catalogue and found Open Beauty Facts supplied photos for three products and nothing else, while product details and the ingredient notes were written by the team and are marked not yet checked against a published source. The EU CosIng database, the Cosmetic Ingredient Review and PubChem are named as where sources are being looked for, not as what the notes rest on. A sources table is drafted on the backend (migration 0009, not applied) to attach checked citations later.',
+  },
 ]
 
 function runSuite() {

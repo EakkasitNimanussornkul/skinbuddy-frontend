@@ -550,7 +550,9 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
 
       await wrapper.get('button.match-reveal').trigger('click')
 
-      expect(wrapper.get('.match-percent').text()).toBe('100%')
+      // Revealed as its counts, never "100%" (owner decision).
+      expect(wrapper.find('.match-percent').exists()).toBe(false)
+      expect(wrapper.get('.match-whole').text()).toBe('Its one relevant ingredient suits your skin type.')
       expect(wrapper.get('.match-limited').text()).toContain('only 1 of its 6 ingredients relates to your skin type')
 
       await wrapper.get('button.match-hide').trigger('click')
@@ -611,6 +613,54 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       })
 
       expect(wrapper.find('.match-withheld .match-disclaimer').exists()).toBe(true)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match sources link', () => {
+    const target = (el: { attributes: (name: string) => string | undefined }) => el.attributes('href') ?? el.attributes('to')
+
+    it('links from the score to how it is calculated and where the data comes from', async () => {
+      // Owner request: say what the score is based on, with sources.
+      const { wrapper } = await mountHero()
+
+      expect(target(wrapper.get('.match-how-link'))).toBe('/how-match-works')
+    })
+
+    it('links from a withheld score too', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          skin_match_score: 100,
+          match_breakdown: { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true },
+        },
+      })
+
+      expect(target(wrapper.get('.match-withheld .match-how-link'))).toBe('/how-match-works')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('scores at either end', () => {
+    const full = { helpful: 11, concerns: 0, concern_weight: 0, considered: 11, total_ingredients: 24, limited: false }
+
+    it('draws a perfect score as All with its counts, and never prints 100%', async () => {
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 100, match_breakdown: full } })
+
+      expect(wrapper.find('.match-percent').exists()).toBe(false)
+      expect(wrapper.get('.match-whole-mark').text()).toBe('All')
+      expect(wrapper.get('.match-ring-fraction').text()).toBe('11 of 11')
+      expect(wrapper.get('.match-whole').text()).toBe('All 11 relevant ingredients suit your skin type.')
+      expect(wrapper.get('.match-ring').attributes('aria-valuetext')).toBe('All 11 relevant ingredients suit your skin type.')
+      expect(wrapper.text()).not.toContain('100%')
+    })
+
+    it('shows 99% rather than rounding 99.6 up to 100%', async () => {
+      const { wrapper } = await mountHero(true, {
+        product: { skin_match_score: 99.6, match_breakdown: { ...full, concerns: 1, concern_weight: 0.04 } },
+      })
+
+      expect(wrapper.get('.match-percent').text()).toBe('99%')
+      expect(wrapper.find('.match-whole').exists()).toBe(false)
     })
   })
 })

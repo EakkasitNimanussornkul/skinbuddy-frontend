@@ -545,4 +545,15 @@ describe('src/views/ExploreView.vue', () => {
       expect(wrapper.get('.match-explainer .match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match sources link', () => {
+    const target = (el: { attributes: (name: string) => string | undefined }) => el.attributes('href') ?? el.attributes('to')
+
+    it('links from the % Match note to how it is calculated and our sources', async () => {
+      const { wrapper } = await mountExplore()
+
+      expect(target(wrapper.get('.match-explainer .match-how-link'))).toBe('/how-match-works')
+    })
+  })
 })

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import {
   MATCH_SCORE_BASIS,
+  MATCH_METHOD_PATH,
   MATCH_SCORE_DISCLAIMER,
   countProductIngredients,
   describeMatchAvailability,
@@ -45,8 +46,9 @@ const matchAvailability = (score: number | null | undefined) =>
 
 const formatMatchScore = (product: any) => {
   const availability = matchAvailability(product?.skin_match_score)
-  if (availability === 'scored' && matchDisplay(product).kind === 'limited') return matchDisplay(product).label
-  if (availability === 'scored') return `${Math.round(product.skin_match_score)}% Match`
+  // The shared label: a percentage, Not enough info, or the counted wording for
+  // a score at either end - never 100% (owner decision).
+  if (availability === 'scored') return matchDisplay(product).label
   if (availability === 'signed-out') return 'Sign in to score'
   if (availability === 'no-profile') return 'Take the skin quiz'
   return 'Not scored'
@@ -205,6 +207,12 @@ const getProductDescription = (product: any) => {
           </p>
           <p class="match-disclaimer mt-1 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 max-w-xl mx-auto">
             {{ MATCH_SCORE_DISCLAIMER }}
+          </p>
+          <p class="mt-1 max-w-xl mx-auto">
+            <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
+              How % Match is calculated, and our sources
+              <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </router-link>
           </p>
         </div>
       </div>

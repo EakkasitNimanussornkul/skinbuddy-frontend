@@ -2,6 +2,7 @@
 import { useId } from 'vue'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
+import SourceStatusNote from '../Shared/SourceStatusNote.vue'
 
 const props = defineProps<{
   ingredientsList: any[]
@@ -47,6 +48,8 @@ const getThemeClasses = (tier?: string) => {
         {{ ingredientsList.length }} Total
       </span>
     </div>
+
+    <SourceStatusNote />
 
     <div :id="listId" class="space-y-6 transition-all duration-300">
       <div

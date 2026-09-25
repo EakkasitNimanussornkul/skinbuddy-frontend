@@ -176,7 +176,9 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
       const chips = wrapper.findAll('span.font-mono')
 
       expect(chips[0]!.text()).toBe('Not enough info')
-      expect(chips[0]!.attributes('title')).toBe('Not enough info to judge a match: 100% Match from only 1 of its 20 ingredients.')
+      expect(chips[0]!.attributes('title')).toBe(
+        'Not enough info to judge a match: 1 of 1 suits you, but only 1 of its 20 ingredients relates to your skin type.',
+      )
       expect(chips[1]!.text()).toBe('70% Match')
       expect(chips[1]!.attributes('title')).toBeUndefined()
     })
@@ -199,6 +201,34 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
       const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
 
       expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('match sources link', () => {
+    const target = (el: { attributes: (name: string) => string | undefined }) => el.attributes('href') ?? el.attributes('to')
+
+    it('links from under the pair to how the score is calculated and our sources', () => {
+      const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
+
+      expect(target(wrapper.get('.match-how-link'))).toBe('/how-match-works')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('scores at either end', () => {
+    it('reads a perfect score as its counts, never 100%, and a low one in the shared wording', () => {
+      const wrapper = mountHeader(
+        compareData(
+          { skin_match_score: 100, match_breakdown: { helpful: 11, concerns: 0, concern_weight: 0, considered: 11, total_ingredients: 24, limited: false } },
+          { skin_match_score: 40 },
+        ),
+      )
+      const chips = wrapper.findAll('span.font-mono')
+
+      expect(chips[0]!.text()).toBe('All 11 suit you')
+      expect(chips[1]!.text()).toBe('40% Caution')
+      expect(wrapper.text()).not.toContain('100%')
     })
   })
 })

@@ -82,4 +82,17 @@ describe('src/components/Catalog/IngredientsExplained.vue', () => {
       expect(wrapper.text()).toContain('12 Total')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('source status', () => {
+    it('says the ingredient notes are not yet checked against a published source, and links to our sources', () => {
+      // The backend's ingredients.source says exactly that for every entry.
+      const wrapper = mountExplained(many(2))
+      const note = wrapper.get('.source-status-note')
+      const link = note.get('.source-status-link')
+
+      expect(note.text()).toContain('not yet checked against a published source')
+      expect(link.attributes('href') ?? link.attributes('to')).toBe('/how-match-works')
+    })
+  })
 })

@@ -193,6 +193,9 @@ export const MATCH_SCORE_BASIS =
  * anything about the user's skin beyond their quiz type - so it is a guide,
  * and a user with a real concern is pointed to a dermatologist.
  */
+/** The page explaining the score and naming where its data comes from. */
+export const MATCH_METHOD_PATH = '/how-match-works'
+
 export const MATCH_SCORE_DISCLAIMER =
   "% Match is a guide, not a guarantee or medical advice. It can't account for everything about your skin, so please check with a dermatologist about any skin concern or reaction."
 
@@ -295,6 +298,48 @@ export const describeLimitedMatch = (b: MatchBreakdown): string =>
  * number carries its own evidence (owner request): "6 of 7 suit you".
  */
 export const describeMatchFraction = (b: MatchBreakdown): string => `${b.helpful} of ${b.considered} suit you`
+
+/**
+ * A score as the whole percentage shown on screen.
+ *
+ * Rounded, but a score strictly between 0 and 100 is held to 1-99, so 99.6
+ * cannot print as "100%" and 0.4 as "0%". Only a true 100 or 0 reaches either
+ * end, and those are said as counts instead (describeWholeMatch).
+ */
+export const displayMatchPercent = (score: number): number => {
+  if (score >= 100) return 100
+  if (score <= 0) return 0
+  return Math.min(99, Math.max(1, Math.round(score)))
+}
+
+/**
+ * A score at either end, said as its counts instead of "100%" or "0%".
+ *
+ * Owner decision (backend session, 2026-09-25): keep the unsmoothed ratio, but
+ * never print 100% - it reads as a certainty the data does not have. With no
+ * concern counted, 100 means every relevant ingredient suits the skin type, so
+ * that is what is said: "All 11 relevant ingredients suit you". 0 is the mirror
+ * case and is worded the same way. `short` fits a badge; `long` is a sentence.
+ * Null for any score in between, or without the counts to say it with.
+ */
+export const describeWholeMatch = (
+  score: number | null | undefined,
+  b: MatchBreakdown | null,
+): { short: string; long: string } | null => {
+  if (!b || typeof score !== 'number' || b.considered < 1) return null
+  const n = b.considered
+  if (score >= 100) {
+    return n === 1
+      ? { short: '1 of 1 suits you', long: 'Its one relevant ingredient suits your skin type.' }
+      : { short: `All ${n} suit you`, long: `All ${n} relevant ingredients suit your skin type.` }
+  }
+  if (score <= 0) {
+    return n === 1
+      ? { short: '0 of 1 suits you', long: 'Its one relevant ingredient may not suit your skin type.' }
+      : { short: `None of ${n} suit you`, long: `None of its ${n} relevant ingredients suit your skin type.` }
+  }
+  return null
+}
 
 /** The badge text for a score withheld by default because it rests on too little. */
 export const NOT_ENOUGH_INFO = 'Not enough info'

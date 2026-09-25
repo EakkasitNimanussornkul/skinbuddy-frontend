@@ -97,8 +97,9 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       // Grey, not the green a 100% would be drawn in: no verdict is being shown.
       expect(badge(wrapper).classes()).toEqual(expect.arrayContaining(MATCH_BADGE_CLASS.unavailable.split(' ')))
       expect(badge(wrapper).classes().some((c) => c.includes('emerald'))).toBe(false)
+      // Its counts, not "100%", even in the hover text (owner decision).
       expect(badge(wrapper).attributes('title')).toBe(
-        'Not enough info to judge a match: 100% Match from only 1 of its 6 ingredients.',
+        'Not enough info to judge a match: 1 of 1 suits you, but only 1 of its 6 ingredients relates to your skin type.',
       )
       expect(wrapper.find('.match-fraction').exists()).toBe(false)
     })
@@ -111,6 +112,24 @@ describe('src/components/Catalog/ExploreProductCard.vue', () => {
       const none = mountCard({ skin_match_score: null, match_breakdown: limited })
       expect(badge(none).text()).toBe('Score Unavailable')
       expect(none.find('.match-fraction').exists()).toBe(false)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('scores at either end', () => {
+    it('reads a perfect score as its counts, with no separate fraction, and never 100%', () => {
+      const wrapper = mountCard({
+        skin_match_score: 100,
+        match_breakdown: { helpful: 11, concerns: 0, concern_weight: 0, considered: 11, total_ingredients: 24, limited: false },
+      })
+
+      expect(badge(wrapper).text()).toBe('All 11 suit you')
+      expect(wrapper.find('.match-fraction').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('100%')
+    })
+
+    it('shows 99% rather than rounding 99.6 up to 100%', () => {
+      expect(badge(mountCard({ skin_match_score: 99.6 })).text()).toBe('99% Match')
     })
   })
 })
