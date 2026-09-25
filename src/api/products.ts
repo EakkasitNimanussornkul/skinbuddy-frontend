@@ -72,9 +72,23 @@ export interface ScoredProduct {
   brand?: string
   image_url?: string | null
   skin_match_score?: number | null
+  match_breakdown?: unknown
 }
 
-export const pickTopRecommendations = <T extends { skin_match_score?: number | null }>(
+/**
+ * Ranking: well-founded scores first, then limited ones, each by score.
+ *
+ * Owner decision. With the unsmoothed ratio a score resting on one ingredient
+ * can read 100% - the BHA exfoliant for OSPT, on one ingredient of six - and
+ * ranked by score alone it took #1 above scores built on many ingredients. A
+ * limited score still appears, flagged, when there are not enough well-founded
+ * ones to fill the list. `limited` is the backend's call (match_breakdown);
+ * a product without a breakdown ranks as well-founded, as every product did
+ * before the field existed.
+ */
+const isLimited = (p: { match_breakdown?: unknown }) => readMatchBreakdown(p.match_breakdown)?.limited === true
+
+export const pickTopRecommendations = <T extends { skin_match_score?: number | null; match_breakdown?: unknown }>(
   products: T[],
   limit: number = 4,
 ): T[] => {
@@ -87,7 +101,7 @@ export const pickTopRecommendations = <T extends { skin_match_score?: number | n
       (p): p is T & { skin_match_score: number } =>
         !!p && typeof p.skin_match_score === 'number' && !Number.isNaN(p.skin_match_score),
     )
-    .sort((a, b) => b.skin_match_score - a.skin_match_score)
+    .sort((a, b) => Number(isLimited(a)) - Number(isLimited(b)) || b.skin_match_score - a.skin_match_score)
     .slice(0, limit)
 }
 

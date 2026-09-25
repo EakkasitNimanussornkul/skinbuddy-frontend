@@ -846,4 +846,54 @@ describe('src/api/products.ts', () => {
       )
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('pickTopRecommendations() and limited scores', () => {
+    const breakdown = (limited: boolean) => ({
+      helpful: 1,
+      concerns: 0,
+      concern_weight: 0,
+      considered: limited ? 1 : 9,
+      total_ingredients: 20,
+      limited,
+    })
+    const product = (id: string, skin_match_score: number, limited?: boolean) => ({
+      id,
+      skin_match_score,
+      ...(limited === undefined ? {} : { match_breakdown: breakdown(limited) }),
+    })
+
+    it('ranks every well-founded score above a limited one, whatever the numbers', () => {
+      // Owner decision. Live: the BHA exfoliant reads 100% for OSPT on one
+      // ingredient of six, and ranked by score alone it took #1.
+      const result = pickTopRecommendations([
+        product('thin-100', 100, true),
+        product('solid-77', 76.9, false),
+        product('solid-45', 45.5, false),
+      ])
+
+      expect(result.map((p) => p.id)).toEqual(['solid-77', 'solid-45', 'thin-100'])
+    })
+
+    it('orders limited scores by score among themselves', () => {
+      const result = pickTopRecommendations([product('thin-40', 40, true), product('thin-100', 100, true)])
+
+      expect(result.map((p) => p.id)).toEqual(['thin-100', 'thin-40'])
+    })
+
+    it('lets a limited score fill the list, and leaves it out once well-founded ones fill it', () => {
+      const four = [product('a', 50, false), product('b', 60, false), product('c', 70, false)]
+
+      expect(pickTopRecommendations([...four, product('thin', 100, true)]).map((p) => p.id)).toEqual(['c', 'b', 'a', 'thin'])
+      expect(
+        pickTopRecommendations([...four, product('d', 40, false), product('thin', 100, true)]).map((p) => p.id),
+      ).toEqual(['c', 'b', 'a', 'd'])
+    })
+
+    it('ranks a product without a breakdown as well-founded, as before the field existed', () => {
+      const result = pickTopRecommendations([product('thin', 100, true), product('older-response', 60)])
+
+      expect(result.map((p) => p.id)).toEqual(['older-response', 'thin'])
+    })
+  })
 })
