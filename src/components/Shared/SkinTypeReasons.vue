@@ -15,6 +15,8 @@
  * the alert by its worst entry.
  */
 import { resolveSeverityBand, type SkinTypeReason } from '../../api/safety'
+import { readSourceList } from '../../api/sources'
+import SourceList from './SourceList.vue'
 
 const props = defineProps<{ reasons: SkinTypeReason[] }>()
 
@@ -49,6 +51,8 @@ const showGrades = () => props.reasons.length > 1
       >
         Flagged for: {{ reason.trait }}
       </span>
+      <!-- The sources behind the concern that explains this trait. -->
+      <SourceList :entries="readSourceList(reason.sources)" />
     </li>
   </ul>
 </template>

@@ -18,6 +18,7 @@ import { SKIN_TYPE_CONFLICT, groupSimilarDetails, resolveSeverityBand, type Conf
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from './ShowMoreControl.vue'
 import SkinTypeReasons from './SkinTypeReasons.vue'
+import SourceList from './SourceList.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -89,6 +90,9 @@ const CHIP: Record<string, string> = {
             {{ name }}
           </span>
         </div>
+        <!-- The sources behind the rule that fired. A skin-type line's sources
+             belong to its reasons, which show their own. -->
+        <SourceList v-if="detail.alert_type !== SKIN_TYPE_CONFLICT" :entries="detail.sources" />
       </li>
     </ul>
 

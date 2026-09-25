@@ -209,4 +209,31 @@ describe('src/components/Compare/CompareActivesMatrix.vue', () => {
       expect(wrapper.find('.concern-grade').exists()).toBe(false)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('concern sources', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("lists each concern's sources in both columns", () => {
+      const wrapper = mountMatrix(
+        compareData({
+          product_ingredients: [
+            ingredient('i-phe', 'Phenoxyethanol', {
+              ingredient_concerns: [{ concern_title: 'Preservative Sensitivity', concern_description: 'x', severity: 'Low', concern_sources: [{ sources: sourceRef('cir') }] }],
+            }),
+          ],
+        }),
+      )
+
+      expect(wrapper.get('.ingredient-concern a.source-link').text()).toBe('Source cir')
+    })
+  })
 })

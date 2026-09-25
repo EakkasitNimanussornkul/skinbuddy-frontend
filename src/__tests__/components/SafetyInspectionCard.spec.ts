@@ -231,4 +231,25 @@ describe('src/components/Shelf/SafetyInspectionCard.vue', () => {
       expect(messages(wrapper)).toEqual(['high one', 'low one'])
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sources', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("shows a one-pair warning's sources, and none under a skin-type alert", () => {
+      const pair = singlePair()
+      pair.details![0] = { ...pair.details![0]!, sources: [sourceRef('rule')] }
+      const wrapper = mountCard([pair as never, skinAlert('Heavy occlusive.') as never])
+
+      expect(wrapper.findAll('a.source-link').map((a) => a.text())).toEqual(['Source rule'])
+    })
+  })
 })

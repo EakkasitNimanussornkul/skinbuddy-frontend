@@ -2,10 +2,12 @@
 import { computed, useId, watch } from 'vue'
 import KeyActivesGrid from '../Shelf/KeyActivesGrid.vue'
 import { resolvePairConflictState, resolvePairConflicts, resolveProductLabel, type CompareResponse } from '../../api/products'
-import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, type SeverityBand } from '../../api/safety'
+import { SKIN_TYPE_CONFLICT, groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, warningSources, type SeverityBand } from '../../api/safety'
 import { CONCERN_TONE } from '../Shared/concernTone'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
+import SourceList from '../Shared/SourceList.vue'
+import { readConcernSources, type SourceEntry } from '../../api/sources'
 import { useClampedText } from '../../composables/useClampedText'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
@@ -62,7 +64,7 @@ const cleanProductBActives = computed(() => props.data?.product_b?.product_ingre
 const formulaBreakdowns = computed(() => {
   const extractSkinTypeWarnings = (product: any) => {
     if (!product || !product.product_ingredients) return []
-    const concernsList: Array<{ title: string; msg: string; severity: string | null; band: SeverityBand }> = []
+    const concernsList: Array<{ title: string; msg: string; severity: string | null; band: SeverityBand; sources: SourceEntry[] }> = []
 
     product.product_ingredients.forEach((pi: any) => {
       const ing = pi.ingredients
@@ -75,6 +77,7 @@ const formulaBreakdowns = computed(() => {
           // Not defaulted to 'Moderate' - an ungraded concern is unknown.
           severity: concern.severity ?? null,
           band: resolveSeverityBand(concern.severity),
+          sources: readConcernSources(concern.concern_sources),
         })
       })
     })
@@ -188,6 +191,8 @@ const concernListIdB = useId()
           </button>
 
           <SkinTypeReasons v-if="!hasConflictDetails(warning) && warning.reasons?.length" :reasons="warning.reasons" />
+          <!-- The sources behind a one-pair warning. A skin-type alert's are on its reasons. -->
+          <SourceList v-if="!hasConflictDetails(warning) && warning.alert_type !== SKIN_TYPE_CONFLICT" :entries="warningSources(warning)" />
         </div>
         </div>
 
@@ -267,6 +272,7 @@ const concernListIdB = useId()
                 >{{ con.severity }}</span>
               </div>
               <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-relaxed">{{ con.msg }}</p>
+              <SourceList :entries="con.sources" class="mt-1.5" />
             </div>
           </div>
           <ShowMoreControl
@@ -302,6 +308,7 @@ const concernListIdB = useId()
                 >{{ con.severity }}</span>
               </div>
               <p class="text-[11px] text-brand-text-muted dark:text-stone-400 mt-0.5 leading-relaxed">{{ con.msg }}</p>
+              <SourceList :entries="con.sources" class="mt-1.5" />
             </div>
           </div>
           <ShowMoreControl

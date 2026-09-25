@@ -15,6 +15,7 @@ import {
   hasConflictDetails,
   groupSkinTypeConflicts,
   groupSimilarDetails,
+  warningSources,
 } from '../../api/safety'
 import {
   BUFFET,
@@ -597,6 +598,49 @@ describe('src/api/safety.ts', () => {
       const merged = groupSkinTypeConflicts([explainedNiacinamide(), { ...explainedNiacinamide(), severity: 'Low' }])[0]!
 
       expect(merged.severity).toBe('Medium')
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('conflict sources', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it('carries the sources of the rule behind each pair line', () => {
+      const pair = { ...distinctPair('High', 'Copper Tripeptide-1', 'Oxidises the acid.'), sources: [sourceRef('rule')] }
+
+      expect(groupSimilarDetails([pair], BUFFET)[0]!.sources.map((e) => e.source.id)).toEqual(['rule'])
+    })
+
+    it('keeps every distinct source when identical pairs fold into one line', () => {
+      const [a, b, c] = PEPTIDES.map(peptidePair)
+      const groups = groupSimilarDetails(
+        [
+          { ...a!, sources: [sourceRef('shared')] },
+          { ...b!, sources: [sourceRef('shared')] },
+          { ...c!, sources: [sourceRef('extra')] },
+        ],
+        BUFFET,
+      )
+
+      expect(groups).toHaveLength(1)
+      expect(groups[0]!.sources.map((e) => e.source.id)).toEqual(['shared', 'extra'])
+    })
+
+    it("gives a one-pair warning its rule's sources, and a skin-type alert none of its own", () => {
+      const w = singlePair()
+      w.details![0] = { ...w.details![0]!, sources: [sourceRef('rule')] }
+
+      expect(warningSources(w).map((e) => e.source.id)).toEqual(['rule'])
+      expect(warningSources(skinAlert('x'))).toEqual([])
+      expect(warningSources({ alert_type: 'Interaction', details: undefined })).toEqual([])
     })
   })
 })

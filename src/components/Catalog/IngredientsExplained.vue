@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { useId } from 'vue'
+import { computed, useId } from 'vue'
 import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import SourceStatusNote from '../Shared/SourceStatusNote.vue'
+import SourceList from '../Shared/SourceList.vue'
+import { readIngredientSources } from '../../api/sources'
 
 const props = defineProps<{
   ingredientsList: any[]
@@ -13,6 +15,12 @@ const props = defineProps<{
 // explanations for one click.
 const explanations = useStepList(() => props.ingredientsList, { initial: 5, step: 4 })
 const listId = useId()
+
+// How many of the listed ingredients have a published source linked (backend
+// feat/data-sources), for the status note above the list.
+const sourcedCount = computed(
+  () => props.ingredientsList.filter((ing) => readIngredientSources(ing?.ingredient_sources).length > 0).length,
+)
 
 // Dynamic Theme Mapper based on the Database Awareness Tier
 const getThemeClasses = (tier?: string) => {
@@ -49,7 +57,7 @@ const getThemeClasses = (tier?: string) => {
       </span>
     </div>
 
-    <SourceStatusNote />
+    <SourceStatusNote :sourced="sourcedCount" :total="ingredientsList.length" />
 
     <div :id="listId" class="space-y-6 transition-all duration-300">
       <div
@@ -76,6 +84,10 @@ const getThemeClasses = (tier?: string) => {
         <p class="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed max-w-3xl font-medium">
           {{ ing.benefits || 'Supports the overall formula by balancing pH, binding ingredients, or maintaining shelf life.' }}
         </p>
+
+        <!-- The published sources behind this ingredient's notes, per claim;
+             "No published source linked yet" until one has been checked. -->
+        <SourceList :entries="readIngredientSources(ing.ingredient_sources)" />
       </div>
     </div>
 

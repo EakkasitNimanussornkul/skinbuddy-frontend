@@ -87,4 +87,34 @@ describe('src/components/Shared/ConflictDetailsList.vue', () => {
       expect(items[0]!.get('li > span').text()).toBe('High')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sources', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("shows each pair line's sources, and no source line on a skin-type line", () => {
+      const wrapper = mountList({
+        details: [
+          { ...distinctPair('High', 'Copper Tripeptide-1', 'Oxidises the acid.'), sources: [sourceRef('rule')] },
+          distinctPair('Low', 'Hyaluronic Acid', 'Lowers hydration.'),
+        ],
+        conflictingProduct: BUFFET,
+      })
+      const items = wrapper.findAll('li.conflict-detail')
+
+      expect(items[0]!.get('a.source-link').text()).toBe('Source rule')
+      expect(items[1]!.find('.source-none').exists()).toBe(true)
+
+      const skin = mountList({ details: groupSkinTypeConflicts([skinAlert('A.'), skinAlert('B.')])[0]!.details })
+      expect(skin.find('li.conflict-detail > .source-list').exists()).toBe(false)
+    })
+  })
 })

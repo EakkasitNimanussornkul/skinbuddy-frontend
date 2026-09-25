@@ -40,7 +40,7 @@ const BANDS = [
 interface DataSource {
   what: string
   from: string
-  status: 'credited' | 'unverified'
+  status: 'credited' | 'unverified' | 'in-progress'
   detail: string
   links: { label: string; href: string }[]
 }
@@ -78,9 +78,9 @@ const DATA_SOURCES: DataSource[] = [
   {
     what: 'Ingredient notes, benefits, "good for" tags and concerns',
     from: 'The SkinBuddy team',
-    status: 'unverified',
+    status: 'in-progress',
     detail:
-      'Written from general cosmetic-chemistry knowledge. They have not yet been checked against a published source. We are adding sources from these references, and each will be linked from the ingredient it backs once it has been checked:',
+      'Written from general cosmetic-chemistry knowledge, and being checked against published sources one by one. Where a source has been checked, it is linked under the ingredient, concern or warning it backs. Where it says "No published source linked yet", the note is still our own general reference. The references we are checking against:',
     links: [
       { label: 'CosIng, the EU cosmetic ingredient database', href: 'https://ec.europa.eu/growth/tools-databases/cosing/' },
       { label: 'Cosmetic Ingredient Review (CIR)', href: 'https://www.cir-safety.org/' },
@@ -179,10 +179,12 @@ const DATA_SOURCES: DataSource[] = [
                 'method-status text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
                 source.status === 'credited'
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50'
-                  : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50',
+                  : source.status === 'in-progress'
+                    ? 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800/50'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50',
               ]"
             >
-              {{ source.status === 'credited' ? 'Source credited' : 'Not yet checked' }}
+              {{ source.status === 'credited' ? 'Source credited' : source.status === 'in-progress' ? 'Being checked' : 'Not yet checked' }}
             </span>
           </div>
           <p class="text-xs text-brand-text-muted dark:text-stone-400"><span class="font-semibold">From:</span> {{ source.from }}</p>

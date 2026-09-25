@@ -60,4 +60,27 @@ describe('src/components/Shared/SkinTypeReasons.vue', () => {
       expect(wrapper.findAll('.reason-grade').map((g) => g.text())).toEqual(['High'])
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sources', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("shows the sources behind each reason's concern", () => {
+      const reasons = explainedAlcohol().reasons!
+      reasons[0] = { ...reasons[0]!, sources: [sourceRef('cir')] }
+      const wrapper = mountReasons(reasons)
+      const items = wrapper.findAll('li.skin-reason')
+
+      expect(items[0]!.get('a.source-link').text()).toBe('Source cir')
+      expect(items[1]!.find('.source-none').exists()).toBe(true)
+    })
+  })
 })

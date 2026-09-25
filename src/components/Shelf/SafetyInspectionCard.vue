@@ -2,10 +2,11 @@
 import { computed, ref, useId, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
 import { useStepList } from '../../composables/useStepList'
-import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, type ConflictDetail, type SafetyStatus, type SkinTypeReason } from '../../api/safety'
+import { SKIN_TYPE_CONFLICT, groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, warningSources, type ConflictDetail, type SafetyStatus, type SkinTypeReason } from '../../api/safety'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
+import SourceList from '../Shared/SourceList.vue'
 import CollapseTransition from '../Shared/CollapseTransition.vue'
 
 export interface WarningAlert {
@@ -235,6 +236,8 @@ const severityBadgeClass = (severity: string | null | undefined) =>
             </button>
 
             <SkinTypeReasons v-if="!hasConflictDetails(warning) && warning.reasons?.length" :reasons="warning.reasons" />
+            <!-- The sources behind a one-pair warning. A skin-type alert's are on its reasons. -->
+            <SourceList v-if="!hasConflictDetails(warning) && warning.alert_type !== SKIN_TYPE_CONFLICT" :entries="warningSources(warning)" />
           </div>
         </div>
 

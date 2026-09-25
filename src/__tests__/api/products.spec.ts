@@ -38,6 +38,7 @@ import {
   describeNothingToScore,
   describeWholeMatch,
   displayMatchPercent,
+  describeVerifiedCount,
 } from '../../api/products'
 
 const unauthorized = { response: { status: 401 } }
@@ -795,7 +796,8 @@ describe('src/api/products.ts', () => {
     })
 
     it('reads a breakdown as sent, and nothing that is not one', () => {
-      expect(readMatchBreakdown(breakdown())).toEqual(breakdown())
+      // A response from before verified_considered existed reads it as null, not 0.
+      expect(readMatchBreakdown(breakdown())).toEqual({ ...breakdown(), verified_considered: null })
       expect(readMatchBreakdown(null)).toBeNull()
       expect(readMatchBreakdown(undefined)).toBeNull()
       expect(readMatchBreakdown({ helpful: 1 })).toBeNull()
@@ -906,6 +908,7 @@ describe('src/api/products.ts', () => {
       considered,
       total_ingredients: 30,
       limited: considered < 3,
+      verified_considered: null,
     })
 
     it('says a perfect score as its counts rather than 100%', () => {
@@ -941,6 +944,40 @@ describe('src/api/products.ts', () => {
       expect(displayMatchPercent(86.4)).toBe(86)
       expect(displayMatchPercent(100)).toBe(100)
       expect(displayMatchPercent(0)).toBe(0)
+    })
+  })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('checked sources count', () => {
+    const counted = (considered: number, verified: number | null) =>
+      readMatchBreakdown({
+        helpful: considered,
+        concerns: 0,
+        concern_weight: 0,
+        considered,
+        total_ingredients: 20,
+        limited: false,
+        ...(verified === null ? {} : { verified_considered: verified }),
+      })!
+
+    it('says how many of the counted ingredients have a published source', () => {
+      expect(describeVerifiedCount(counted(7, 3))).toBe('3 of the 7 ingredients counted have a published source linked.')
+      expect(describeVerifiedCount(counted(7, 1))).toBe('1 of the 7 ingredients counted has a published source linked.')
+    })
+
+    it('says none and all plainly', () => {
+      expect(describeVerifiedCount(counted(7, 0))).toBe('None of the 7 ingredients counted has a published source linked yet.')
+      expect(describeVerifiedCount(counted(7, 7))).toBe('All 7 ingredients counted have a published source linked.')
+    })
+
+    it('claims nothing when the response does not say', () => {
+      // A response from before the field: not the same as none backed.
+      expect(counted(7, null).verified_considered).toBeNull()
+      expect(describeVerifiedCount(counted(7, null))).toBeNull()
+    })
+
+    it('never reports more checked ingredients than were counted', () => {
+      expect(counted(7, 9).verified_considered).toBe(7)
     })
   })
 })

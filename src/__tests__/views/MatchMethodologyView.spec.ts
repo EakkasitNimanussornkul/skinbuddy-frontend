@@ -99,7 +99,7 @@ describe('src/views/MatchMethodologyView.vue', () => {
         { what: 'Some product photos', status: 'Source credited' },
         { what: 'Product names, descriptions and ingredient lists', status: 'Not yet checked' },
         { what: 'Skin types', status: 'Source credited' },
-        { what: 'Ingredient notes, benefits, "good for" tags and concerns', status: 'Not yet checked' },
+        { what: 'Ingredient notes, benefits, "good for" tags and concerns', status: 'Being checked' },
       ])
     })
 
@@ -130,8 +130,11 @@ describe('src/views/MatchMethodologyView.vue', () => {
       const { wrapper } = await mountPage()
       const notes = wrapper.findAll('.method-source')[3]!.text()
 
-      expect(notes).toContain('have not yet been checked against a published source')
-      expect(notes).toContain('We are adding sources from these references')
+      // Phase 4: sources appear item by item as they are checked, so the page
+      // says where to find them and what an item without one means.
+      expect(notes).toContain('being checked against published sources one by one')
+      expect(notes).toContain('No published source linked yet')
+      expect(notes).toContain('The references we are checking against')
     })
   })
 

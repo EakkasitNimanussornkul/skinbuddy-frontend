@@ -10,6 +10,7 @@ import {
   describeLimitedMatch,
   describeMatchWorking,
   describeNotEnoughToScore,
+  describeVerifiedCount,
   describeNothingToScore,
   describeWholeMatch,
   displayMatchPercent,
@@ -27,6 +28,7 @@ import {
 } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
+import { readProductSourceUrl } from '../../api/sources'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
@@ -40,6 +42,17 @@ const { addToast } = useToast()
 const authStore = useAuthStore()
 
 // 🌟 Smart description with ingredient fallback
+// The product's own entry on the public database it was checked against, when
+// one is recorded (products.source_url, backend feat/data-sources). Named by
+// that database, and worded as a place to check the product - not as the
+// source of every detail here, which the How % Match works page sets out.
+const productSourceUrl = computed(() => readProductSourceUrl(props.product))
+const productSourceLabel = computed(() =>
+  productSourceUrl.value?.includes('openbeautyfacts.org')
+    ? 'See this product on Open Beauty Facts'
+    : "See this product's public database entry",
+)
+
 const productDescription = computed(() => {
   if (props.product?.description && props.product.description.trim().length > 0) {
     return props.product.description
@@ -419,6 +432,18 @@ const handleCommitToShelf = async () => {
         <p class="text-xs sm:text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium pt-1">
           {{ productDescription }}
         </p>
+        <a
+          v-if="productSourceUrl"
+          :href="productSourceUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="product-source-link inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline"
+        >
+          {{ productSourceLabel }}
+          <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
       </div>
 
       <!-- Match Card: Authenticated User -->
@@ -482,6 +507,10 @@ const handleCommitToShelf = async () => {
             </p>
             <p v-if="matchBreakdown" :class="['match-working text-xs font-semibold leading-relaxed', matchBand.heading]">
               {{ describeMatchWorking(matchBreakdown) }}
+            </p>
+            <!-- How much of that rests on checked sources (owner request). -->
+            <p v-if="matchBreakdown && describeVerifiedCount(matchBreakdown)" :class="['match-verified text-xs leading-relaxed', matchBand.body]">
+              {{ describeVerifiedCount(matchBreakdown) }}
             </p>
             <!-- The owner chose to flag a thin score rather than hide it. -->
             <p

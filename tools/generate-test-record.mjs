@@ -464,6 +464,22 @@ const SPEC_MAP = [
       'The view mounted with @vue/test-utils on a vue-router memory history, reached from another route so the back control has somewhere to return to. The wording it shares with the rest of the app is imported from api/products.ts. No store, no network.',
     note: 'How % Match works, and where the data shown in the app comes from. Added on owner request for transparency and sources. Each source is credited only for what it supplied: the backend traced the catalogue and found Open Beauty Facts supplied photos for three products and nothing else, while product details and the ingredient notes were written by the team and are marked not yet checked against a published source. The EU CosIng database, the Cosmetic Ingredient Review and PubChem are named as where sources are being looked for, not as what the notes rest on. A sources table is drafted on the backend (migration 0009, not applied) to attach checked citations later.',
   },
+  {
+    file: 'src/__tests__/api/sources.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/sources',
+    prerequisite:
+      'Pure functions called directly with plain objects in the shape backend feat/data-sources (6db0260, over migration 0009) sends. No network, no components.',
+    note: 'Reads the published sources behind the data the app shows: ingredient_sources per claim, concern_sources, the sources on a conflict rule or a skin-type reason, and a product source_url. Added on owner request that every piece of data say what it is based on. Every reader is defensive, so a response from before the fields existed reads as no sources. Only http and https links are kept, because source rows are written by hand and a javascript: link in an href would run on click.',
+  },
+  {
+    file: 'src/__tests__/components/SourceList.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/SourceList',
+    prerequisite:
+      'The component mounted with @vue/test-utils with entries built by the api/sources readers. No store, no router, no network.',
+    note: 'The line of sources under an ingredient, concern or warning. An empty list reads "No published source linked yet" rather than disappearing, so the gap stays visible, as the owner asked and the backend advised. Links open in a new tab with rel noopener noreferrer, and a book with no link is named without one.',
+  },
 ]
 
 function runSuite() {

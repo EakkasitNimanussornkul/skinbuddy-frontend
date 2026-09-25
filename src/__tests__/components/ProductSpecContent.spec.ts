@@ -341,4 +341,39 @@ describe('src/components/Catalog/ProductSpecContent.vue', () => {
       expect(wrapper.get('.concern-count').classes()).toContain('text-semantic-error')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('concern sources', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("lists each concern's sources, and says when there are none yet", async () => {
+      const { wrapper } = await mountSpec(true, {
+        product_ingredients: [
+          {
+            ingredients: {
+              id: 'i-1',
+              name: 'Phenoxyethanol',
+              awareness_tier: 'medium',
+              ingredient_concerns: [
+                { concern_title: 'Preservative Sensitivity', concern_description: 'x', severity: 'Moderate', concern_sources: [{ sources: sourceRef('cir') }] },
+                { concern_title: 'Unsourced Note', concern_description: 'y', severity: 'Low' },
+              ],
+            },
+          },
+        ],
+      })
+      const cards = wrapper.findAll('.ingredient-concern')
+
+      expect(cards[0]!.get('a.source-link').text()).toBe('Source cir')
+      expect(cards[1]!.get('.source-none').text()).toBe('No published source linked yet')
+    })
+  })
 })

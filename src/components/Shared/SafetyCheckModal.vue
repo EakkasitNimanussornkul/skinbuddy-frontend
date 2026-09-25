@@ -4,12 +4,14 @@ import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from './ShowMoreControl.vue'
 import ConflictDetailsList from './ConflictDetailsList.vue'
 import SkinTypeReasons from './SkinTypeReasons.vue'
+import SourceList from './SourceList.vue'
 import {
   describeDuplicateOverlap,
   groupSkinTypeConflicts,
   hasConflictDetails,
   resolveSeverityBand,
   sortBySeverity,
+  warningSources,
   type DuplicateMatch,
   type SafetyStatus,
   type WarningAlert,
@@ -187,6 +189,8 @@ const isSafe = computed(() => props.hasChecked && props.scanStatus === 'cleared'
                     :conflicting-product="warn.conflicting_product"
                   />
                   <p v-else>{{ warn.message }}</p>
+                  <!-- The sources behind a one-pair warning. -->
+                  <SourceList v-if="!hasConflictDetails(warn)" :entries="warningSources(warn)" />
                 </div>
                 <ShowMoreControl
                   :next-count="chemicalSteps.nextCount.value"

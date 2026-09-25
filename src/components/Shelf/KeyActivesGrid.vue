@@ -4,6 +4,8 @@ import { useStepList } from '../../composables/useStepList'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import CollapseTransition from '../Shared/CollapseTransition.vue'
 import SourceStatusNote from '../Shared/SourceStatusNote.vue'
+import SourceList from '../Shared/SourceList.vue'
+import { readIngredientSources } from '../../api/sources'
 
 const props = defineProps<{
   ingredients?: Array<{
@@ -12,6 +14,8 @@ const props = defineProps<{
       name: string
       benefits: string | null
       functional_group: string | null
+      // Published sources behind the notes; read through api/sources.ts.
+      ingredient_sources?: unknown
     }
   }>
   // Lets the user fold the whole grid away. Opt-in: the shelf item details
@@ -37,6 +41,11 @@ const keyActives = computed(() => {
 
 // Four, then four more at a time. Was four then every active at once.
 const activeSteps = useStepList(keyActives, { initial: 4, step: 4 })
+
+// How many of the actives have a published source linked, for the status note.
+const sourcedCount = computed(
+  () => keyActives.value.filter((pi) => readIngredientSources(pi.ingredients?.ingredient_sources).length > 0).length,
+)
 
 const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value)
 </script>
@@ -102,6 +111,7 @@ const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value
             <p class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
               {{ pi.ingredients?.benefits || 'No target physiological benefit descriptions logged for this active component compound.' }}
             </p>
+            <SourceList :entries="readIngredientSources(pi.ingredients?.ingredient_sources)" class="mt-2" />
           </div>
         </div>
 
@@ -121,7 +131,7 @@ const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value
           @less="activeSteps.showLess"
         />
 
-        <SourceStatusNote v-if="activeSteps.visible.value.length > 0" />
+        <SourceStatusNote v-if="activeSteps.visible.value.length > 0" :sourced="sourcedCount" :total="keyActives.length" />
       </div>
     </CollapseTransition>
   </div>

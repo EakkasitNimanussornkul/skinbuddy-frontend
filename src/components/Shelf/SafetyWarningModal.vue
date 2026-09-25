@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useClampedText } from '../../composables/useClampedText'
-import { groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity } from '../../api/safety'
+import { SKIN_TYPE_CONFLICT, groupSkinTypeConflicts, hasConflictDetails, resolveSeverityBand, sortBySeverity, warningSources } from '../../api/safety'
 import ConflictDetailsList from '../Shared/ConflictDetailsList.vue'
 import SkinTypeReasons from '../Shared/SkinTypeReasons.vue'
+import SourceList from '../Shared/SourceList.vue'
 
 const props = defineProps<{
   warnings: any[]
@@ -96,6 +97,8 @@ const getSeverityBadge = (severity?: string) =>
             </button>
 
             <SkinTypeReasons v-if="warning.reasons?.length" :reasons="warning.reasons" class="mt-2.5" />
+            <!-- The sources behind a one-pair warning. A skin-type alert's are on its reasons. -->
+            <SourceList v-if="warning.alert_type !== SKIN_TYPE_CONFLICT" :entries="warningSources(warning)" class="mt-2" />
           </div>
 
         </div>

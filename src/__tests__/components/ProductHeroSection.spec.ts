@@ -663,4 +663,55 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(wrapper.find('.match-whole').exists()).toBe(false)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sources', () => {
+    const breakdown = (verified?: number) => ({
+      helpful: 6,
+      concerns: 1,
+      concern_weight: 0.6,
+      considered: 7,
+      total_ingredients: 26,
+      limited: false,
+      ...(verified === undefined ? {} : { verified_considered: verified }),
+    })
+
+    it('says under the score how many counted ingredients have checked sources', async () => {
+      // Owner request: say what the data rests on. Live today: 0 of every count.
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 90.9, match_breakdown: breakdown(0) } })
+      expect(wrapper.get('.match-verified').text()).toBe('None of the 7 ingredients counted has a published source linked yet.')
+
+      const { wrapper: some } = await mountHero(true, { product: { skin_match_score: 90.9, match_breakdown: breakdown(3) } })
+      expect(some.get('.match-verified').text()).toBe('3 of the 7 ingredients counted have a published source linked.')
+    })
+
+    it('says nothing about checked sources when the response does not carry the count', async () => {
+      const { wrapper } = await mountHero(true, { product: { skin_match_score: 90.9, match_breakdown: breakdown() } })
+
+      expect(wrapper.find('.match-verified').exists()).toBe(false)
+    })
+
+    it("links the product's Open Beauty Facts page when one is recorded, and nothing otherwise", async () => {
+      const { wrapper } = await mountHero(true, {
+        product: { source_url: 'https://world.openbeautyfacts.org/product/3606000537576' },
+      })
+      const link = wrapper.get('a.product-source-link')
+
+      expect(link.text()).toBe('See this product on Open Beauty Facts')
+      expect(link.attributes('href')).toBe('https://world.openbeautyfacts.org/product/3606000537576')
+      expect(link.attributes('target')).toBe('_blank')
+      expect(link.attributes('rel')).toBe('noopener noreferrer')
+
+      const { wrapper: none } = await mountHero(true, { product: { source_url: null } })
+      expect(none.find('a.product-source-link').exists()).toBe(false)
+    })
+
+    it('names another database neutrally, and refuses a link that is not http(s)', async () => {
+      const { wrapper } = await mountHero(true, { product: { source_url: 'https://example.org/p/1' } })
+      expect(wrapper.get('a.product-source-link').text()).toBe("See this product's public database entry")
+
+      const { wrapper: unsafe } = await mountHero(true, { product: { source_url: 'javascript:alert(1)' } })
+      expect(unsafe.find('a.product-source-link').exists()).toBe(false)
+    })
+  })
 })

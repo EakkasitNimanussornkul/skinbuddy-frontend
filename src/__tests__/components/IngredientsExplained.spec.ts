@@ -95,4 +95,43 @@ describe('src/components/Catalog/IngredientsExplained.vue', () => {
       expect(link.attributes('href') ?? link.attributes('to')).toBe('/how-match-works')
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sources per ingredient', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("lists each ingredient's sources under it, and says when there are none yet", () => {
+      const wrapper = mountExplained([
+        ingredient('Glycerin', { ingredient_sources: [{ claim: 'good_for', sources: sourceRef('cosing') }] }),
+        ingredient('Water'),
+      ])
+      const lists = wrapper.findAll('.source-list')
+
+      expect(lists[0]!.get('a.source-link').text()).toBe('Source cosing')
+      expect(lists[0]!.get('.source-claim').text()).toBe('Good for:')
+      expect(lists[1]!.get('.source-none').text()).toBe('No published source linked yet')
+    })
+
+    it('counts the sourced ingredients in the note above the list', () => {
+      const none = mountExplained([ingredient('Water'), ingredient('Glycerin')])
+      expect(none.get('.source-status-text').text()).toContain('not yet checked against a published source')
+
+      const some = mountExplained([
+        ingredient('Glycerin', { ingredient_sources: [{ claim: 'good_for', sources: sourceRef('a') }] }),
+        ingredient('Water'),
+      ])
+      expect(some.get('.source-status-text').text()).toContain('1 of 2 ingredients here have a published source linked')
+
+      const all = mountExplained([ingredient('Glycerin', { ingredient_sources: [{ claim: 'good_for', sources: sourceRef('a') }] })])
+      expect(all.get('.source-status-text').text()).toBe('Every ingredient here has a published source linked, shown under each one.')
+    })
+  })
 })

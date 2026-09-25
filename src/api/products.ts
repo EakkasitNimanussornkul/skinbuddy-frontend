@@ -260,6 +260,10 @@ export interface MatchBreakdown {
   considered: number
   total_ingredients: number
   limited: boolean
+  // Of the considered ingredients, how many are backed by a published source
+  // on every side they count (backend feat/data-sources, 6db0260). Null when
+  // the response predates the field, which is not the same as none backed.
+  verified_considered: number | null
 }
 
 /** A breakdown as sent, or null for anything that is not one. */
@@ -274,6 +278,10 @@ export const readMatchBreakdown = (value: unknown): MatchBreakdown | null => {
     considered: b.considered!,
     total_ingredients: b.total_ingredients!,
     limited: b.limited === true,
+    verified_considered:
+      typeof b.verified_considered === 'number' && Number.isFinite(b.verified_considered)
+        ? Math.min(b.verified_considered, b.considered!)
+        : null,
   }
 }
 
@@ -287,6 +295,27 @@ export const describeMatchWorking = (b: MatchBreakdown): string => {
   const helps = b.helpful === 0 ? 'none suit your skin type' : `${b.helpful} ${b.helpful === 1 ? 'suits' : 'suit'} your skin type`
   const concerns = b.concerns === 0 ? 'none are a concern for it' : `${b.concerns} may not suit it`
   return `Based on ${b.considered} of its ${ingredients(b.total_ingredients)}: ${helps}, ${concerns}.`
+}
+
+/**
+ * How much of the score rests on checked sources: "3 of the 7 ingredients
+ * counted have a published source linked." Null when the response does not
+ * say, so the page claims nothing it was not told.
+ */
+export const describeVerifiedCount = (b: MatchBreakdown): string | null => {
+  const v = b.verified_considered
+  if (v === null || b.considered < 1) return null
+  if (v >= b.considered) {
+    return b.considered === 1
+      ? 'The ingredient counted has a published source linked.'
+      : `All ${b.considered} ingredients counted have a published source linked.`
+  }
+  if (v === 0) {
+    return b.considered === 1
+      ? 'The ingredient counted has no published source linked yet.'
+      : `None of the ${b.considered} ingredients counted has a published source linked yet.`
+  }
+  return `${v} of the ${b.considered} ingredients counted ${v === 1 ? 'has' : 'have'} a published source linked.`
 }
 
 /** The owner's note for a score resting on very few ingredients. */

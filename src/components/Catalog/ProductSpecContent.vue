@@ -5,6 +5,8 @@ import { useStepList } from '../../composables/useStepList'
 import { resolveSeverityBand, sortBySeverity, type SeverityBand } from '../../api/safety'
 import ShowMoreControl from '../Shared/ShowMoreControl.vue'
 import { CONCERN_TONE } from '../Shared/concernTone'
+import SourceList from '../Shared/SourceList.vue'
+import { readConcernSources, type SourceEntry } from '../../api/sources'
 import ProductHeroSection from './ProductHeroSection.vue'
 import IngredientAwarenessLegend from './IngredientAwarenessLegend.vue'
 import IngredientsExplained from './IngredientsExplained.vue'
@@ -39,7 +41,7 @@ const rawIngredients = computed<any[]>(() => props.product?.product_ingredients 
 // --- Extract Relational Concerns ---
 const productConcerns = computed(() => {
   if (!rawIngredients.value.length) return []
-  const concernsList: Array<{ title: string; msg: string; severity: string | null; band: SeverityBand; ingredientName: string }> = []
+  const concernsList: Array<{ title: string; msg: string; severity: string | null; band: SeverityBand; ingredientName: string; sources: SourceEntry[] }> = []
 
   rawIngredients.value.forEach((pi: any) => {
     const ing = pi.ingredients
@@ -53,7 +55,9 @@ const productConcerns = computed(() => {
         // not a guess (FE-DEF-25).
         severity: concern.severity ?? null,
         band: resolveSeverityBand(concern.severity),
-        ingredientName: ing.name
+        ingredientName: ing.name,
+        // The published sources behind this concern (backend feat/data-sources).
+        sources: readConcernSources(concern.concern_sources),
       })
     })
   })
@@ -322,6 +326,7 @@ const handleGuestTrigger = () => {
                   <p class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
                     {{ con.msg }}
                   </p>
+                  <SourceList :entries="con.sources" class="mt-2" />
                 </div>
               </div>
             </div>

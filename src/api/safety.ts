@@ -1,3 +1,5 @@
+import { readSourceList, type SourceEntry } from './sources'
+
 /**
  * One ingredient pair behind a conflict with another product
  * (ConflictDetail in the backend's app/schemas.py).
@@ -14,6 +16,9 @@ export interface ConflictDetail {
   // into a detail, so the explanation survives the merge. Never set by the
   // backend on a product-pair detail.
   reasons?: SkinTypeReason[]
+  // The published sources behind the rule that fired for this pair (backend
+  // feat/data-sources). Unknown until read: see api/sources.ts.
+  sources?: unknown
 }
 
 /**
@@ -28,6 +33,8 @@ export interface SkinTypeReason {
   description: string | null
   // That concern's grade; "High" when there is no concern.
   severity: string
+  // The published sources behind the concern that explains this trait.
+  sources?: unknown
 }
 
 export interface WarningAlert {
@@ -69,6 +76,9 @@ export interface ConflictDetailGroup {
   // A folded skin-type alert's explanations. Such a detail has no
   // conflicting_ingredient, so it never folds with another and keeps its own.
   reasons: SkinTypeReason[]
+  // The sources behind the rule, read and de-duplicated. Folded pairs share a
+  // rule, so their sources are the same list; any extra one is kept, not lost.
+  sources: SourceEntry[]
 }
 
 const PLACEHOLDER = '\u0000'
@@ -127,6 +137,11 @@ export const groupSimilarDetails = (
       ? groups.find((g) => g.key === key && g.templated === templated && g.severity === detail.severity && g.alert_type === detail.alert_type)
       : undefined
 
+    if (match) {
+      for (const entry of readSourceList(detail.sources)) {
+        if (!match.sources.some((s) => s.source.id === entry.source.id)) match.sources.push(entry)
+      }
+    }
     if (match && other && !match.ingredients.includes(other)) {
       match.ingredients.push(other)
     } else if (!match) {
@@ -136,6 +151,7 @@ export const groupSimilarDetails = (
         ingredients: other ? [other] : [],
         message,
         reasons: detail.reasons ?? [],
+        sources: readSourceList(detail.sources),
         key,
         templated,
       })
@@ -150,6 +166,16 @@ export const groupSimilarDetails = (
 }
 
 export const SKIN_TYPE_CONFLICT = 'Skin Type Conflict'
+
+/**
+ * The sources behind a warning drawn as a single sentence - one ingredient
+ * pair, where the pair list is not shown. A skin-type alert's sources belong to
+ * its reasons and are shown there instead, so it gets none here.
+ */
+export const warningSources = (warning: Pick<WarningAlert, 'details' | 'alert_type'> | null | undefined): SourceEntry[] => {
+  if (!warning || warning.alert_type === SKIN_TYPE_CONFLICT) return []
+  return readSourceList((warning.details ?? []).flatMap((d) => (Array.isArray(d.sources) ? d.sources : [])))
+}
 
 /**
  * Merge every Skin Type Conflict into one card, the way the backend merges the

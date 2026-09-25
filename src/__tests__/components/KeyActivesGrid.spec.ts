@@ -116,4 +116,28 @@ describe('src/components/Shelf/KeyActivesGrid.vue', () => {
       expect(empty.find('.source-status-note').exists()).toBe(false)
     })
   })
+
+  // Appended last, so adding it moves no group ID already cited in this file.
+  describe('sources per active', () => {
+    const sourceRef = (id: string) => ({
+      id,
+      title: 'Source ' + id,
+      publisher: 'European Commission',
+      url: 'https://example.org/' + id,
+      source_type: 'regulatory_register',
+      accessed_on: null,
+      notes: null,
+    })
+
+    it("lists each active's sources under it, and counts them in the note", () => {
+      const sourced = row('Niacinamide')
+      ;(sourced.ingredients as Record<string, unknown>).ingredient_sources = [{ claim: 'benefits', sources: sourceRef('cir') }]
+      const wrapper = mountGrid([sourced, row('Glycerin')])
+      const lists = wrapper.findAll('.source-list')
+
+      expect(lists[0]!.get('a.source-link').text()).toBe('Source cir')
+      expect(lists[1]!.find('.source-none').exists()).toBe(true)
+      expect(wrapper.get('.source-status-text').text()).toContain('1 of 2 ingredients here have a published source linked')
+    })
+  })
 })

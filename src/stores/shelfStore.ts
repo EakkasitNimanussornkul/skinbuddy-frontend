@@ -15,6 +15,9 @@ export interface ShelfProductIngredient {
     name: string
     benefits: string | null
     functional_group: string | null
+    // Published sources behind this ingredient's notes (backend
+    // feat/data-sources). Read through api/sources.ts; absent on older rows.
+    ingredient_sources?: unknown
   }
 }
 
