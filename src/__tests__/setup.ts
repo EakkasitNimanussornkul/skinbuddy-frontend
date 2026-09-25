@@ -20,10 +20,14 @@ Object.defineProperty(window, 'ResizeObserver', {
 })
 globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
 
+// Reports prefers-reduced-motion, and nothing else. The suite runs as a user who
+// has asked for less motion, so every animated value (useCountUp, the collapse
+// transition) lands on its final state at once and assertions read it without
+// waiting. The animation itself is tested where it lives, with this overridden.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query: string) => ({
-    matches: false,
+    matches: query.includes('prefers-reduced-motion: reduce'),
     media: query,
     onchange: null,
     addListener: () => {},

@@ -29,6 +29,7 @@ import {
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
 import { readProductSourceUrl } from '../../api/sources'
+import { useCountUp } from '../../composables/useCountUp'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
@@ -171,6 +172,11 @@ const isScoreWithheld = computed(() => isLimitedScore.value && !revealLimitedSco
 const matchPercent = computed(() =>
   hasMatchScore.value ? displayMatchPercent(props.product.skin_match_score) : 0,
 )
+
+// The ring fills, and the number climbs, from 0 to the score when the details
+// open, and again when a withheld score is revealed (owner request). While the
+// score is withheld or absent the target is 0, so the reveal starts from empty.
+const animatedPercent = useCountUp(() => (hasMatchScore.value && !isScoreWithheld.value ? matchPercent.value : 0))
 
 // A score at either end is said as its counts, never "100%" or "0%" (owner
 // decision): "All 11 relevant ingredients suit your skin type."
@@ -454,7 +460,10 @@ const handleCommitToShelf = async () => {
              explained, because on the product page it is the subject rather
              than a badge. The ring's radius gives a circumference of 100, so
              the arc's dash length is the percentage itself. -->
-        <div v-if="hasMatchScore && !isScoreWithheld" class="match-scored flex items-center gap-5">
+        <!-- The three states cross-fade, so revealing a withheld score eases in
+             rather than snapping. -->
+        <Transition name="swap-fade" mode="out-in">
+        <div v-if="hasMatchScore && !isScoreWithheld" key="scored" class="match-scored flex items-center gap-5">
           <div
             class="match-ring relative w-24 h-24 sm:w-28 sm:h-28 shrink-0"
             role="meter"
@@ -473,16 +482,16 @@ const handleCommitToShelf = async () => {
                 fill="none"
                 stroke-width="3.2"
                 stroke-linecap="round"
-                :stroke-dasharray="`${matchPercent} 100`"
-                :class="['match-arc transition-[stroke-dasharray] duration-700 ease-out', matchBand.arc]"
+                :stroke-dasharray="`${animatedPercent} 100`"
+                :class="['match-arc', matchBand.arc]"
               />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
               <span v-if="matchWhole" :class="['match-whole-mark font-black text-xl sm:text-2xl leading-none', matchBand.heading]">
                 {{ matchPercent >= 100 ? 'All' : 'None' }}
               </span>
-              <span v-else :class="['match-percent font-mono font-black text-2xl sm:text-3xl leading-none', matchBand.heading]">
-                {{ matchPercent }}%
+              <span v-else :class="['match-percent font-mono font-black text-2xl sm:text-3xl leading-none tabular-nums', matchBand.heading]">
+                {{ Math.round(animatedPercent) }}%
               </span>
               <!-- The fraction the percentage is built on (owner request). -->
               <span v-if="matchBreakdown" :class="['match-ring-fraction mt-1 font-mono text-[10px] font-bold', matchBand.body]">
@@ -546,7 +555,7 @@ const handleCommitToShelf = async () => {
         <!-- Withheld: a score resting on too few ingredients. No percentage by
              default, the reason instead, and the score one click away for a
              user who wants it anyway (owner decision). -->
-        <div v-else-if="isScoreWithheld" class="match-withheld space-y-3">
+        <div v-else-if="isScoreWithheld" key="withheld" class="match-withheld space-y-3">
           <div class="flex items-center justify-between gap-4">
             <h4 :class="['text-base font-black', matchBand.heading]">Your Skin Match</h4>
             <span class="match-withheld-badge inline-flex items-center gap-1.5 text-xs font-black font-mono px-3 py-1.5 rounded-full border bg-stone-100 text-brand-text-muted dark:bg-stone-800 dark:text-stone-400 border-brand-surface-border dark:border-stone-700">
@@ -578,7 +587,7 @@ const handleCommitToShelf = async () => {
           </button>
         </div>
 
-        <div v-else class="flex items-center justify-between gap-4">
+        <div v-else key="unscored" class="flex items-center justify-between gap-4">
           <div>
             <h4 :class="['text-base font-black', matchBand.heading]">Compatibility Status</h4>
             <p :class="['text-xs mt-0.5', matchBand.body]">
@@ -594,6 +603,7 @@ const handleCommitToShelf = async () => {
             </div>
           </div>
         </div>
+        </Transition>
 
         <!-- Match Reasons or Failure Explanation -->
         <div

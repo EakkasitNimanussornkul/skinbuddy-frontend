@@ -480,6 +480,14 @@ const SPEC_MAP = [
       'The component mounted with @vue/test-utils with entries built by the api/sources readers. No store, no router, no network.',
     note: 'The line of sources under an ingredient, concern or warning. An empty list reads "No published source linked yet" rather than disappearing, so the gap stays visible, as the owner asked and the backend advised. Links open in a new tab with rel noopener noreferrer, and a book with no link is named without one.',
   },
+  {
+    file: 'src/__tests__/composables/useCountUp.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'composables/useCountUp',
+    prerequisite:
+      'A small component mounted with @vue/test-utils that counts up to a reactive target. Vitest fake timers drive requestAnimationFrame and performance, and matchMedia is overridden to report no reduced-motion preference, because the shared setup reports one so that every other spec reads final values at once.',
+    note: 'The count-up behind the product page match ring: on owner request the ring fills and the number climbs from 0 to the score when a product is opened, and again when a withheld score is revealed. It eases out, moves from its current value when the target changes, lands on the target at once for a user who has asked for less motion, and stops its frames on unmount.',
+  },
 ]
 
 function runSuite() {
