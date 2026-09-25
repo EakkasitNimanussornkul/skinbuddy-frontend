@@ -12,6 +12,22 @@ export const analyzeForRoutine = async (productId: string) => {
   return response.data
 }
 
+// UC-15: one step of a proposed routine, as POST /routine/generate returns it
+// (routine_service.generate_routine). image_url is null for a product with no photo.
+export interface ProposedStep {
+  product_id: string
+  product_name: string
+  brand?: string | null
+  category?: string | null
+  image_url?: string | null
+  owned?: boolean
+  step_order: number
+  time_of_day: string
+  frequency: string
+  reason?: string
+  caution?: string
+}
+
 // UC-15: propose a routine via the chatbot / RAG pipeline (nothing is saved yet)
 export const generateRoutine = async (followupAnswers: string = '') => {
   const response = await apiClient.post('/routine/generate', { followup_answers: followupAnswers })
