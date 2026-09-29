@@ -14,11 +14,12 @@ import {
  * shows. Everything here states what is true today. The product data does come
  * from Open Beauty Facts and the skin types from the Baumann system; the
  * ingredient notes, benefits, "good for" tags and concerns are the team's own,
- * written from general knowledge and not yet checked against a published
- * source - the backend's ingredients.source field says exactly that - so they
- * are labelled as such rather than credited to references that do not back
- * them yet. The references named for that check are where sources are being
- * looked for, not what the data rests on.
+ * written from general knowledge and, until a checked source is linked to them
+ * item by item, are labelled as such rather than credited to references that
+ * do not back them yet. The references named for that check are where sources
+ * are being looked for, not what the data rests on. Product details work the
+ * same way per product: where one was seen is linked on the product page when
+ * it was recorded (product_sources), and said to be unrecorded otherwise.
  */
 const router = useRouter()
 
@@ -65,7 +66,7 @@ const DATA_SOURCES: DataSource[] = [
     from: 'The SkinBuddy team',
     status: 'unverified',
     detail:
-      "Entered by our team. Where each product's details were taken from has not been recorded yet, so check the ingredient list on the product's own packaging if it matters to you.",
+      'Entered by our team. Where we have recorded where a product\'s ingredient list, description, price or photo was seen, the product page links it under "Where these details come from". Where it says "No published source linked yet", that was not recorded, so check the ingredient list on the product\'s own packaging if it matters to you.',
     links: [],
   },
   {

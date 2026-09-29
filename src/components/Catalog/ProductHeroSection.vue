@@ -28,9 +28,10 @@ import {
 } from '../../api/safety'
 import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
-import { readProductSourceUrl } from '../../api/sources'
+import { readProductSources, readProductSourceUrl } from '../../api/sources'
 import { useCountUp } from '../../composables/useCountUp'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
+import SourceList from '../Shared/SourceList.vue'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
 const props = defineProps<{
@@ -53,6 +54,10 @@ const productSourceLabel = computed(() =>
     ? 'See this product on Open Beauty Facts'
     : "See this product's public database entry",
 )
+// Where this product's own details were seen, fact by fact (product_sources,
+// backend feat/product-sources). Shown even when empty, as "No published
+// source linked yet", so an unsourced product reads as unsourced.
+const productSources = computed(() => readProductSources(props.product))
 
 const productDescription = computed(() => {
   if (props.product?.description && props.product.description.trim().length > 0) {
@@ -450,6 +455,7 @@ const handleCommitToShelf = async () => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </a>
+        <SourceList :entries="productSources" label="Where these details come from:" class="product-sources" />
       </div>
 
       <!-- Match Card: Authenticated User -->

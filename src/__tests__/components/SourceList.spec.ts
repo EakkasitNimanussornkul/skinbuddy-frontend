@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import SourceList from '../../components/Shared/SourceList.vue'
-import { readIngredientSources, readSourceList } from '../../api/sources'
+import { readIngredientSources, readProductSources, readSourceList } from '../../api/sources'
 
 const ref = (id: string, overrides: Record<string, unknown> = {}) => ({
   id,
@@ -62,6 +62,43 @@ describe('src/components/Shared/SourceList.vue', () => {
 
       expect(wrapper.find('a').exists()).toBe(false)
       expect(wrapper.get('.source-title').text()).toBe('Source x')
+    })
+  })
+
+  // Appended last (backend feat/product-sources), so no group ID above moves.
+  describe('product facts', () => {
+    it('labels each product fact, and dates the price, since a price is only true on the day it was seen', () => {
+      const wrapper = mount(SourceList, {
+        props: {
+          entries: readProductSources({
+            product_sources: [
+              { claim: 'price', sources: ref('shop', { accessed_on: '2026-09-20' }) },
+              { claim: 'image', sources: ref('obf', { accessed_on: '2026-09-21' }) },
+            ],
+          }),
+        },
+      })
+      const entries = wrapper.findAll('.source-entry')
+
+      expect(entries.map((e) => e.get('.source-claim').text())).toEqual(['Price:', 'Photo:'])
+      expect(entries[0]!.get('.source-seen').text()).toBe('seen Sep 20, 2026')
+      // Only a price is dated: a photo or a listing does not go stale by day.
+      expect(entries[1]!.find('.source-seen').exists()).toBe(false)
+    })
+
+    it('does not date a price source with no date', () => {
+      const wrapper = mount(SourceList, {
+        props: { entries: readProductSources({ product_sources: [{ claim: 'price', sources: ref('shop') }] }) },
+      })
+
+      expect(wrapper.find('.source-seen').exists()).toBe(false)
+    })
+
+    it('says what the line is about when given a label, and "Sources:" otherwise', () => {
+      const labelled = mount(SourceList, { props: { entries: [], label: 'Where these details come from:' } })
+      expect(labelled.get('.source-label').text()).toBe('Where these details come from:')
+
+      expect(mount(SourceList, { props: { entries: [] } }).get('.source-label').text()).toBe('Sources:')
     })
   })
 })

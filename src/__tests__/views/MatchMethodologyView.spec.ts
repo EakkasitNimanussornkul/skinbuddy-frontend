@@ -158,4 +158,18 @@ describe('src/views/MatchMethodologyView.vue', () => {
       expect(wrapper.get('.method-whole').text()).toContain('All 11 relevant ingredients suit your skin type')
     })
   })
+
+  // Appended last (backend feat/product-sources), so no group ID above moves.
+  describe('product sources', () => {
+    it('says product details are sourced per product where recorded, and what an unrecorded one means', async () => {
+      const { wrapper } = await mountPage()
+      const details = wrapper.findAll('.method-source')[1]!
+
+      // Still "Not yet checked" as a whole: product_sources is empty live today.
+      expect(details.get('.method-status').text()).toBe('Not yet checked')
+      expect(details.text()).toContain('the product page links it under "Where these details come from"')
+      expect(details.text()).toContain('Where it says "No published source linked yet", that was not recorded')
+      expect(details.text()).not.toContain('has not been recorded yet')
+    })
+  })
 })

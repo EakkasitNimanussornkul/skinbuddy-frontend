@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 
 import {
+  describeSourceSeen,
   readConcernSources,
   readIngredientSources,
+  readProductSources,
   readProductSourceUrl,
   readSourceList,
   readSourceRef,
@@ -117,6 +119,74 @@ describe('src/api/sources.ts', () => {
       expect(readProductSourceUrl({ source_url: 'javascript:void(0)' })).toBeNull()
       expect(readProductSourceUrl({ source_url: null })).toBeNull()
       expect(readProductSourceUrl(null)).toBeNull()
+    })
+  })
+
+  // Appended last (backend feat/product-sources), so no group ID above moves.
+  describe('readProductSources()', () => {
+    it("reads a product's own sources with the fact each backs, in the page's order", () => {
+      const product = {
+        product_sources: [
+          { claim: 'image', sources: ref('obf') },
+          { claim: 'price', sources: ref('shop') },
+          { claim: 'listing', sources: ref('brand') },
+          { claim: 'description', sources: ref('brand') },
+        ],
+      }
+
+      expect(readProductSources(product).map((e) => [e.claim, e.source.id])).toEqual([
+        ['listing', 'brand'],
+        ['description', 'brand'],
+        ['price', 'shop'],
+        ['image', 'obf'],
+      ])
+    })
+
+    it('keeps the backend order among sources for the same fact', () => {
+      const product = {
+        product_sources: [
+          { claim: 'price', sources: ref('second-shop') },
+          { claim: 'listing', sources: ref('brand') },
+          { claim: 'price', sources: ref('first-shop') },
+        ],
+      }
+
+      expect(readProductSources(product).map((e) => e.source.id)).toEqual(['brand', 'second-shop', 'first-shop'])
+    })
+
+    it('drops a link to a deleted source, an unknown fact, and a repeat', () => {
+      // Deleted source rows come back as sources: null (the backend's note). An
+      // unlabelled source beside a product would read as backing all of it.
+      const product = {
+        product_sources: [
+          { claim: 'listing', sources: null },
+          { claim: 'ingredients', sources: ref('x') },
+          { sources: ref('y') },
+          { claim: 'price', sources: ref('shop') },
+          { claim: 'price', sources: ref('shop') },
+        ],
+      }
+
+      expect(readProductSources(product).map((e) => [e.claim, e.source.id])).toEqual([['price', 'shop']])
+    })
+
+    it('reads a product from before the field existed as having none', () => {
+      expect(readProductSources({})).toEqual([])
+      expect(readProductSources({ product_sources: 'nope' })).toEqual([])
+      expect(readProductSources(null)).toEqual([])
+    })
+  })
+
+  describe('describeSourceSeen()', () => {
+    it('dates the day a source was read, in the calendar day stored', () => {
+      // Parsed as a local day: new Date('2026-09-20') would be UTC midnight,
+      // the 19th west of UTC.
+      expect(describeSourceSeen(readSourceRef(ref('shop', { accessed_on: '2026-09-20' }))!)).toBe('seen Sep 20, 2026')
+    })
+
+    it('says nothing without a readable date', () => {
+      expect(describeSourceSeen(readSourceRef(ref('shop', { accessed_on: null }))!)).toBeNull()
+      expect(describeSourceSeen(readSourceRef(ref('shop', { accessed_on: 'soon' }))!)).toBeNull()
     })
   })
 })

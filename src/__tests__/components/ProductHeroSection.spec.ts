@@ -714,4 +714,54 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
       expect(unsafe.find('a.product-source-link').exists()).toBe(false)
     })
   })
+
+  // Appended last (backend feat/product-sources), so no group ID above moves.
+  describe('product sources', () => {
+    const source = (id: string, accessed_on: string | null = null) => ({
+      id,
+      title: `Source ${id}`,
+      publisher: null,
+      url: `https://example.org/${id}`,
+      source_type: 'product_database',
+      accessed_on,
+      notes: null,
+    })
+
+    it("names where the product's details were seen, fact by fact", async () => {
+      const { wrapper } = await mountHero(true, {
+        product: {
+          product_sources: [
+            { claim: 'price', sources: source('shop', '2026-09-20') },
+            { claim: 'listing', sources: source('brand') },
+          ],
+        },
+      })
+      const line = wrapper.get('.product-sources')
+
+      expect(line.get('.source-label').text()).toBe('Where these details come from:')
+      expect(line.findAll('.source-claim').map((c) => c.text())).toEqual(['Ingredient list:', 'Price:'])
+      expect(line.findAll('a.source-link').map((a) => a.attributes('href'))).toEqual([
+        'https://example.org/brand',
+        'https://example.org/shop',
+      ])
+      expect(line.get('.source-seen').text()).toBe('seen Sep 20, 2026')
+    })
+
+    it('says no source is linked yet when none is recorded - live today - rather than hiding the line', async () => {
+      // The backend's request: an unsourced product should read as unsourced.
+      const { wrapper } = await mountHero(true, { product: { product_sources: [] } })
+      expect(wrapper.get('.product-sources .source-none').text()).toBe('No published source linked yet')
+
+      const { wrapper: older } = await mountHero(true)
+      expect(older.get('.product-sources .source-none').text()).toBe('No published source linked yet')
+    })
+
+    it('shows the line to a signed-out visitor too, since it is about the product, not the match', async () => {
+      const { wrapper } = await mountHero(false, {
+        product: { product_sources: [{ claim: 'image', sources: source('obf') }] },
+      })
+
+      expect(wrapper.get('.product-sources .source-claim').text()).toBe('Photo:')
+    })
+  })
 })
