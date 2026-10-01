@@ -5,103 +5,43 @@ import { skinProfiles } from '../../data/skinprofiles'
 
 const router = useRouter()
 
+// The profile guidance for a type, below the quiz result's own summary. The
+// type code, the per-part bars and the save actions now live in QuizResult, so
+// this keeps only the guidance: what the type means, the quote, the maintenance
+// level, the Barrier Shield, concerns, routine blueprint and next steps.
 const props = defineProps<{
   skinType: string
-  scores: {
-    hydration: number
-    sensitivity: number
-    pigmentation: number
-    aging: number
-  }
 }>()
 
 const currentProfile = computed(() => {
   return (skinProfiles[props.skinType] || skinProfiles['OSPW'])!
 })
-
-const axisDefs = [
-  { key: 'hydration', lowLabel: 'Dry', highLabel: 'Oily' },
-  { key: 'sensitivity', lowLabel: 'Resistant', highLabel: 'Sensitive' },
-  { key: 'pigmentation', lowLabel: 'Non-Pigmented', highLabel: 'Pigmented' },
-  { key: 'aging', lowLabel: 'Tight', highLabel: 'Wrinkle-Prone' }
-] as const
-
-// Scores range 4-16 (four questions, 1-4 points each); >=10 crosses into the "high" trait letter.
-const axisPercent = (key: keyof typeof props.scores) => {
-  const pct = ((props.scores[key] - 4) / 12) * 100
-  return Math.min(100, Math.max(0, pct))
-}
-
-const isHighActive = (key: keyof typeof props.scores) => props.scores[key] >= 10
 </script>
 
 <template>
-  <div class="relative max-w-5xl mx-auto px-4 sm:px-6 pb-12 pt-4 font-sans text-brand-text dark:text-stone-100">
+  <div class="relative font-sans text-brand-text dark:text-stone-100">
 
-    <!-- Ambient Glow Circle -->
-    <div class="pointer-events-none absolute top-10 left-1/3 h-72 w-72 rounded-full bg-brand-primary/10 blur-3xl" />
-
-    <!-- Top Status Badge -->
-    <div class="relative z-10 text-center mb-6 animate-slide-up-1">
-      <span class="bg-brand-primary-light dark:bg-brand-primary/10 text-brand-primary text-[9px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm border border-brand-primary/20">
-        DIAGNOSIS COMPLETE
-      </span>
-    </div>
-
-    <!-- Desktop 2-Column Core Summary Grid with Hover Lifts -->
-    <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8 animate-slide-up-2">
-
-      <!-- Left Box: Diagnosis Spotlight -->
-      <div class="lg:col-span-5 bg-gradient-to-br from-brand-surface-light via-brand-surface-light to-brand-primary-light/50 dark:from-brand-surface-dark dark:via-brand-surface-dark dark:to-stone-900 p-6 sm:p-8 rounded-[2rem] border border-brand-primary/20 dark:border-brand-primary/30 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-center items-center text-center min-h-[220px]">
-        <h1 class="text-sm font-serif mb-1 text-brand-text-muted dark:text-stone-400 uppercase tracking-widest font-bold">Your Skin Type</h1>
-        <h2 class="text-5xl sm:text-6xl font-serif text-brand-primary dark:text-brand-primary tracking-tight mb-3 drop-shadow-sm">{{ skinType }}</h2>
-        <p class="text-sm italic font-medium text-stone-600 dark:text-stone-300 font-serif mb-5">{{ currentProfile.subtitle }}</p>
-
-        <span class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-semantic-warning/10 text-semantic-warning border border-semantic-warning/20">
+    <!-- What the type means -->
+    <section
+      aria-labelledby="type-meaning-heading"
+      class="relative z-10 bg-brand-surface-light dark:bg-brand-surface-dark p-6 sm:p-8 rounded-[22px] border border-brand-surface-border dark:border-stone-700 mb-8 animate-slide-up-2"
+    >
+      <h2 id="type-meaning-heading" class="font-serif text-[19px] font-bold text-stone-800 dark:text-white">What {{ skinType }} means for your routine</h2>
+      <div class="flex flex-wrap items-center gap-2 mt-2">
+        <p class="text-sm italic font-medium text-stone-600 dark:text-stone-300 font-serif">{{ currentProfile.subtitle }}</p>
+        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-semantic-warning/10 text-[#6B4600] dark:text-amber-200 border border-semantic-warning/30">
           {{ currentProfile.maintenanceLevel }} Maintenance
         </span>
       </div>
-
-      <!-- Right Box: What This Means -->
-      <div class="lg:col-span-7 bg-brand-surface-light dark:bg-brand-surface-dark p-6 sm:p-8 rounded-[2rem] border border-stone-200 dark:border-stone-800 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between">
-        <div>
-          <h3 class="text-lg font-serif font-bold mb-3 border-b border-stone-100 dark:border-stone-700/60 pb-3 text-brand-text dark:text-white">What This Means</h3>
-          <p class="text-xs sm:text-sm font-medium text-stone-600 dark:text-stone-300 leading-relaxed">
-            {{ currentProfile.desc }}
-          </p>
-        </div>
-
-        <div class="mt-6 bg-stone-50 dark:bg-stone-900/50 p-5 rounded-2xl border-l-4 border-brand-primary dark:border-brand-primary shadow-sm">
-          <p class="text-xs sm:text-sm italic font-medium text-brand-primary dark:text-brand-primary leading-relaxed font-serif">
-            "{{ currentProfile.quote }}"
-          </p>
-        </div>
+      <p class="mt-4 text-sm font-medium text-stone-600 dark:text-stone-300 leading-relaxed">
+        {{ currentProfile.desc }}
+      </p>
+      <div class="mt-5 bg-brand-bg-light dark:bg-stone-900/50 p-5 rounded-2xl border-l-4 border-brand-primary-strong dark:border-brand-primary">
+        <p class="text-sm italic font-medium text-brand-primary-strong-hover dark:text-brand-primary leading-relaxed font-serif">
+          "{{ currentProfile.quote }}"
+        </p>
       </div>
-
-    </div>
-
-    <!-- Your Four Axes: continuous score visualization -->
-    <div class="relative z-10 bg-brand-surface-light dark:bg-brand-surface-dark border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6 sm:p-8 shadow-sm mb-8 animate-slide-up-2b">
-      <h3 class="text-lg font-serif font-bold text-brand-text dark:text-white mb-5">Your Four Axes</h3>
-      <div class="space-y-5">
-        <div v-for="axis in axisDefs" :key="axis.key">
-          <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide mb-1.5">
-            <span :class="isHighActive(axis.key) ? 'text-brand-text-muted dark:text-stone-500' : 'text-brand-text dark:text-white'">{{ axis.lowLabel }}</span>
-            <span :class="isHighActive(axis.key) ? 'text-brand-text dark:text-white' : 'text-brand-text-muted dark:text-stone-500'">{{ axis.highLabel }}</span>
-          </div>
-          <div class="relative h-2 rounded-full bg-stone-100 dark:bg-stone-800">
-            <div
-              class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand-primary-accent to-brand-primary transition-all duration-700 ease-out"
-              :style="{ width: axisPercent(axis.key) + '%' }"
-            />
-            <div
-              class="absolute top-1/2 w-3.5 h-3.5 rounded-full bg-white dark:bg-brand-surface-dark border-[2.5px] border-brand-primary shadow-sm transition-all duration-700 ease-out"
-              :style="{ left: axisPercent(axis.key) + '%', transform: 'translate(-50%, -50%)' }"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
 
     <!-- Complete Barrier Shield Matrix with Gradients & Hover Lifts -->
     <div class="relative z-10 mb-4 px-1 animate-slide-up-3">
@@ -252,7 +192,7 @@ const isHighActive = (key: keyof typeof props.scores) => props.scores[key] >= 10
           <div class="w-8 h-8 rounded-full bg-brand-primary text-white text-xs font-bold flex items-center justify-center mb-2 shadow-md shadow-brand-primary/30 border-2 border-white dark:border-brand-surface-dark">
             <svg class="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           </div>
-          <span class="text-xs font-bold text-brand-text dark:text-stone-200">Diagnosed</span>
+          <span class="text-xs font-bold text-brand-text dark:text-stone-200">Skin type found</span>
         </div>
 
         <div @click="router.push('/shelf')" class="flex flex-col items-center cursor-pointer group relative z-10">
@@ -271,9 +211,7 @@ const isHighActive = (key: keyof typeof props.scores) => props.scores[key] >= 10
 </template>
 
 <style scoped>
-.animate-slide-up-1 { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-slide-up-2 { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; animation-delay: 0.1s; opacity: 0; }
-.animate-slide-up-2b { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; animation-delay: 0.15s; opacity: 0; }
 .animate-slide-up-3 { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; animation-delay: 0.2s; opacity: 0; }
 .animate-slide-up-4 { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; animation-delay: 0.3s; opacity: 0; }
 .animate-slide-up-4b { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; animation-delay: 0.35s; opacity: 0; }
@@ -283,5 +221,13 @@ const isHighActive = (key: keyof typeof props.scores) => props.scores[key] >= 10
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up-2, .animate-slide-up-3, .animate-slide-up-4,
+  .animate-slide-up-4b, .animate-slide-up-5, .animate-slide-up-6 {
+    animation: none;
+    opacity: 1;
+  }
 }
 </style>

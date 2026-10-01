@@ -10,6 +10,10 @@
   --color-brand-primary-hover: #94D3D3; /* Cyan Gradient Midpoint */
   --color-brand-primary-accent: #B0F1F1; /* Primary Cyan Highlight */
   --color-brand-primary-light: #DFF4F3; /* Light Cyan */
+  /* A darker teal for white text on a teal fill, which #6CC1C5 is too light to
+     carry. Used by the skin quiz only, so no other page changes. */
+  --color-brand-primary-strong: #267A7F;
+  --color-brand-primary-strong-hover: #1C5E62;
 
   /* Text colors */
   --color-brand-text: #434343; /* Neutral Black */

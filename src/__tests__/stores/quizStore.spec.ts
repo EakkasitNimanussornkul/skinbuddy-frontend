@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useQuizStore } from '../../stores/quizStore'
+import { AXES, NA, P, UNSURE, answerCore, backupIds } from '../fixtures/quizAnswers'
 
 // Feature #2 - Take skinquiz.
 //
@@ -9,142 +10,140 @@ import { useQuizStore } from '../../stores/quizStore'
 // one of these rewords the document.
 //
 // No network: this store is pure client-side state, so nothing is mocked and
-// nothing is reached.
+// nothing is reached. Questions come from src/data/quizQuestions.ts as shipped.
+//
+// These three groups keep their place in the Test Record. The scoring rules,
+// the backups and the step flow added with the redesigned quiz are covered in
+// quizScoring.spec.ts.
 
 describe('useQuizStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    localStorage.clear()
   })
 
   describe('answerQuestion()', () => {
-    it('adds the answer points to the matching axis and advances to the next question', () => {
+    it('records the answer under the question id, not a position', () => {
       const store = useQuizStore()
 
-      store.answerQuestion(0, 'hydration', 4, 1)
+      store.answerQuestion('hyd-2', P(3))
 
-      expect(store.scores.hydration).toBe(4)
-      expect(store.currentQuestionIndex).toBe(1)
+      expect(store.answers).toEqual({ 'hyd-2': { kind: 'points', points: 3 } })
     })
 
-    it('records the answer in history so the chosen option can be restored', () => {
+    it('records the answer without moving the quiz on by itself, so the view can show it selected first', () => {
       const store = useQuizStore()
+      store.step = { kind: 'question', axis: 'hydration', questionId: 'hyd-1' }
 
-      store.answerQuestion(0, 'sensitivity', 3, 2)
+      store.answerQuestion('hyd-1', P(2))
 
-      expect(store.answersHistory[0]).toEqual({ points: 3, optionIndex: 2 })
+      expect(store.step).toEqual({ kind: 'question', axis: 'hydration', questionId: 'hyd-1' })
+      expect(store.answers['hyd-1']).toEqual(P(2))
     })
 
-    it('subtracts the previous points when a question is answered again, so scores are never double-counted', () => {
+    it('replaces an earlier answer to the same question, so it is never counted twice', () => {
       const store = useQuizStore()
+      answerCore(store, 'hydration', [P(4), P(4), P(4), P(4)])
 
-      store.answerQuestion(0, 'hydration', 4, 1)
-      store.answerQuestion(0, 'hydration', 1, 0)
+      store.answerQuestion('hyd-1', P(1))
 
-      // 4 then 1 must leave 1, not 5.
-      expect(store.scores.hydration).toBe(1)
+      expect(store.axisResults.hydration.counted).toBe(4)
+      expect(store.axisResults.hydration.average).toBe(13 / 4)
     })
 
-    it('keeps the four axes independent, so scoring one never alters the others', () => {
+    it('keeps the four parts independent, so answering one never alters the others', () => {
       const store = useQuizStore()
 
-      store.answerQuestion(0, 'pigmentation', 4, 1)
+      answerCore(store, 'pigmentation', [P(4), P(4), P(4), P(4)])
 
-      expect(store.scores.pigmentation).toBe(4)
-      expect(store.scores.hydration).toBe(0)
-      expect(store.scores.sensitivity).toBe(0)
-      expect(store.scores.aging).toBe(0)
+      expect(store.axisResults.pigmentation.average).toBe(4)
+      expect(store.axisResults.hydration.counted).toBe(0)
+      expect(store.axisResults.sensitivity.counted).toBe(0)
+      expect(store.axisResults.aging.counted).toBe(0)
     })
 
-    it('accepts the "not_sure" option marker as a valid recorded answer', () => {
+    it('records a skip answer as its kind, with no points', () => {
       const store = useQuizStore()
 
-      store.answerQuestion(0, 'aging', 2.5, 'not_sure')
+      store.answerQuestion('hyd-3', NA)
 
-      expect(store.answersHistory[0]).toEqual({ points: 2.5, optionIndex: 'not_sure' })
-      expect(store.scores.aging).toBe(2.5)
+      expect(store.answers['hyd-3']).toEqual({ kind: 'not_applicable' })
     })
   })
 
   describe('finalSkinType (computed)', () => {
-    it('returns DRNT when every axis scores below the threshold of 10', () => {
+    it('returns DRNT when every part averages below the threshold', () => {
       const store = useQuizStore()
+      for (const axis of AXES) answerCore(store, axis, [P(1), P(2), P(1), P(2)])
 
       expect(store.finalSkinType).toBe('DRNT')
     })
 
-    it('returns OSPW when every axis reaches the threshold of 10', () => {
+    it('returns OSPW when every part averages at or above the threshold', () => {
       const store = useQuizStore()
-
-      store.answerQuestion(0, 'hydration', 10, 0)
-      store.answerQuestion(1, 'sensitivity', 10, 0)
-      store.answerQuestion(2, 'pigmentation', 10, 0)
-      store.answerQuestion(3, 'aging', 10, 0)
+      for (const axis of AXES) answerCore(store, axis, [P(3), P(4), P(3), P(4)])
 
       expect(store.finalSkinType).toBe('OSPW')
     })
 
-    it('treats exactly 10 as meeting the threshold, not falling below it', () => {
+    it('treats an average of exactly 2.5 as meeting the threshold, not falling below it', () => {
       const store = useQuizStore()
+      // 2 and 3 counted, so 2.5; both extra questions skipped, so it stays there.
+      for (const axis of AXES) {
+        answerCore(store, axis, [P(2), P(3), UNSURE, UNSURE])
+        for (const id of backupIds(axis).slice(0, 2)) store.answerQuestion(id, UNSURE)
+        expect(store.axisResults[axis].average).toBe(2.5)
+      }
 
-      store.answerQuestion(0, 'hydration', 9.5, 0)
-      expect(store.finalSkinType[0]).toBe('D')
-
-      store.answerQuestion(1, 'hydration', 0.5, 0)
-      expect(store.finalSkinType[0]).toBe('O')
+      expect(store.finalSkinType).toBe('OSPW')
     })
 
-    it('returns ORPT for a mix of axes above and below the threshold', () => {
-      // The realistic result. Every other case here has none, one, or all four
-      // axes above the threshold, so this is the only one where more than one
-      // axis is positive while others are negative - the arrangement that shows
-      // the four comparisons are independent of each other and that each letter
-      // lands in its own position, rather than one verdict being applied across
-      // the code.
+    it('returns ORPT for a mix of parts above and below the threshold, each letter in its own place', () => {
       const store = useQuizStore()
+      answerCore(store, 'hydration', [P(4), P(3), P(4), P(3)])
+      answerCore(store, 'sensitivity', [P(1), P(2), P(2), P(1)])
+      answerCore(store, 'pigmentation', [P(3), P(3), P(3), P(3)])
+      answerCore(store, 'aging', [P(1), P(1), P(2), P(1)])
 
-      store.answerQuestion(0, 'hydration', 12, 0)
-      store.answerQuestion(1, 'sensitivity', 8, 0)
-      store.answerQuestion(2, 'pigmentation', 14, 0)
-      store.answerQuestion(3, 'aging', 6, 0)
-
-      // Asserted so the fixture cannot drift: answerQuestion accumulates, and a
-      // change to how it does that could alter these inputs while the type below
-      // still came out right for the wrong reason.
-      expect(store.scores).toEqual({ hydration: 12, sensitivity: 8, pigmentation: 14, aging: 6 })
       expect(store.finalSkinType).toBe('ORPT')
     })
 
-    it('recomputes as soon as a score changes, rather than caching a stale type', () => {
+    it('recomputes as soon as an answer changes, rather than caching a stale type', () => {
       const store = useQuizStore()
+      for (const axis of AXES) answerCore(store, axis, [P(1), P(1), P(1), P(1)])
       expect(store.finalSkinType).toBe('DRNT')
 
-      store.answerQuestion(0, 'sensitivity', 12, 0)
+      answerCore(store, 'sensitivity', [P(4), P(4), P(4), P(4)])
 
       expect(store.finalSkinType).toBe('DSNT')
     })
   })
 
   describe('resetQuiz()', () => {
-    it('clears all four scores, the question index, and the answer history', () => {
+    it('clears the answers, the "About you" choice, the step and any part being retaken', () => {
       const store = useQuizStore()
-      store.answerQuestion(0, 'hydration', 4, 1)
-      store.answerQuestion(1, 'aging', 3, 2)
+      store.start()
+      store.chooseSex('female')
+      store.answerQuestion('hyd-1', P(4))
+      store.retakePart('aging')
 
       store.resetQuiz()
 
-      expect(store.currentQuestionIndex).toBe(0)
-      expect(store.scores).toEqual({ hydration: 0, sensitivity: 0, pigmentation: 0, aging: 0 })
-      expect(store.answersHistory).toEqual({})
+      expect(store.answers).toEqual({})
+      expect(store.sex).toBeNull()
+      expect(store.step).toEqual({ kind: 'start' })
+      expect(store.retakeAxis).toBeNull()
     })
 
-    it('returns the computed skin type to the all-low default after a reset', () => {
+    it('returns every part to having no evidence after a reset', () => {
       const store = useQuizStore()
-      store.answerQuestion(0, 'hydration', 12, 0)
-      expect(store.finalSkinType).toBe('ORNT')
+      answerCore(store, 'hydration', [P(1), P(1), P(1), P(1)])
+      expect(store.axisResults.hydration.noEvidence).toBe(false)
 
       store.resetQuiz()
 
-      expect(store.finalSkinType).toBe('DRNT')
+      expect(store.axisResults.hydration.noEvidence).toBe(true)
+      expect(store.axisResults.hydration.counted).toBe(0)
     })
   })
 })

@@ -1,71 +1,38 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { flushPromises } from '@vue/test-utils'
 
 vi.mock('../../api/quizapi', () => ({
   saveSkinType: vi.fn(),
 }))
+// Used only by "I already know my type" on the start screen.
+vi.mock('../../api/authApi', () => ({
+  updateUserSkinType: vi.fn(),
+}))
 
 import { saveSkinType } from '../../api/quizapi'
-import SkinQuizView from '../../views/SkinQuizView.vue'
-import QuestionCard from '../../components/Quiz/QuestionCard.vue'
-import QuizResultDashboard from '../../components/Quiz/QuizResultDashboard.vue'
+import { updateUserSkinType } from '../../api/authApi'
+import QuizStart from '../../components/Quiz/QuizStart.vue'
+import QuizFrame from '../../components/Quiz/QuizFrame.vue'
+import QuizResult from '../../components/Quiz/QuizResult.vue'
 import ConfirmCancelModal from '../../components/Shared/ConfirmCancelModal.vue'
-import { baumannQuiz } from '../../data/baumannQuiz'
-import { useAuthStore } from '../../stores/auth'
 import { useToast } from '../../composables/useToast'
+import {
+  ALL_ONES_SCORES,
+  P,
+  answer,
+  begin,
+  buttonByText,
+  click,
+  mountQuiz,
+  runQuiz,
+} from '../fixtures/quizView'
+
+// Feature #2 - Take skinquiz. Saving and leaving the quiz. The steps of the
+// quiz itself (start screen, answering, part complete, result) are covered in
+// SkinQuizFlow.spec.ts, so that these two groups keep their place in the
+// Test Record.
 
 const { toasts } = useToast()
-
-/** Every answer scores zero, so finalSkinType is deterministically DRNT. */
-const ZERO_SCORES = { hydration: 0, sensitivity: 0, pigmentation: 0, aging: 0 }
-
-const mountQuiz = async (path = '/quiz', skinType: string | null = 'OSPW') => {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { template: '<div />' } },
-      { path: '/quiz', component: SkinQuizView },
-      { path: '/setup-profile', component: { template: '<div />' } },
-      { path: '/profile', component: { template: '<div />' } },
-    ],
-  })
-  await router.push(path)
-  await router.isReady()
-
-  const pinia = createPinia()
-  setActivePinia(pinia)
-  const auth = useAuthStore()
-  // A user who already has a type is not a first-time user, which is what makes
-  // the quiz offer its cancel control at all.
-  auth.setAuth('token-1', skinType ? { id: 'u-1', skin_type: skinType } : { id: 'u-1' })
-
-  const wrapper = mount(SkinQuizView, { global: { plugins: [pinia, router] } })
-
-  return { wrapper, router, auth }
-}
-
-/**
- * Answer every question with zero points and run out the calculating beat.
- *
- * The results panel is gated behind a 1400ms timer, so reaching the save button
- * means driving that timer rather than waiting on it. The quiz cannot be seeded
- * as already finished instead: onMounted resets a store whose index is past the
- * last question, so a pre-finished fixture would be wiped before the first
- * assertion.
- */
-const completeQuiz = async (wrapper: VueWrapper) => {
-  for (let i = 0; i < baumannQuiz.length; i += 1) {
-    wrapper.findComponent(QuestionCard).vm.$emit('answer', { points: 0, optionIndex: 0 })
-    await wrapper.vm.$nextTick()
-  }
-  vi.advanceTimersByTime(1400)
-  await flushPromises()
-}
-
-const saveButton = (wrapper: VueWrapper) =>
-  wrapper.findAll('button').find((b) => b.text().includes('Save Skin Profile'))!
 
 const lastToast = () => toasts.value[toasts.value.length - 1]
 
@@ -77,6 +44,7 @@ describe('src/views/SkinQuizView.vue', () => {
     localStorage.clear()
     toasts.value.splice(0)
     vi.mocked(saveSkinType).mockResolvedValue({})
+    vi.mocked(updateUserSkinType).mockResolvedValue({})
   })
 
   afterEach(() => {
@@ -85,24 +53,20 @@ describe('src/views/SkinQuizView.vue', () => {
   })
 
   describe('saveAndContinue()', () => {
-    it('saves the computed type and the live scores the quiz produced', async () => {
+    it('saves the computed type with each part average, its counted answers and version 2', async () => {
       const { wrapper } = await mountQuiz()
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
-      // Read from the store at save time, not captured earlier: every answer
-      // scored zero, which resolves to DRNT.
-      expect(saveSkinType).toHaveBeenCalledWith('DRNT', ZERO_SCORES)
+      expect(saveSkinType).toHaveBeenCalledWith('DRNT', ALL_ONES_SCORES)
     })
 
     it('records the new type on the session and marks the quiz complete', async () => {
       const { wrapper, auth } = await mountQuiz()
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
       expect(auth.user.skin_type).toBe('DRNT')
       expect(localStorage.getItem('hasCompletedQuiz')).toBe('true')
@@ -110,23 +74,21 @@ describe('src/views/SkinQuizView.vue', () => {
     })
 
     it('returns the user to the page the guard pulled them away from', async () => {
-      const { wrapper, router } = await mountQuiz('/quiz?redirect=/profile')
+      const { wrapper, router } = await mountQuiz('/quiz?redirect=/shelf')
       const push = vi.spyOn(router, 'push')
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
-      expect(push).toHaveBeenCalledWith('/profile')
+      expect(push).toHaveBeenCalledWith('/shelf')
     })
 
     it('falls back to home when no redirect was carried', async () => {
       const { wrapper, router } = await mountQuiz('/quiz')
       const push = vi.spyOn(router, 'push')
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
       expect(push).toHaveBeenCalledWith('/')
     })
@@ -140,30 +102,25 @@ describe('src/views/SkinQuizView.vue', () => {
       vi.stubGlobal('liff', { closeWindow })
       const { wrapper, router } = await mountQuiz('/quiz?redirect=/profile')
       const push = vi.spyOn(router, 'push')
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
       expect(closeWindow).toHaveBeenCalledTimes(1)
       expect(push).not.toHaveBeenCalled()
-      // The save itself still happened; only the exit differs.
-      expect(saveSkinType).toHaveBeenCalledWith('DRNT', ZERO_SCORES)
+      expect(saveSkinType).toHaveBeenCalledWith('DRNT', ALL_ONES_SCORES)
     })
 
     it('reports a failed save without recording the type anywhere', async () => {
       vi.mocked(saveSkinType).mockRejectedValue(new Error('network down'))
       const { wrapper, router, auth } = await mountQuiz()
       const push = vi.spyOn(router, 'push')
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
       expect(lastToast()!.message).toBe('Failed to save to database. Please try again.')
       expect(lastToast()!.type).toBe('error')
-      // None of the three writes may happen on a failed save, or the app would
-      // believe the user has a profile the backend never stored.
       expect(auth.user.skin_type).toBe('OSPW')
       expect(localStorage.getItem('hasCompletedQuiz')).toBeNull()
       expect(push).not.toHaveBeenCalled()
@@ -172,62 +129,95 @@ describe('src/views/SkinQuizView.vue', () => {
     it('leaves the result on screen after a failed save, so it can be retried', async () => {
       vi.mocked(saveSkinType).mockRejectedValue(new Error('network down'))
       const { wrapper } = await mountQuiz()
-      await completeQuiz(wrapper)
+      await runQuiz(wrapper)
 
-      await saveButton(wrapper).trigger('click')
-      await flushPromises()
+      await click(wrapper, 'Save my skin type')
 
-      // Sixteen questions of work. Unmounting the dashboard on a transport
-      // failure would discard all of it and offer no way back to the answer.
-      const dashboard = wrapper.findComponent(QuizResultDashboard)
-      expect(dashboard.exists()).toBe(true)
-      expect(dashboard.props('skinType')).toBe('DRNT')
-      expect(saveButton(wrapper).exists()).toBe(true)
+      const result = wrapper.findComponent(QuizResult)
+      expect(result.exists()).toBe(true)
+      expect(result.props('skinType')).toBe('DRNT')
+      expect(buttonByText(wrapper, 'Save my skin type')).toBeTruthy()
+    })
+
+    it('never sends the "About you" answer with the save', async () => {
+      const { wrapper } = await mountQuiz()
+      await runQuiz(wrapper, () => P(1), 'female')
+
+      await click(wrapper, 'Save my skin type')
+
+      const sent = JSON.stringify(vi.mocked(saveSkinType).mock.calls)
+      expect(sent).not.toContain('female')
+      expect(sent).not.toContain('sex')
     })
   })
 
   describe('executeCancel()', () => {
     it('asks for confirmation rather than discarding the answers on the first click', async () => {
       const { wrapper } = await mountQuiz()
+      await begin(wrapper)
+      await answer(wrapper, P(4))
 
       expect(wrapper.findComponent(ConfirmCancelModal).exists()).toBe(false)
-      wrapper.findComponent(QuestionCard).vm.$emit('cancel')
-      await wrapper.vm.$nextTick()
+      wrapper.findComponent(QuizFrame).vm.$emit('cancel')
+      await flushPromises()
 
       expect(wrapper.findComponent(ConfirmCancelModal).exists()).toBe(true)
     })
 
     it('keeps the answers when the confirmation is dismissed', async () => {
-      const { wrapper } = await mountQuiz()
-      wrapper.findComponent(QuestionCard).vm.$emit('answer', { points: 4, optionIndex: 1 })
-      await wrapper.vm.$nextTick()
-      wrapper.findComponent(QuestionCard).vm.$emit('cancel')
-      await wrapper.vm.$nextTick()
+      const { wrapper, store } = await mountQuiz()
+      await begin(wrapper)
+      await answer(wrapper, P(4))
+      wrapper.findComponent(QuizFrame).vm.$emit('cancel')
+      await flushPromises()
 
       wrapper.findComponent(ConfirmCancelModal).vm.$emit('cancel')
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.findComponent(ConfirmCancelModal).exists()).toBe(false)
-      // Still on question two, with the first answer intact.
-      expect(wrapper.findComponent(QuestionCard).props('currentStep')).toBe(2)
+      expect(store.step).toEqual({ kind: 'question', axis: 'hydration', questionId: 'hyd-2' })
+      expect(store.answers['hyd-1']).toEqual(P(4))
     })
 
     it('clears the quiz and leaves for home once cancelling is confirmed', async () => {
-      const { wrapper, router } = await mountQuiz()
+      const { wrapper, router, store } = await mountQuiz()
       const push = vi.spyOn(router, 'push')
-      wrapper.findComponent(QuestionCard).vm.$emit('answer', { points: 4, optionIndex: 1 })
-      await wrapper.vm.$nextTick()
-      wrapper.findComponent(QuestionCard).vm.$emit('cancel')
-      await wrapper.vm.$nextTick()
+      await begin(wrapper)
+      await answer(wrapper, P(4))
+      wrapper.findComponent(QuizFrame).vm.$emit('cancel')
+      await flushPromises()
 
       wrapper.findComponent(ConfirmCancelModal).vm.$emit('confirm')
       await flushPromises()
 
-      // Back to question one: resetQuiz ran before the navigation, so a user who
-      // re-enters the quiz starts clean rather than mid-way through the answers
-      // they just abandoned.
-      expect(wrapper.findComponent(QuestionCard).props('currentStep')).toBe(1)
+      expect(store.step).toEqual({ kind: 'start' })
+      expect(store.answers).toEqual({})
+      expect(store.sex).toBeNull()
       expect(push).toHaveBeenCalledWith('/')
+    })
+
+    it('leaves straight away from the start screen, where there is nothing to lose', async () => {
+      const { wrapper, router } = await mountQuiz()
+      const push = vi.spyOn(router, 'push')
+
+      await wrapper.find('button[aria-label="Close the quiz"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent(ConfirmCancelModal).exists()).toBe(false)
+      expect(push).toHaveBeenCalledWith('/')
+    })
+
+    it('offers a first-time user (no skin type yet) no way out, on the start screen or in the quiz', async () => {
+      const { wrapper } = await mountQuiz('/quiz', null)
+
+      expect(wrapper.findComponent(QuizStart).props('showCancel')).toBe(false)
+      expect(wrapper.find('button[aria-label="Close the quiz"]').exists()).toBe(false)
+      expect(buttonByText(wrapper, 'Leave the quiz')).toBeUndefined()
+      await begin(wrapper)
+
+      expect(wrapper.findComponent(QuizFrame).props('showCancel')).toBe(false)
+      expect(wrapper.find('button[aria-label="Leave the quiz"]').exists()).toBe(false)
+      expect(buttonByText(wrapper, 'Leave the quiz')).toBeUndefined()
     })
   })
 })

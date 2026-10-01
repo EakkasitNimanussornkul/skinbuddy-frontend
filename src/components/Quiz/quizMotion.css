@@ -1,0 +1,84 @@
+/* Motion shared by the skin quiz's screens. Plain CSS rather than utilities in
+   assets/style.css, so nothing outside the quiz picks these up. Each class plays
+   once, when its element mounts, and none of them moves anything for a user who
+   prefers reduced motion. The fill mode is `backwards`, not `both`: once an
+   animation ends it lets go, so a later change still uses the transition. */
+
+/* Fades a block up into place. Stagger a list with an inline animation-delay;
+   `backwards` holds the start state through the delay. */
+.quiz-rise {
+  animation: quiz-rise 360ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes quiz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* A small overshoot for a tick or a radio dot as it appears. */
+.quiz-pop {
+  animation: quiz-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes quiz-pop {
+  from {
+    transform: scale(0.4);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* A lean bar's fill and marker start at the centre and slide out to the
+   average. Only the start is given, so each animates to its own inline left
+   and width, wherever the answers put it. */
+.quiz-lean-fill {
+  animation: quiz-lean-fill 600ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes quiz-lean-fill {
+  from {
+    left: 50%;
+    width: 0;
+  }
+}
+
+.quiz-lean-marker {
+  animation: quiz-lean-marker 600ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes quiz-lean-marker {
+  from {
+    left: 50%;
+  }
+}
+
+/* A progress segment filling as it mounts: the first question of a new part,
+   or an extra question being added. Later changes use its width transition. */
+.quiz-fill {
+  transition: width 400ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease;
+  animation: quiz-fill 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes quiz-fill {
+  from {
+    width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-rise,
+  .quiz-pop,
+  .quiz-lean-fill,
+  .quiz-lean-marker,
+  .quiz-fill {
+    animation: none;
+    transition: none;
+  }
+}
