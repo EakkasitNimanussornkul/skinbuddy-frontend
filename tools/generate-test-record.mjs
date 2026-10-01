@@ -81,8 +81,8 @@ const SPEC_MAP = [
     feature: '#2 Take skinquiz',
     module: 'views/SkinProfileView',
     prerequisite:
-      'The view mounted with @vue/test-utils on a vue-router memory history, its <Teleport> stubbed. The skin type under test is written into the real auth store with setAuth, because userSkinType reads authStore.user!.skin_type through a non-null assertion. searchProducts is mocked; pickTopRecommendations is deliberately left real, so the recommendation cards show the view actually narrowing a response. The skinProfiles and typologyDetails dictionaries are used as shipped - no fixture. No network access.',
-    note: 'All four units are read through what the page renders: the report body for profileData, the four typology cards for axes, the comparison modal\'s props for openTypologyModal, and the recommendations widget\'s props for loadRecommendations. Two pairs are deliberate rather than redundant - profileData is asserted for two different valid codes, because a view permanently returning the OSPW fallback would satisfy an OSPW assertion on its own; and axes is asserted for OSPW and DRNT, which are complements, so both branches of all four ternaries are taken.',
+      'The view mounted with @vue/test-utils on a vue-router memory history, its <Teleport> stubbed. The skin type under test is written into the real auth store with setAuth, because the view reads authStore.user.skin_type and so depends on the shape setAuth produces. searchProducts is mocked; pickTopRecommendations is deliberately left real, so the recommendation cards show the view actually narrowing a response. The skinProfiles and typologyDetails dictionaries are used as shipped - no fixture. No network access.',
+    note: 'All four units are read through what the page renders: the report body for profileData, the four trait cards for axes, the comparison sheet\'s props for openTypologyModal, and the recommendations widget\'s props for loadRecommendations. Two pairs are deliberate rather than redundant - profileData is asserted for two different valid codes, because a view that always showed one fixed profile would satisfy a single-type assertion on its own; and axes is asserted for OSPW and DRNT, which are complements, so both branches of the opposite-letter choice are taken on all four. With the profile redesign (feat/19-quiz-redesign) a stored code that is not one of the sixteen no longer falls back to OSPW\'s profile, which handed the user another type\'s routine and avoid-list as their own; it gets the empty state instead. Three cards were rewritten in place for that, keeping their IDs: UTC-FE-12-TC-03 and TC-04 (the empty states for an unreadable code and for no code) and UTC-FE-14-TC-04 (no trait to open for an unreadable code). The rest of the redesign is covered in views/SkinProfilePage.spec.ts at the end of this record.',
   },
   {
     file: 'src/__tests__/components/TypologyComparisonModal.spec.ts',
@@ -348,7 +348,7 @@ const SPEC_MAP = [
     module: 'router/guard',
     prerequisite:
       'No router instance and no components - resolveNavigation is a pure function over the target route and the auth state, called directly with plain objects.',
-    note: 'Guards the skin profile page. Without it the page renders a substitute skin type\'s real routine and actives for a user who has never been classified.',
+    note: 'The guard sends a user with no skin type to set one before a route marked requiresSkinType. It guarded the skin profile page, which used to render a substitute skin type\'s real routine and actives for a user who had never been classified. Since the profile redesign (feat/19-quiz-redesign) no route sets requiresSkinType: /profile shows its own empty state instead, and router/profileRoute.spec.ts at the end of this record pins that. The guard\'s logic is unchanged, so these cards still describe it, with /profile as the example target.',
   },
   {
     file: 'src/__tests__/views/AuthCallbackView.spec.ts',
@@ -513,6 +513,32 @@ const SPEC_MAP = [
     prerequisite:
       'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case (src/__tests__/fixtures/quizView.ts). saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are real. Vitest fake timers drive the 220ms auto-advance and the 1400ms calculating beat. The shared setup reports reduced motion, so answers move on at once; the cases about the pause override matchMedia for their run. No network access.',
     note: 'The steps of the quiz on screen: the start screen and "I already know my type", answering with auto-advance, the part-complete screen, the result with its two exits ("Save my skin type" keeps the redirect and the LINE close; "See what CODE means" saves the same way, then opens /profile), "Retake this part", and the motion between steps. VTU stubs <Transition>, so the motion cards read the transition name (quiz-step-forward or quiz-step-back), each question\'s key and the animation delays, never what moves on screen. The movement itself can only be seen in a browser, so these cards are not evidence of it.',
+  },
+  // The redesigned skin profile page and its empty state, on the same branch.
+  // New files at the end, for the same reason as the quiz files above.
+  {
+    file: 'src/__tests__/views/SkinProfilePage.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinProfileView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history and attached to the document, so focus is read off document.activeElement. Fresh Pinia, cleared localStorage and emptied toasts per case; the skin type is written into the real auth store with setAuth. searchProducts and updateUserSkinType are mocked; the comparison sheet, the type selector and the recommendations widget render for real, with <Teleport> stubbed so they render in place. The skinProfiles and typologyDetails dictionaries are used as shipped. No network access.',
+    note: 'The redesigned profile page: the type card, the four trait cards, what the skin needs ("Look for" and "Best avoided", which replaced "Avoid Inside"), the routine with Morning / Evening tabs on a phone and both columns from lg, the common concerns, the recommendations, and the links to the quiz and the chat. Everything shown comes from the existing dictionaries; nothing new is written about skin. A trait card opens the comparison sheet on its pair; next and previous wrap round the four, and closing gives focus back to the card that opened it. With no skin type, or a stored code that is not one of the sixteen, the page shows an empty state with "Take the skin quiz" and "I already know my type" (the same selector and save the quiz start screen uses) and asks for no recommendations; a code such as "toString" counts as unreadable. Both layouts are in the DOM and switched by CSS breakpoints, which jsdom does not apply, so these cards read each layout\'s own elements rather than which one is visible. VTU stubs <Transition>, so the motion cards read class names and delays, never what moves.',
+  },
+  {
+    file: 'src/__tests__/components/TypologyComparisonSheet.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'components/Quiz/TypologyComparisonModal',
+    prerequisite:
+      'The component mounted open with @vue/test-utils on real records from src/data/typologydata.ts, attached to the document so focus and document-level key presses behave as on a page. <Teleport> and the nested ImageZoomModal are stubbed. No network access.',
+    note: 'The sheet\'s own rules, added with the profile redesign: previous and next name the neighbouring pairs and wrap at the ends, the host does the stepping, one dot per trait with the current one wide, and the pair slides the way the user steps. As a dialog it is aria-modal and labelled by its heading, takes focus onto its close button as it opens, closes on Escape (or closes the full-screen photo first when that is open), keeps Tab inside itself, and stops listening for keys once closed or removed. The earlier cards for its panels, zoom and close are in TypologyComparisonModal.spec.ts above.',
+  },
+  {
+    file: 'src/__tests__/router/profileRoute.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'router/index',
+    prerequisite:
+      'The real route table, read through router.getRoutes(). It is imported by a path held in a variable so vue-tsc does not follow it (router/index pulls in every view and does not type-check under tsconfig.vitest.json); Vitest still loads the real module. No components mounted and no network access.',
+    note: 'The one route change in the profile redesign: /profile keeps requiresAuth and drops requiresSkinType, so a user with no type reaches the page and its empty state rather than being sent to the setup page. Every other route\'s meta is pinned as it was, and no route now requires a skin type.',
   },
 ]
 

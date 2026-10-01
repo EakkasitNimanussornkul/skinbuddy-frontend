@@ -31,10 +31,9 @@ const product = (id: string, score: number | null): ScoredProduct => ({
 /**
  * Mount the report for a user whose stored skin_type is `skinType`.
  *
- * The store is populated before mount rather than stubbed: userSkinType reads
- * authStore.user!.skin_type through a non-null assertion, so the view depends on
- * the real shape setAuth produces. A plain object stub would not prove the two
- * agree.
+ * The store is populated before mount rather than stubbed: the view reads
+ * authStore.user.skin_type, so it depends on the real shape setAuth produces. A
+ * plain object stub would not prove the two agree.
  */
 const mountProfile = async (skinType: string) => {
   const router = createRouter({
@@ -42,6 +41,7 @@ const mountProfile = async (skinType: string) => {
     routes: [
       { path: '/profile', component: SkinProfileView },
       { path: '/chat', component: { template: '<div />' } },
+      { path: '/quiz', component: { template: '<div />' } },
       { path: '/product/:slug', component: { template: '<div />' } },
     ],
   })
@@ -62,12 +62,14 @@ const mountProfile = async (skinType: string) => {
   return { wrapper, router }
 }
 
-/** The four typology cards, read as the user sees them. */
+/** The four trait cards, read as the user sees them. */
+const traitCards = (wrapper: VueWrapper) => wrapper.findAll('[data-testid="trait-card"]')
+
 const axisCards = (wrapper: VueWrapper) =>
-  wrapper.findAll('.snap-center').map((card) => ({
-    letter: card.find('.font-mono').text(),
-    name: card.find('h4').text(),
-    opposite: card.find('p').text(),
+  traitCards(wrapper).map((card) => ({
+    letter: card.get('[data-testid="trait-letter"]').text(),
+    name: card.get('[data-testid="trait-name"]').text(),
+    opposite: card.get('[data-testid="trait-opposite"]').text(),
   }))
 
 const modal = (wrapper: VueWrapper) => wrapper.findComponent(TypologyComparisonModal)
@@ -88,39 +90,41 @@ describe('src/views/SkinProfileView.vue', () => {
       const { wrapper } = await mountProfile('DRNT')
       const profile = skinProfiles['DRNT']!
 
-      expect(wrapper.get('h2').text()).toBe(profile.subtitle)
-      expect(wrapper.text()).toContain(`${profile.maintenanceLevel} Maintenance`)
+      expect(wrapper.get('h1').text()).toBe(profile.subtitle)
+      expect(wrapper.text()).toContain(`${profile.maintenanceLevel} maintenance`)
       expect(wrapper.text()).toContain(profile.focusTitle)
     })
 
     it('resolves a different entry for a different stored type', async () => {
       // Paired with the case above deliberately. On its own, a view that always
-      // returned the OSPW fallback would satisfy an OSPW assertion, so at least
-      // one case has to show two stored types producing two different reports.
+      // showed one fixed profile would satisfy a single-type assertion, so at
+      // least one case has to show two stored types producing two different
+      // reports.
       const { wrapper } = await mountProfile('OSPW')
 
-      expect(wrapper.get('h2').text()).toBe(skinProfiles['OSPW']!.subtitle)
-      expect(wrapper.get('h2').text()).not.toBe(skinProfiles['DRNT']!.subtitle)
+      expect(wrapper.get('h1').text()).toBe(skinProfiles['OSPW']!.subtitle)
+      expect(wrapper.get('h1').text()).not.toBe(skinProfiles['DRNT']!.subtitle)
     })
 
-    it('falls back to OSPW when the stored code is not one of the sixteen', async () => {
+    it("shows the empty state rather than another type's guidance when the stored code is not one of the sixteen", async () => {
       // Bad data, a truncated string, or a code added server-side before the
-      // frontend knows it. The route guard does not cover this, and without the
-      // fallback every read of profileData below would throw on render.
+      // frontend knows it. This used to fall back to OSPW's profile, which
+      // handed the user another type's routine and avoid-list as their own.
       const { wrapper } = await mountProfile('XYZQ')
 
-      expect(wrapper.get('h2').text()).toBe(skinProfiles['OSPW']!.subtitle)
-      expect(wrapper.text()).toContain(skinProfiles['OSPW']!.focusTitle)
+      expect(wrapper.get('h1').text()).toBe("We couldn't read your saved skin type")
+      expect(wrapper.text()).not.toContain(skinProfiles['OSPW']!.subtitle)
+      expect(wrapper.text()).not.toContain(skinProfiles['OSPW']!.focusTitle)
     })
 
-    it('still shows the stored code in the header when the body has fallen back', async () => {
-      // The fallback replaces the guidance, not the label: the badge reports
-      // what is actually on the account. Asserted so the distinction is
-      // deliberate rather than incidental - a reader of this report is told the
-      // code it was generated from.
-      const { wrapper } = await mountProfile('XYZQ')
+    it('shows the no-type empty state when the account has no skin type at all', async () => {
+      // The route no longer sends a user with no type away to set one, so the
+      // page handles it itself: a different heading from the unreadable code
+      // above, and no report.
+      const { wrapper } = await mountProfile('')
 
-      expect(wrapper.text()).toContain('Type XYZQ')
+      expect(wrapper.get('h1').text()).toBe('No skin type yet')
+      expect(wrapper.find('[data-testid="profile-report"]').exists()).toBe(false)
     })
   })
 
@@ -129,23 +133,23 @@ describe('src/views/SkinProfileView.vue', () => {
       const { wrapper } = await mountProfile('OSPW')
 
       expect(axisCards(wrapper)).toEqual([
-        { letter: 'O', name: 'Oily', opposite: 'vs. Dry' },
-        { letter: 'S', name: 'Sensitive', opposite: 'vs. Resistant' },
-        { letter: 'P', name: 'Pigmented', opposite: 'vs. Non-Pigmented' },
-        { letter: 'W', name: 'Wrinkle-Prone', opposite: 'vs. Tight' },
+        { letter: 'O', name: 'Oily', opposite: 'vs Dry' },
+        { letter: 'S', name: 'Sensitive', opposite: 'vs Resistant' },
+        { letter: 'P', name: 'Pigmented', opposite: 'vs Non-Pigmented' },
+        { letter: 'W', name: 'Wrinkle-Prone', opposite: 'vs Tight' },
       ])
     })
 
     it('derives the opposite four from a DRNT code', async () => {
       // DRNT is OSPW's complement on every axis, so between these two cases
-      // both branches of all four ternaries are taken.
+      // both branches of the opposite-letter choice are taken on all four.
       const { wrapper } = await mountProfile('DRNT')
 
       expect(axisCards(wrapper)).toEqual([
-        { letter: 'D', name: 'Dry', opposite: 'vs. Oily' },
-        { letter: 'R', name: 'Resistant', opposite: 'vs. Sensitive' },
-        { letter: 'N', name: 'Non-Pigmented', opposite: 'vs. Pigmented' },
-        { letter: 'T', name: 'Tight', opposite: 'vs. Wrinkle-Prone' },
+        { letter: 'D', name: 'Dry', opposite: 'vs Oily' },
+        { letter: 'R', name: 'Resistant', opposite: 'vs Sensitive' },
+        { letter: 'N', name: 'Non-Pigmented', opposite: 'vs Pigmented' },
+        { letter: 'T', name: 'Tight', opposite: 'vs Wrinkle-Prone' },
       ])
     })
 
@@ -175,7 +179,7 @@ describe('src/views/SkinProfileView.vue', () => {
     it('opens the modal with both trait records for the axis that was clicked', async () => {
       const { wrapper } = await mountProfile('OSPW')
 
-      await wrapper.findAll('.snap-center')[0]!.trigger('click')
+      await traitCards(wrapper)[0]!.trigger('click')
 
       expect(modal(wrapper).props('isOpen')).toBe(true)
       expect(modal(wrapper).props('activeTrait')).toEqual(typologyDetails['O'])
@@ -185,24 +189,21 @@ describe('src/views/SkinProfileView.vue', () => {
     it('resolves the traits of whichever axis was clicked, not always the first', async () => {
       const { wrapper } = await mountProfile('OSPW')
 
-      await wrapper.findAll('.snap-center')[2]!.trigger('click')
+      await traitCards(wrapper)[2]!.trigger('click')
 
       expect(modal(wrapper).props('activeTrait')).toEqual(typologyDetails['P'])
       expect(modal(wrapper).props('oppositeTrait')).toEqual(typologyDetails['N'])
     })
 
-    it('passes null rather than undefined when the stored letter has no trait record', async () => {
-      // The `?? null` branch, and the reason TypologyComparisonModal types both
-      // props as nullable (FE-DEF-08). X is not a Baumann letter, so the active
-      // lookup misses; the opposite is still derived from the ternary and so
-      // still resolves.
+    it('offers no trait to open when the stored code is not one of the sixteen', async () => {
+      // A code such as XYZQ used to render four cards, the first with no trait
+      // record behind it, and open the comparison with a null side (FE-DEF-08).
+      // It now gets the empty state, so there is no card to open and the
+      // comparison stays shut.
       const { wrapper } = await mountProfile('XYZQ')
 
-      await wrapper.findAll('.snap-center')[0]!.trigger('click')
-
-      expect(modal(wrapper).props('activeTrait')).toBeNull()
-      expect(modal(wrapper).props('oppositeTrait')).toEqual(typologyDetails['O'])
-      expect(modal(wrapper).props('isOpen')).toBe(true)
+      expect(traitCards(wrapper)).toHaveLength(0)
+      expect(modal(wrapper).props('isOpen')).toBe(false)
     })
   })
 

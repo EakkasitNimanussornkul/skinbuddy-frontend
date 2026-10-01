@@ -41,8 +41,9 @@ export const resolveNavigation = (to: GuardTarget, auth: GuardAuth) => {
     return false // Stops navigation gracefully
   }
 
-  // A profile page with no profile would otherwise render some other skin
-  // type's real guidance as though it were the user's. Send them to set one.
+  // A page that cannot work without a skin type sends a user who has none to
+  // set one. No route sets this today: /profile did, and now shows its own
+  // empty state for a user with no type, offering the quiz and the selector.
   //
   // Deliberately after the requiresAuth block: an unauthenticated visitor has
   // no user object at all, and must get the login popup rather than being sent

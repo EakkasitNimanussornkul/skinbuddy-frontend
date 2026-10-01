@@ -29,7 +29,8 @@ const mountModal = (
   })
 
 /** The two comparison panels, in render order: the user's side, then the other. */
-const panels = (wrapper: VueWrapper) => wrapper.findAll('.rounded-3xl')
+const panels = (wrapper: VueWrapper) => wrapper.findAll('[data-testid="trait-panel"]')
+const badge = (panel: ReturnType<typeof panels>[number]) => panel.get('[data-testid="trait-badge"]').text()
 
 const zoom = (wrapper: VueWrapper) => wrapper.findComponent(ImageZoomModal)
 
@@ -38,7 +39,7 @@ describe('src/components/Quiz/TypologyComparisonModal.vue', () => {
     it('names the comparison in the header from both traits', () => {
       const wrapper = mountModal()
 
-      expect(wrapper.get('h3').text()).toBe(`${OILY.name} vs. ${DRY.name}`)
+      expect(wrapper.get('h2').text()).toBe(`${OILY.name} vs ${DRY.name}`)
     })
 
     it('marks one side as the user’s own type and the other as its opposite', () => {
@@ -47,17 +48,17 @@ describe('src/components/Quiz/TypologyComparisonModal.vue', () => {
       // The whole point of the screen is that these two are not
       // interchangeable: one describes the user, the other describes what they
       // are being contrasted against.
-      expect(panels(wrapper)[0]!.text()).toContain('Your Skin Type')
-      expect(panels(wrapper)[1]!.text()).toContain('The Opposite')
-      expect(panels(wrapper)[0]!.text()).not.toContain('The Opposite')
+      expect(badge(panels(wrapper)[0]!)).toBe('You')
+      expect(badge(panels(wrapper)[1]!)).toBe('The other side')
+      expect(panels(wrapper)[0]!.text()).not.toContain('The other side')
     })
 
     it('shows each trait’s name with its letter and its description', () => {
       const wrapper = mountModal()
 
-      expect(panels(wrapper)[0]!.text()).toContain(`${OILY.name} (${OILY.letter})`)
+      expect(panels(wrapper)[0]!.text()).toContain(`${OILY.letter} · ${OILY.name}`)
       expect(panels(wrapper)[0]!.text()).toContain(OILY.desc)
-      expect(panels(wrapper)[1]!.text()).toContain(`${DRY.name} (${DRY.letter})`)
+      expect(panels(wrapper)[1]!.text()).toContain(`${DRY.letter} · ${DRY.name}`)
       expect(panels(wrapper)[1]!.text()).toContain(DRY.desc)
     })
 
@@ -101,7 +102,7 @@ describe('src/components/Quiz/TypologyComparisonModal.vue', () => {
         global: { stubs: { teleport: true, ImageZoomModal: true } },
       })
 
-      expect(wrapper.find('h3').exists()).toBe(false)
+      expect(wrapper.find('h2').exists()).toBe(false)
     })
   })
 
@@ -137,8 +138,8 @@ describe('src/components/Quiz/TypologyComparisonModal.vue', () => {
     it('does not open the full-screen view for a tile with no photograph', async () => {
       const wrapper = mountModal(null, DRY)
 
-      // The placeholder tile has no cursor-zoom-in class and no image behind
-      // it; clicking it must do nothing rather than open an empty overlay.
+      // The placeholder tile is not a button and has no image behind it;
+      // clicking it must do nothing rather than open an empty overlay.
       await panels(wrapper)[0]!.trigger('click')
 
       expect(zoom(wrapper).props('isOpen')).toBe(false)
@@ -149,7 +150,7 @@ describe('src/components/Quiz/TypologyComparisonModal.vue', () => {
     it('emits close from the dismiss button', async () => {
       const wrapper = mountModal()
 
-      await wrapper.get('.px-6.py-5 button').trigger('click')
+      await wrapper.get('button[aria-label="Close"]').trigger('click')
 
       expect(wrapper.emitted('close')).toHaveLength(1)
     })

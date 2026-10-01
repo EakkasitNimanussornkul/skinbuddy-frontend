@@ -67,7 +67,10 @@ const router = createRouter({
       path: '/profile',
       name: 'skin-profile',
       component: SkinProfileView,
-      meta: { requiresAuth: true, requiresSkinType: true }
+      // No requiresSkinType: a user without a type, or with one the page cannot
+      // read, gets the page's own empty state, which offers the quiz and the
+      // type selector in place.
+      meta: { requiresAuth: true }
     },
     {
       path: '/explore',
