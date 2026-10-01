@@ -441,6 +441,11 @@ describe('src/views/SkinProfileView.vue', () => {
     it('saves a chosen type, fills the page in with it, and loads recommendations then', async () => {
       vi.mocked(updateUserSkinType).mockResolvedValue({})
       const { wrapper } = await mountProfile('')
+      // Opened first, the way a user reaches it, so the close below is the
+      // save's doing rather than the selector never having opened.
+      await wrapper.findAll('button').find((b) => b.text() === 'I already know my type')!.trigger('click')
+      expect(selector(wrapper).props('isOpen')).toBe(true)
+
       selector(wrapper).vm.$emit('confirm', 'DSNT')
       await flushPromises()
 
