@@ -57,8 +57,8 @@ const SPEC_MAP = [
     feature: '#2 Take skinquiz',
     module: 'views/SkinQuizView',
     prerequisite:
-      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case. saveSkinType is mocked; the quiz store, auth store and toast composable are all real. Vitest fake timers drive the 1400ms calculating beat that gates the results panel. No network access.',
-    note: 'Every answer is given zero points, so finalSkinType resolves deterministically to DRNT and the saved payload can be asserted exactly. The quiz cannot be seeded as already finished instead: onMounted resets a store whose index is past the last question, so a pre-finished fixture is wiped before the first assertion - the cases answer all sixteen questions through the child component. The LIFF card is the only place in the codebase that exercises window.liff.',
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case (src/__tests__/fixtures/quizView.ts). saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are all real. Vitest fake timers drive the 1400ms calculating beat that gates the results panel. No network access.',
+    note: 'Every answer scores 1, so finalSkinType resolves deterministically to DRNT and the saved payload can be asserted exactly: each part averages 1 from 4 counted answers, with version 2. The quiz cannot be seeded as already finished instead: onMounted starts a finished quiz over, so a pre-finished fixture is wiped before the first assertion - the cases answer every question through the child component. The LIFF card is the only place in the codebase that exercises window.liff.',
   },
   {
     file: 'src/__tests__/components/ExpressSkinSelectorModal.spec.ts',
@@ -487,6 +487,32 @@ const SPEC_MAP = [
     prerequisite:
       'A small component mounted with @vue/test-utils that counts up to a reactive target. Vitest fake timers drive requestAnimationFrame and performance, and matchMedia is overridden to report no reduced-motion preference, because the shared setup reports one so that every other spec reads final values at once.',
     note: 'The count-up behind the product page match ring: on owner request the ring fills and the number climbs from 0 to the score when a product is opened, and again when a withheld score is revealed. It eases out, moves from its current value when the target changes, lands on the target at once for a user who has asked for less motion, and stops its frames on unmount.',
+  },
+  // The redesigned skin quiz (feat/19-quiz-redesign). Its new groups live in
+  // these three files rather than at the end of quizStore.spec.ts and
+  // SkinQuizView.spec.ts: group numbers run on across files, so groups added
+  // to those early files would have moved every group ID after them.
+  {
+    file: 'src/__tests__/data/quizQuestions.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'data/quizQuestions',
+    prerequisite: 'Pure functions called directly on the question bank as shipped. No mocks, no components, no network.',
+    note: 'The "About you" answer (female, male or prefer not to say) only chooses which questions are asked and in which wording. Female is asked about patches during pregnancy or hormonal treatment where male and unspecified are asked about darker patches in general, and male gets wording that includes shaving. Every sex is asked sixteen core questions, four per part.',
+  },
+  {
+    file: 'src/__tests__/stores/quizScoring.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'stores/quizStore',
+    prerequisite: 'Fresh Pinia instance and cleared localStorage per test. No mocks - the store is pure client-side state. Questions come from src/data/quizQuestions.ts as shipped.',
+    note: 'The scoring rules of the redesigned quiz. A "not sure" or "doesn\'t apply" answer is no evidence: it is left out of the part\'s average rather than scored as the middle. The letter is the high one at an average of 2.5 or more. After a part\'s four core questions, an extra question is asked while fewer than two answers counted or the average sits exactly on 2.5, at most two per part. A part is a close call with fewer than two counted answers or an average within 0.25 of 2.5. With no counted answer at all the part takes NO_EVIDENCE_LETTER, the high letter for now, pending the owner\'s decision. The save sends each part\'s average to 2 dp (2.5 for a part with no evidence), its counted answers as <part>_n, and version 2, all numbers, which the backend\'s scores Dict[str, float] accepts unchanged. The "About you" answer is held in memory only, never in localStorage or the save.',
+  },
+  {
+    file: 'src/__tests__/views/SkinQuizFlow.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinQuizView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case (src/__tests__/fixtures/quizView.ts). saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are real. Vitest fake timers drive the 220ms auto-advance and the 1400ms calculating beat. The shared setup reports reduced motion, so answers move on at once; the cases about the pause override matchMedia for their run. No network access.',
+    note: 'The steps of the quiz on screen: the start screen and "I already know my type", answering with auto-advance, the part-complete screen, the result with its two exits ("Save my skin type" keeps the redirect and the LINE close; "See what CODE means" saves the same way, then opens /profile), "Retake this part", and the motion between steps. VTU stubs <Transition>, so the motion cards read the transition name (quiz-step-forward or quiz-step-back), each question\'s key and the animation delays, never what moves on screen. The movement itself can only be seen in a browser, so these cards are not evidence of it.',
   },
 ]
 
