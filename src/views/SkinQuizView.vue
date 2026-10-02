@@ -72,11 +72,13 @@ const isFirstTimeUser = computed(() => !authStore.user?.skin_type)
 const step = computed(() => quizStore.step)
 
 // A purposeful "calculating" beat between the last part and the result,
-// instead of an instant page-swap.
+// instead of an instant page-swap. Only after a full run: a retaken part goes
+// straight back to the result it came from. The retake is read from the value
+// before the step changed, because next() clears it on reaching the result.
 watch(
-  () => step.value.kind,
-  (kind, previous) => {
-    if (kind !== 'result' || previous !== 'partDone') return
+  () => [step.value.kind, quizStore.retakeAxis] as const,
+  ([kind], [previous, wasRetaking]) => {
+    if (kind !== 'result' || previous !== 'partDone' || wasRetaking) return
     isCalculating.value = true
     calculatingTimer = setTimeout(() => {
       isCalculating.value = false
@@ -366,7 +368,7 @@ const handleExpressConfirm = async (selectedType: string) => {
       >
         <template #progress>
           <QuizProgress :parts="partStates" :segments="segments" />
-          <p v-if="questionCountText" class="mt-2 text-xs text-stone-600 dark:text-stone-400">{{ questionCountText }}</p>
+          <p v-if="questionCountText" class="mt-2 text-xs text-stone-600 dark:text-stone-400" data-testid="question-count">{{ questionCountText }}</p>
         </template>
 
         <!-- Keyed per question, so two questions in a row animate too. -->

@@ -540,6 +540,25 @@ const SPEC_MAP = [
       'The real route table, read through router.getRoutes(). It is imported by a path held in a variable so vue-tsc does not follow it (router/index pulls in every view and does not type-check under tsconfig.vitest.json); Vitest still loads the real module. No components mounted and no network access.',
     note: 'The one route change in the profile redesign: /profile keeps requiresAuth and drops requiresSkinType, so a user with no type reaches the page and its empty state rather than being sent to the setup page. Every other route\'s meta is pinned as it was, and no route now requires a skin type.',
   },
+  // Follow-up cards on the same branch, for rules an independent mutation run
+  // found unpinned, and the profile actions' placement. New files at the end,
+  // so every earlier group keeps its number.
+  {
+    file: 'src/__tests__/stores/quizPersistence.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'stores/quizStore',
+    prerequisite:
+      'A Pinia set up as src/main.ts sets it up: pinia-plugin-persistedstate installed, and the Pinia installed on an app so the plugin is applied. A control store with persist: true shows the plugin is live in the test. localStorage and sessionStorage cleared per case. No mocks and no network access.',
+    note: 'The "About you" answer stays in memory even with the plugin the app installs, which would write any store given a persist option to storage. The quiz store has no persist option, so the plugin gives it no $persist or $hydrate, writes nothing for it, and reads nothing back for it. The privacy card in quizScoring.spec.ts uses a plain Pinia with no plugin, so it could not see this.',
+  },
+  {
+    file: 'src/__tests__/views/SkinQuizEdgeCases.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinQuizView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage and sessionStorage per case (src/__tests__/fixtures/quizView.ts). The privacy case mounts on a Pinia with pinia-plugin-persistedstate installed, as src/main.ts does. saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are real. Vitest fake timers drive the 220ms auto-advance and the 1400ms calculating beat; the cases about the pause override matchMedia to report no reduced-motion preference. No network access.',
+    note: 'Rules the earlier quiz cards reached but did not pin, each found by an independent mutation run: the "About you" answer leaves no trace in storage when picked on screen; the second extra question says "Only one ... counted" once the first extra answer counted; Back during the 220 ms pause cancels the pending move on; leaving after only "About you" asks first; a retaken part\'s complete screen names the result as next; "See what CODE means" is disabled while saving, so a double click sends one save; and the question counts read "Question N of 4" and "Extra question N of up to 2" from 1. The last group pins an owner decision made with them: the 1400 ms "Calculating your profile" beat plays after a full run of the quiz, but Continue at the end of a retaken part goes straight back to the result.',
+  },
 ]
 
 function runSuite() {
