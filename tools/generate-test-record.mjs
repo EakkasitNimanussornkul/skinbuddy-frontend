@@ -559,6 +559,14 @@ const SPEC_MAP = [
       'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage and sessionStorage per case (src/__tests__/fixtures/quizView.ts). The privacy case mounts on a Pinia with pinia-plugin-persistedstate installed, as src/main.ts does. saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are real. Vitest fake timers drive the 220ms auto-advance and the 1400ms calculating beat; the cases about the pause override matchMedia to report no reduced-motion preference. No network access.',
     note: 'Rules the earlier quiz cards reached but did not pin, each found by an independent mutation run: the "About you" answer leaves no trace in storage when picked on screen; the second extra question says "Only one ... counted" once the first extra answer counted; Back during the 220 ms pause cancels the pending move on; leaving after only "About you" asks first; a retaken part\'s complete screen names the result as next; "See what CODE means" is disabled while saving, so a double click sends one save; and the question counts read "Question N of 4" and "Extra question N of up to 2" from 1. The last group pins an owner decision made with them: the 1400 ms "Calculating your profile" beat plays after a full run of the quiz, but Continue at the end of a retaken part goes straight back to the result.',
   },
+  {
+    file: 'src/__tests__/views/SkinProfileLayout.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinProfileView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and the skin type written into the real auth store with setAuth. searchProducts and updateUserSkinType are mocked; <Teleport> is stubbed. jsdom applies no CSS, so which copy each width shows is read off the Tailwind display classes (hidden, lg:hidden, lg:flex) on an element and its ancestors. No network access.',
+    note: 'Where the profile actions sit. On a phone they come at the very end, after the recommendations, as in the approved phone design; from lg they sit in the left column under the type, as in the desktop design. The block is placed twice, one copy per width, and the other copy is not displayed, so each width has one set of controls. Nothing on the page is moved with a CSS order class, so the phone order these cards read from the document is also the order a keyboard and a screen reader follow. What is actually on screen at each width can only be confirmed in a browser.',
+  },
 ]
 
 function runSuite() {

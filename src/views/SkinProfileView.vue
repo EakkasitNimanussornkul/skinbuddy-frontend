@@ -15,9 +15,12 @@ import '../components/Quiz/quizMotion.css'
 // The user's skin type and what it means: the type, its four traits, what the
 // skin needs, a routine to start from, and products ranked for it.
 //
-// Phone: one column. From lg: the type and the actions in a card on the left,
-// the rest on the right. The two wrappers are `display: contents` below lg, so
-// their children join a single ordered column there.
+// Phone: one column, in document order, ending with the actions. From lg: the
+// type and the actions in a card on the left, the rest on the right. The two
+// wrappers are `display: contents` below lg, so their children join a single
+// column there. Nothing is moved with CSS `order`, so the order a phone shows
+// is the order a keyboard and a screen reader meet. The actions are therefore
+// placed twice, once per layout, with only one set displayed at each width.
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -273,7 +276,7 @@ const handleExpressConfirm = async (selectedType: string) => {
         <div class="contents lg:flex lg:flex-col lg:gap-3.5 lg:sticky lg:top-24 lg:rounded-[28px] lg:bg-brand-surface-light lg:dark:bg-brand-surface-dark lg:border lg:border-brand-surface-border lg:dark:border-stone-700 lg:px-7 lg:py-8">
           <section
             aria-label="Your skin type"
-            class="quiz-rise order-1 rounded-[26px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 px-[22px] py-6 lg:rounded-none lg:bg-transparent lg:dark:bg-transparent lg:border-0 lg:p-0"
+            class="quiz-rise rounded-[26px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 px-[22px] py-6 lg:rounded-none lg:bg-transparent lg:dark:bg-transparent lg:border-0 lg:p-0"
             :style="rise(0)"
           >
             <div class="flex items-center justify-between gap-2">
@@ -286,7 +289,9 @@ const handleExpressConfirm = async (selectedType: string) => {
             <p class="mt-3.5 px-3.5 py-3 lg:px-4 lg:py-3.5 rounded-[14px] lg:rounded-2xl bg-brand-primary-light dark:bg-brand-primary/15 font-serif italic text-sm lg:text-[15px] leading-normal text-brand-primary-strong-hover dark:text-brand-primary-accent" data-testid="profile-quote">{{ profileData.quote }}</p>
           </section>
 
-          <div class="order-7 flex flex-col gap-2.5 lg:mt-2">
+          <!-- The actions from lg, under the type. A phone gets its own copy at
+               the end of the page. -->
+          <div class="hidden lg:flex flex-col gap-2.5 lg:mt-2" data-testid="profile-actions-desktop">
             <RouterLink
               to="/quiz"
               class="h-[50px] rounded-2xl border-[1.5px] border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-[15px] font-bold text-brand-primary-strong dark:text-brand-primary hover:border-brand-primary-strong dark:hover:border-brand-primary flex items-center justify-center text-center px-3 transition-colors"
@@ -300,15 +305,16 @@ const handleExpressConfirm = async (selectedType: string) => {
             >
               Ask SkinBuddy AI about it
             </button>
-            <p class="mt-1 text-center lg:text-left text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+            <p class="mt-1 text-left text-xs leading-relaxed text-stone-600 dark:text-stone-400">
               A starting point for your routine, not a diagnosis. For a skin condition, see a dermatologist.
             </p>
           </div>
         </div>
 
-        <!-- Right on desktop: the traits, the needs and routine, the products -->
+        <!-- Right on desktop: the traits, the needs and routine, the products
+             (and, on a phone only, the actions after them) -->
         <div class="contents lg:flex lg:flex-col lg:gap-6 lg:min-w-0">
-          <section aria-labelledby="profile-traits-heading" class="quiz-rise order-2" :style="rise(1)">
+          <section aria-labelledby="profile-traits-heading" class="quiz-rise" :style="rise(1)">
             <div class="flex items-baseline justify-between gap-3">
               <h2 id="profile-traits-heading" class="font-serif text-xl lg:text-2xl font-bold text-stone-800 dark:text-white">Your four traits</h2>
               <span class="text-xs lg:text-[13px] text-stone-600 dark:text-stone-400">
@@ -338,7 +344,7 @@ const handleExpressConfirm = async (selectedType: string) => {
           <div class="contents lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
             <section
               aria-labelledby="profile-needs-heading"
-              class="quiz-rise order-3 rounded-[22px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 p-5 lg:p-6"
+              class="quiz-rise rounded-[22px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 p-5 lg:p-6"
               :style="rise(2)"
             >
               <span class="text-xs font-extrabold uppercase tracking-[0.1em] text-stone-600 dark:text-stone-400">What your skin needs</span>
@@ -367,7 +373,7 @@ const handleExpressConfirm = async (selectedType: string) => {
 
             <section
               aria-labelledby="profile-routine-heading"
-              class="quiz-rise order-4 rounded-[22px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 p-5 lg:p-6"
+              class="quiz-rise rounded-[22px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 p-5 lg:p-6"
               :style="rise(3)"
             >
               <h2 id="profile-routine-heading" class="font-serif text-xl lg:text-[22px] font-bold text-stone-800 dark:text-white">A routine to start from</h2>
@@ -442,7 +448,7 @@ const handleExpressConfirm = async (selectedType: string) => {
 
           <section
             aria-labelledby="profile-concerns-heading"
-            class="quiz-rise order-5 lg:hidden rounded-[22px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 p-5"
+            class="quiz-rise lg:hidden rounded-[22px] bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 p-5"
             :style="rise(4)"
           >
             <h2 id="profile-concerns-heading" class="font-serif text-xl font-bold text-stone-800 dark:text-white">Common for your type</h2>
@@ -451,7 +457,7 @@ const handleExpressConfirm = async (selectedType: string) => {
             </ul>
           </section>
 
-          <div class="quiz-rise order-6" :style="rise(5)">
+          <div class="quiz-rise" :style="rise(5)" data-testid="profile-recommendations">
             <SkinTypeRecommendationsWidget
               :user-skin-type="userSkinType"
               :products="recommendedProducts"
@@ -459,6 +465,27 @@ const handleExpressConfirm = async (selectedType: string) => {
               :failed="recommendationsFailed"
               @retry="loadRecommendations"
             />
+          </div>
+
+          <!-- The actions on a phone: the very end of the page, after the
+               recommendations. From lg they sit under the type instead. -->
+          <div class="lg:hidden flex flex-col gap-2.5" data-testid="profile-actions-phone">
+            <RouterLink
+              to="/quiz"
+              class="h-[50px] rounded-2xl border-[1.5px] border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-[15px] font-bold text-brand-primary-strong dark:text-brand-primary hover:border-brand-primary-strong dark:hover:border-brand-primary flex items-center justify-center text-center px-3 transition-colors"
+            >
+              Doesn't sound like you? Retake the quiz
+            </RouterLink>
+            <button
+              type="button"
+              class="h-12 rounded-2xl bg-brand-primary-light dark:bg-brand-primary/15 text-[15px] font-bold text-brand-primary-strong-hover dark:text-brand-primary hover:bg-brand-primary-accent/60 dark:hover:bg-brand-primary/25 transition-colors"
+              @click="router.push('/chat')"
+            >
+              Ask SkinBuddy AI about it
+            </button>
+            <p class="mt-1 text-center text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+              A starting point for your routine, not a diagnosis. For a skin condition, see a dermatologist.
+            </p>
           </div>
         </div>
       </div>
