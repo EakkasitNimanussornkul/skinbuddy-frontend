@@ -504,7 +504,7 @@ const SPEC_MAP = [
     feature: '#2 Take skinquiz',
     module: 'stores/quizStore',
     prerequisite: 'Fresh Pinia instance and cleared localStorage per test. No mocks - the store is pure client-side state. Questions come from src/data/quizQuestions.ts as shipped.',
-    note: 'The scoring rules of the redesigned quiz. A "not sure" or "doesn\'t apply" answer is no evidence: it is left out of the part\'s average rather than scored as the middle. The letter is the high one at an average of 2.5 or more. After a part\'s four core questions, an extra question is asked while fewer than two answers counted or the average sits exactly on 2.5, at most two per part. A part is a close call with fewer than two counted answers or an average within 0.25 of 2.5. With no counted answer at all the part takes NO_EVIDENCE_LETTER, the high letter for now, pending the owner\'s decision. The save sends each part\'s average to 2 dp (2.5 for a part with no evidence), its counted answers as <part>_n, and version 2, all numbers, which the backend\'s scores Dict[str, float] accepts unchanged. The "About you" answer is held in memory only, never in localStorage or the save.',
+    note: 'The scoring rules of the redesigned quiz. A "not sure" or "doesn\'t apply" answer is no evidence: it is left out of the part\'s average rather than scored as the middle. The letter is the high one at an average of 2.5 or more. After a part\'s four core questions, an extra question is asked while fewer than two answers counted or the average sits exactly on 2.5, at most two per part. A part is a close call with fewer than two counted answers or an average within 0.25 of 2.5. With no counted answer at all after both extra questions, the part ends with a "your choice" question and takes the letter the user picks (this replaced a fixed default letter; its own cards are in quizSelfChoice.spec.ts at the end). The save sends each part\'s average to 2 dp (2.5 for a part with no evidence), its counted answers as <part>_n, and version 2, all numbers, which the backend\'s scores Dict[str, float] accepts unchanged. The "About you" answer is held in memory only, never in localStorage or the save.',
   },
   {
     file: 'src/__tests__/views/SkinQuizFlow.spec.ts',
@@ -566,6 +566,23 @@ const SPEC_MAP = [
     prerequisite:
       'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and the skin type written into the real auth store with setAuth. searchProducts and updateUserSkinType are mocked; <Teleport> is stubbed. jsdom applies no CSS, so which copy each width shows is read off the Tailwind display classes (hidden, lg:hidden, lg:flex) on an element and its ancestors. No network access.',
     note: 'Where the profile actions sit. On a phone they come at the very end, after the recommendations, as in the approved phone design; from lg they sit in the left column under the type, as in the desktop design. The block is placed twice, one copy per width, and the other copy is not displayed, so each width has one set of controls. Nothing on the page is moved with a CSS order class, so the phone order these cards read from the document is also the order a keyboard and a screen reader follow. What is actually on screen at each width can only be confirmed in a browser.',
+  },
+  // The "your choice" question, an owner decision on the same branch, which
+  // replaced the fixed default letter for a part where nothing counted.
+  {
+    file: 'src/__tests__/stores/quizSelfChoice.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'stores/quizStore',
+    prerequisite: 'Fresh Pinia instance and cleared localStorage per test. No mocks - the store is pure client-side state. Questions, including SELF_CHOICE_QUESTIONS, come from src/data/quizQuestions.ts as shipped.',
+    note: 'The owner-approved last resort for a part where nothing counted. Only when a part still has no counted answer after its core questions and both extra questions does it end with a "your choice" question: two rows, the high letter first, and no skip buttons. Not with one counted answer, and not on a tie. The pick decides the letter and is stored as its own kind; it is never counted, averaged or treated as a skip. The save keeps the threshold and 0 counted for such a part and adds <part>_choice: 1, a number to fit the backend\'s scores Dict[str, float]; parts without a pick leave the key out. Going back from it returns to the second extra question; changing an earlier answer so one counts removes the step and stops using the pick; "Retake this part" clears the pick.',
+  },
+  {
+    file: 'src/__tests__/views/SkinQuizSelfChoice.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SkinQuizView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case (src/__tests__/fixtures/quizView.ts). saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are real. Vitest fake timers drive the 220ms auto-advance and the 1400ms calculating beat; the case about the pause overrides matchMedia to report no reduced-motion preference. No network access.',
+    note: 'The "your choice" question on screen: a neutral banner ("One last question for this part"), the heading "Which sounds more like your skin, most days?" and two rows with no skip buttons, marked in the progress bar like an extra question and moving on like the other steps. The part-complete screen shows "You chose oily" (etc.), the amber "Close call · your choice" chip and the marker at the centre; the result card says the same and still offers "Retake this part". The save adds <part>_choice: 1 for that part only. VTU stubs <Transition>, so the motion case reads the transition name and the step\'s key, never what moves on screen.',
   },
 ]
 

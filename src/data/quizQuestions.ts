@@ -15,6 +15,9 @@
  *     threshold, up to MAX_BACKUPS_PER_AXIS.
  *   - Low confidence: fewer than MIN_COUNTED counted answers, or the average is
  *     within CLOSE_CALL_MARGIN of the threshold.
+ *   - A part where nothing counted after its core questions and both backups
+ *     ends with a "your choice" question (SELF_CHOICE_QUESTIONS); its letter is
+ *     the user's pick, which is never counted or averaged.
  *
  * The "About you" answer (Sex) only selects question variants during the quiz.
  * It is never stored, never sent to the backend, never shown on the result.
@@ -623,6 +626,74 @@ export const BACKUP_QUESTIONS: QuizQuestion[] = [
     ],
   },
 ]
+
+// --- "Your choice": the last resort for a part where nothing counted -----------
+
+/**
+ * One option of a "your choice" question: plain self-description, and the
+ * letter it gives the part.
+ */
+export interface SelfChoiceOption {
+  text: string
+  letter: string
+}
+
+export interface SelfChoiceQuestion {
+  /** Stable id, the key its answer is stored under. */
+  id: string
+  axis: QuizAxis
+  text: string
+  /** Two rows, the high letter first. There are no skip buttons. */
+  options: SelfChoiceOption[]
+}
+
+const SELF_CHOICE_TEXT = 'Which sounds more like your skin, most days?'
+
+/**
+ * Owner-approved last resort. Asked once, at the end of a part, only when none
+ * of its answers counted after its core questions and both extra questions;
+ * the user's pick decides that part's letter, and the result shows it as their
+ * choice. It replaced a fixed default letter for such a part. It is plain
+ * self-description and makes no skin claim, so it needs no source note.
+ */
+export const SELF_CHOICE_QUESTIONS: Record<QuizAxis, SelfChoiceQuestion> = {
+  hydration: {
+    id: 'hyd-choice',
+    axis: 'hydration',
+    text: SELF_CHOICE_TEXT,
+    options: [
+      { text: 'Oily or shiny', letter: 'O' },
+      { text: 'Dry or tight', letter: 'D' },
+    ],
+  },
+  sensitivity: {
+    id: 'sen-choice',
+    axis: 'sensitivity',
+    text: SELF_CHOICE_TEXT,
+    options: [
+      { text: 'Reacts easily, with redness or stinging', letter: 'S' },
+      { text: 'Rarely reacts to anything', letter: 'R' },
+    ],
+  },
+  pigmentation: {
+    id: 'pig-choice',
+    axis: 'pigmentation',
+    text: SELF_CHOICE_TEXT,
+    options: [
+      { text: 'Marks and dark spots tend to linger', letter: 'P' },
+      { text: 'Marks fade without leaving dark spots', letter: 'N' },
+    ],
+  },
+  aging: {
+    id: 'age-choice',
+    axis: 'aging',
+    text: SELF_CHOICE_TEXT,
+    options: [
+      { text: 'Lines show easily', letter: 'W' },
+      { text: 'Firm, with few lines', letter: 'T' },
+    ],
+  },
+}
 
 // --- Helpers ----------------------------------------------------------------
 

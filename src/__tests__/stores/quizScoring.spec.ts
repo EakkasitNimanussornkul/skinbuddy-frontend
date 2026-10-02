@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import {
   useQuizStore,
-  NO_EVIDENCE_LETTER,
   summariseAnswers,
   letterFor,
   isCloseCall,
@@ -80,10 +79,13 @@ describe('useQuizStore (scoring and steps)', () => {
       expect(letterFor('aging', 4)).toBe('W')
     })
 
-    it('gives the NO_EVIDENCE_LETTER side, today the high letter, when nothing counted', () => {
-      expect(NO_EVIDENCE_LETTER).toBe('high')
-      expect(letterFor('hydration', null)).toBe(AXIS_LETTERS.hydration.high)
-      expect(letterFor('pigmentation', null)).toBe('P')
+    it('gives the letter picked on the "your choice" question when nothing counted, and the average\'s letter whenever there is one', () => {
+      expect(letterFor('hydration', null, 'D')).toBe('D')
+      expect(letterFor('pigmentation', null, 'N')).toBe('N')
+      expect(letterFor('aging', null, 'W')).toBe('W')
+      // An average always decides over a pick that is no longer in play.
+      expect(letterFor('hydration', 3, 'D')).toBe('O')
+      expect(letterFor('hydration', 1, 'O')).toBe(AXIS_LETTERS.hydration.low)
     })
   })
 
@@ -201,19 +203,21 @@ describe('useQuizStore (scoring and steps)', () => {
       expect(store.axisResults.aging).toMatchObject({ counted: 1, skipped: 5, closeCall: true, noEvidence: false, letter: 'W' })
     })
 
-    it('reports no evidence, and the NO_EVIDENCE_LETTER, when nothing in a part counted', () => {
+    it('reports no evidence, a close call, and the letter picked on the "your choice" question, when nothing in a part counted', () => {
       const store = useQuizStore()
       answerCore(store, 'hydration', [UNSURE, UNSURE, NA, NA])
       store.answerQuestion('hyd-b1', UNSURE)
       store.answerQuestion('hyd-b2', UNSURE)
+      store.answerSelfChoice('hydration', 'D')
 
       expect(store.axisResults.hydration).toMatchObject({
         counted: 0,
         skipped: 6,
         average: null,
         noEvidence: true,
+        choice: true,
         closeCall: true,
-        letter: AXIS_LETTERS.hydration[NO_EVIDENCE_LETTER],
+        letter: 'D',
       })
     })
   })

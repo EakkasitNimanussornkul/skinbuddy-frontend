@@ -40,23 +40,25 @@ export const AXIS_ORDER_NUMBER: Record<QuizAxis, number> = {
 export const letterWord = (axis: QuizAxis, letter: string): string =>
   letter === AXIS_LETTERS[axis].high ? AXIS_COPY[axis].high : AXIS_COPY[axis].low
 
-/** "Leaning oily", or the no-evidence line when nothing in the part counted. */
-export const leanText = (result: AxisResult): string =>
-  result.noEvidence
-    ? "We couldn't tell this part from your answers"
-    : `Leaning ${letterWord(result.axis, result.letter).toLowerCase()}`
+/** "Leaning oily", or "You chose oily" when the letter is the user's own pick. */
+export const leanText = (result: AxisResult): string => {
+  const word = letterWord(result.axis, result.letter).toLowerCase()
+  return result.choice ? `You chose ${word}` : `Leaning ${word}`
+}
 
 export const answersText = (count: number): string => `${count} ${count === 1 ? 'answer' : 'answers'}`
 
-/** "Clear · 4 answers" or "Close call · 1 answer". */
-export const confidenceText = (result: AxisResult): string =>
-  `${result.closeCall ? 'Close call' : 'Clear'} · ${answersText(result.counted)}`
+/** "Clear · 4 answers", "Close call · 1 answer", or "Close call · your choice". */
+export const confidenceText = (result: AxisResult): string => {
+  if (result.choice) return 'Close call · your choice'
+  return `${result.closeCall ? 'Close call' : 'Clear'} · ${answersText(result.counted)}`
+}
 
 /** Why a part is a close call, for the part-complete screen and the result card. */
 export const closeCallText = (result: AxisResult): string => {
   const letter = result.letter
-  if (result.noEvidence) {
-    return `None of your answers in this part counted, so ${letter} is only a placeholder until you retake this part.`
+  if (result.choice) {
+    return `None of your answers here counted, so ${letter} is the one you chose.`
   }
   if (result.counted < MIN_COUNTED) {
     return `Most answers here didn't apply to you or were unsure, so treat ${letter} as a starting point.`

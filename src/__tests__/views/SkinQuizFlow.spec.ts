@@ -26,6 +26,7 @@ import {
   answer,
   begin,
   buttonByText,
+  chooseLetter,
   click,
   mountQuiz,
   runQuiz,
@@ -315,15 +316,17 @@ describe('src/views/SkinQuizView.vue (quiz steps)', () => {
       expect(done.find('[data-testid="lean-bar"]').attributes('data-position')).toBe('56')
     })
 
-    it('says it could not tell a part where no answer counted', async () => {
+    it('shows the letter picked on the "your choice" question as the user\'s choice, for a part where no answer counted', async () => {
       const { wrapper } = await mountQuiz()
       await begin(wrapper)
       for (let i = 0; i < 6; i += 1) await answer(wrapper, UNSURE)
+      await chooseLetter(wrapper, 'D')
 
       const done = wrapper.findComponent(QuizPartComplete)
-      expect(done.find('[data-testid="lean-text"]').text()).toBe("We couldn't tell this part from your answers")
-      expect(done.find('[data-testid="confidence-chip"]').text()).toBe('Close call · 0 answers')
+      expect(done.find('[data-testid="lean-text"]').text()).toBe('You chose dry')
+      expect(done.find('[data-testid="confidence-chip"]').text()).toBe('Close call · your choice')
       expect(done.find('[data-testid="left-out-chip"]').text()).toBe('6 left out')
+      expect(done.text()).not.toContain("couldn't tell")
     })
 
     it('names the result as next after the last part', async () => {
@@ -381,14 +384,15 @@ describe('src/views/SkinQuizView.vue (quiz steps)', () => {
       expect(wrapper.findComponent(QuizResult).exists()).toBe(true)
     })
 
-    it('says "We couldn\'t tell this part from your answers" for a part with no counted answers, with the NO_EVIDENCE_LETTER', async () => {
+    it('says "You chose dry" and "Close call · your choice" for a part with no counted answers, with the letter the user picked', async () => {
       const { wrapper } = await mountQuiz()
-      await runQuiz(wrapper, (id) => (id.startsWith('hyd') ? UNSURE : P(1)))
+      await runQuiz(wrapper, (id) => (id.startsWith('hyd') ? UNSURE : P(1)), 'female', () => 'D')
 
       const card = wrapper.find('[data-testid="axis-card-hydration"]')
-      expect(card.text()).toContain("We couldn't tell this part from your answers")
-      expect(card.text()).toContain('Close call · 0 answers')
-      expect(wrapper.find('[data-testid="result-code"]').text()).toBe('ORNT')
+      expect(card.find('[data-testid="choice-text"]').text()).toBe('You chose dry')
+      expect(card.text()).toContain('Close call · your choice')
+      expect(card.text()).not.toContain("couldn't tell")
+      expect(wrapper.find('[data-testid="result-code"]').text()).toBe('DRNT')
     })
 
     it('offers "Retake this part" only on close-call cards', async () => {

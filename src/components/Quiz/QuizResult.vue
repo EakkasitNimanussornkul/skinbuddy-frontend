@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { QuizAxis } from '../../data/quizQuestions'
 import { AXIS_ORDER, type AxisResult } from '../../stores/quizStore'
-import { AXIS_COPY, closeCallText, confidenceText, letterWord } from './axisCopy'
+import { AXIS_COPY, closeCallText, confidenceText, leanText, letterWord } from './axisCopy'
 import LeanBar from './LeanBar.vue'
 import QuizResultDashboard from './QuizResultDashboard.vue'
 import './quizMotion.css'
@@ -143,7 +143,7 @@ const summary = computed(() => {
               />
             </div>
             <template v-if="r.closeCall">
-              <p v-if="r.noEvidence" class="mt-2.5 text-[13px] font-bold text-[#6B4600] dark:text-amber-200">We couldn't tell this part from your answers</p>
+              <p v-if="r.choice" class="mt-2.5 text-[13px] font-bold text-[#6B4600] dark:text-amber-200" data-testid="choice-text">{{ leanText(r) }}</p>
               <p class="mt-2.5 text-[13px] leading-relaxed text-[#6B4600] dark:text-amber-200">{{ closeCallText(r) }}</p>
               <button
                 type="button"

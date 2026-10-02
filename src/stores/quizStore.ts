@@ -6,6 +6,7 @@ import {
   HIGH_LETTER_THRESHOLD,
   MAX_BACKUPS_PER_AXIS,
   MIN_COUNTED,
+  SELF_CHOICE_QUESTIONS,
   backupQuestionsFor,
   coreQuestionsFor,
   type Points,
@@ -17,8 +18,15 @@ import {
 
 // --- Types ------------------------------------------------------------------
 
-/** One answer, keyed by question id in the store, never by position. */
-export type QuizAnswer = { kind: 'points'; points: Points } | { kind: SkipKind }
+/**
+ * One answer, keyed by question id in the store, never by position. A
+ * 'self_choice' answer is the letter picked on a part's "your choice" question;
+ * it is neither counted nor a skip.
+ */
+export type QuizAnswer =
+  | { kind: 'points'; points: Points }
+  | { kind: SkipKind }
+  | { kind: 'self_choice'; letter: string }
 
 /** The four parts, in the order the quiz asks them. */
 export const AXIS_ORDER: QuizAxis[] = ['hydration', 'sensitivity', 'pigmentation', 'aging']
@@ -27,6 +35,8 @@ export type QuizStep =
   | { kind: 'start' }
   | { kind: 'about' }
   | { kind: 'question'; axis: QuizAxis; questionId: string }
+  /** The "your choice" question that ends a part where nothing counted. */
+  | { kind: 'choice'; axis: QuizAxis }
   | { kind: 'partDone'; axis: QuizAxis }
   | { kind: 'result' }
 
@@ -44,23 +54,14 @@ export interface AxisResult {
   letter: string
   /** True when no answer in this part counted at all. */
   noEvidence: boolean
+  /** True when the letter is the user's pick on the "your choice" question. */
+  choice: boolean
   closeCall: boolean
 }
 
 // --- Scoring rules ------------------------------------------------------------
 
-/**
- * The letter an axis gets when none of its answers counted: 'high' gives O / S
- * / P / W, which is what the old quiz produced for an all-"not sure" part
- * (4 x 2.5 = 10 met its threshold).
- *
- * PENDING THE OWNER'S DECISION. The owner has not yet chosen whether a part
- * with no evidence should fall to the high letter, the low letter, or block
- * saving; this keeps today's behaviour until then.
- */
-export const NO_EVIDENCE_LETTER: 'low' | 'high' = 'high'
-
-/** Counted answers, skips and the average of the counted points. */
+/** Counted answers, skips and the average of the counted points. A "your choice" pick is neither. */
 export const summariseAnswers = (answers: (QuizAnswer | undefined)[]) => {
   let counted = 0
   let skipped = 0
@@ -70,16 +71,26 @@ export const summariseAnswers = (answers: (QuizAnswer | undefined)[]) => {
     if (answer.kind === 'points') {
       counted += 1
       total += answer.points
-    } else {
+    } else if (answer.kind === 'unsure' || answer.kind === 'not_applicable') {
       skipped += 1
     }
   }
   return { counted, skipped, average: counted > 0 ? total / counted : null }
 }
 
-/** High letter at or above the threshold; the NO_EVIDENCE_LETTER side with no average. */
-export const letterFor = (axis: QuizAxis, average: number | null): string => {
-  if (average === null) return AXIS_LETTERS[axis][NO_EVIDENCE_LETTER]
+/**
+ * High letter at or above the threshold. With no average, the letter the user
+ * picked on the part's "your choice" question.
+ */
+export const letterFor = (axis: QuizAxis, average: number | null, chosen: string | null = null): string => {
+  if (average === null) {
+    if (chosen) return chosen
+    // Defensive only: a part with nothing counted cannot finish without the
+    // "your choice" pick, so this never reaches a result. It is here because
+    // every part has a letter from the start (finalSkinType is a string even
+    // before a part is answered), and the type needs one.
+    return AXIS_LETTERS[axis].high
+  }
   return average >= HIGH_LETTER_THRESHOLD ? AXIS_LETTERS[axis].high : AXIS_LETTERS[axis].low
 }
 
@@ -129,6 +140,27 @@ export const questionSequence = (
   return sequence
 }
 
+/**
+ * Whether a part ends with its "your choice" question: every question it asked
+ * has an answer and none of them counted. With nothing counted the backups run
+ * to their cap, so an answered sequence here has had both extra questions.
+ * Re-derived like the sequence: an answer changed so that one counts removes
+ * the step, and its pick, though kept in the store, stops deciding the letter.
+ */
+export const needsSelfChoice = (axis: QuizAxis, sex: Sex, answers: Record<string, QuizAnswer>): boolean => {
+  const sequence = questionSequence(axis, sex, answers)
+  if (sequence.some((q) => !answers[q.id])) return false
+  return summariseAnswers(sequence.map((q) => answers[q.id])).counted === 0
+}
+
+/** The letter picked on a part's "your choice" question, if it is one of the part's two. */
+export const chosenLetter = (axis: QuizAxis, answers: Record<string, QuizAnswer>): string | null => {
+  const answer = answers[SELF_CHOICE_QUESTIONS[axis].id]
+  if (answer?.kind !== 'self_choice') return null
+  const { low, high } = AXIS_LETTERS[axis]
+  return answer.letter === low || answer.letter === high ? answer.letter : null
+}
+
 export const axisResultFor = (
   axis: QuizAxis,
   sex: Sex,
@@ -136,13 +168,15 @@ export const axisResultFor = (
 ): AxisResult => {
   const sequence = questionSequence(axis, sex, answers)
   const { counted, skipped, average } = summariseAnswers(sequence.map((q) => answers[q.id]))
+  const chosen = needsSelfChoice(axis, sex, answers) ? chosenLetter(axis, answers) : null
   return {
     axis,
     counted,
     skipped,
     average,
-    letter: letterFor(axis, average),
+    letter: letterFor(axis, average, chosen),
     noEvidence: counted === 0,
+    choice: chosen !== null,
     closeCall: isCloseCall(counted, average),
   }
 }
@@ -163,12 +197,18 @@ export const buildSaveScores = (results: Record<QuizAxis, AxisResult>): Record<s
   for (const axis of AXIS_ORDER) {
     scores[`${axis}_n`] = results[axis].counted
   }
+  // A part whose letter is the user's own pick says so, as a number to fit the
+  // schema. Parts without one leave the key out.
+  for (const axis of AXIS_ORDER) {
+    if (results[axis].choice) scores[`${axis}_choice`] = 1
+  }
   scores.version = 2
   return scores
 }
 
 const stepKey = (step: QuizStep): string => {
   if (step.kind === 'question') return `question:${step.questionId}`
+  if (step.kind === 'choice') return `choice:${step.axis}`
   if (step.kind === 'partDone') return `partDone:${step.axis}`
   return step.kind
 }
@@ -193,8 +233,16 @@ export const useQuizStore = defineStore('quiz', () => {
     return out
   })
 
+  /** Per part, whether it ends with its "your choice" question. */
+  const selfChoiceNeeded = computed(() => {
+    const out = {} as Record<QuizAxis, boolean>
+    for (const axis of AXIS_ORDER) out[axis] = needsSelfChoice(axis, effectiveSex.value, answers.value)
+    return out
+  })
+
   const partSteps = (axis: QuizAxis): QuizStep[] => [
     ...sequences.value[axis].map((q): QuizStep => ({ kind: 'question', axis, questionId: q.id })),
+    ...(selfChoiceNeeded.value[axis] ? [{ kind: 'choice', axis } as QuizStep] : []),
     { kind: 'partDone', axis },
   ]
 
@@ -265,6 +313,11 @@ export const useQuizStore = defineStore('quiz', () => {
     answers.value = { ...answers.value, [questionId]: answer }
   }
 
+  /** Record the letter picked on a part's "your choice" question. */
+  const answerSelfChoice = (axis: QuizAxis, letter: string) => {
+    answerQuestion(SELF_CHOICE_QUESTIONS[axis].id, { kind: 'self_choice', letter })
+  }
+
   /** Move to the next step in the flow, re-derived from the latest answers. */
   const next = () => {
     const at = stepIndex.value
@@ -283,8 +336,14 @@ export const useQuizStore = defineStore('quiz', () => {
     step.value = previous
   }
 
-  /** Re-run one part's questions from the result, with the earlier answers selected. */
+  /**
+   * Re-run one part's questions from the result, with the earlier answers
+   * selected. A "your choice" pick is cleared, so the part is decided afresh.
+   */
   const retakePart = (axis: QuizAxis) => {
+    const kept = { ...answers.value }
+    delete kept[SELF_CHOICE_QUESTIONS[axis].id]
+    answers.value = kept
     retakeAxis.value = axis
     step.value = partSteps(axis)[0]!
   }
@@ -302,6 +361,7 @@ export const useQuizStore = defineStore('quiz', () => {
     step,
     retakeAxis,
     sequences,
+    selfChoiceNeeded,
     flow,
     currentQuestion,
     currentBackupReason,
@@ -311,6 +371,7 @@ export const useQuizStore = defineStore('quiz', () => {
     start,
     chooseSex,
     answerQuestion,
+    answerSelfChoice,
     next,
     back,
     retakePart,

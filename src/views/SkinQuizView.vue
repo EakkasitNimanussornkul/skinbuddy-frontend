@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { AXIS_ORDER, useQuizStore, type QuizAnswer } from '../stores/quizStore'
 import { saveSkinType } from '../api/quizapi'
 import { updateUserSkinType } from '../api/authApi'
-import { coreQuestionsFor, MAX_BACKUPS_PER_AXIS, type QuizAxis, type Sex } from '../data/quizQuestions'
+import { coreQuestionsFor, MAX_BACKUPS_PER_AXIS, SELF_CHOICE_QUESTIONS, type QuizAxis, type Sex } from '../data/quizQuestions'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from '../composables/useToast'
 import {
@@ -21,6 +21,7 @@ import QuizFrame from '../components/Quiz/QuizFrame.vue'
 import QuizProgress from '../components/Quiz/QuizProgress.vue'
 import QuizAboutYou from '../components/Quiz/QuizAboutYou.vue'
 import QuizQuestionStep from '../components/Quiz/QuizQuestionStep.vue'
+import QuizSelfChoiceStep from '../components/Quiz/QuizSelfChoiceStep.vue'
 import QuizPartComplete from '../components/Quiz/QuizPartComplete.vue'
 import QuizResult from '../components/Quiz/QuizResult.vue'
 import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
@@ -131,6 +132,20 @@ const handleAnswer = (answer: QuizAnswer) => {
   scheduleNext()
 }
 
+/** A pick on the "your choice" question moves on the same way an answer does. */
+const handleSelfChoice = (letter: string) => {
+  const s = step.value
+  if (s.kind !== 'choice') return
+  quizStore.answerSelfChoice(s.axis, letter)
+  scheduleNext()
+}
+
+/** The letter already picked on a part's "your choice" question, if any. */
+const selfChoiceSelectedFor = (axis: QuizAxis): string | null => {
+  const answer = quizStore.answers[SELF_CHOICE_QUESTIONS[axis].id]
+  return answer?.kind === 'self_choice' ? answer.letter : null
+}
+
 const handleBack = () => {
   cancelPendingAdvance()
   direction.value = 'back'
@@ -151,7 +166,7 @@ const handleRetakePart = (axis: QuizAxis) => {
 
 const currentAxis = computed<QuizAxis | null>(() => {
   const s = step.value
-  return s.kind === 'question' || s.kind === 'partDone' ? s.axis : null
+  return s.kind === 'question' || s.kind === 'choice' || s.kind === 'partDone' ? s.axis : null
 })
 
 const coreCount = (axis: QuizAxis) =>
@@ -182,13 +197,20 @@ const partStates = computed<PartState[]>(() =>
 
 const segments = computed<SegmentState[]>(() => {
   const s = step.value
-  if (s.kind !== 'question') return []
+  if (s.kind !== 'question' && s.kind !== 'choice') return []
+  const currentId = s.kind === 'question' ? s.questionId : null
   const core = coreCount(s.axis)
-  return quizStore.sequences[s.axis].map((q, j): SegmentState => {
-    if (j >= core && (q.id === s.questionId || quizStore.answers[q.id])) return 'backup'
-    if (q.id === s.questionId) return 'current'
+  const out = quizStore.sequences[s.axis].map((q, j): SegmentState => {
+    if (j >= core && (q.id === currentId || quizStore.answers[q.id])) return 'backup'
+    if (q.id === currentId) return 'current'
     return quizStore.answers[q.id] ? 'answered' : 'todo'
   })
+  // The "your choice" question, when the part has one, is marked like the
+  // extra questions.
+  if (quizStore.selfChoiceNeeded[s.axis]) {
+    out.push(s.kind === 'choice' || selfChoiceSelectedFor(s.axis) ? 'backup' : 'todo')
+  }
+  return out
 })
 
 const frameParts = computed<FramePart[]>(() =>
@@ -197,9 +219,9 @@ const frameParts = computed<FramePart[]>(() =>
     const result = quizStore.axisResults[axis]
     let detail = ''
     if (state === 'done') {
-      detail = result.noEvidence
-        ? "Couldn't tell yet · close call"
-        : `${leanText(result)} · ${result.closeCall ? 'close call' : 'clear'}`
+      detail = `${leanText(result)} · ${result.closeCall ? 'close call' : 'clear'}`
+    } else if (state === 'current' && step.value.kind === 'choice') {
+      detail = 'One last question'
     } else if (state === 'current' && questionPosition.value) {
       const { index, core, isBackup } = questionPosition.value
       detail = isBackup ? `Extra question ${index - core + 1}` : `Question ${index + 1} of ${core}`
@@ -212,7 +234,9 @@ const frameLabel = computed(() => {
   const s = step.value
   if (s.kind === 'about') return { label: 'About you', detail: '' }
   if (s.kind === 'partDone') return { label: `Part ${AXIS_ORDER_NUMBER[s.axis]} of 4 done`, detail: '' }
-  if (s.kind === 'question') return { label: `Part ${AXIS_ORDER_NUMBER[s.axis]} of 4`, detail: AXIS_COPY[s.axis].part }
+  if (s.kind === 'question' || s.kind === 'choice') {
+    return { label: `Part ${AXIS_ORDER_NUMBER[s.axis]} of 4`, detail: AXIS_COPY[s.axis].part }
+  }
   return { label: '', detail: '' }
 })
 
@@ -354,7 +378,7 @@ const handleExpressConfirm = async (selectedType: string) => {
       />
 
       <QuizFrame
-        v-else-if="step.kind === 'about' || step.kind === 'question' || step.kind === 'partDone'"
+        v-else-if="step.kind === 'about' || step.kind === 'question' || step.kind === 'choice' || step.kind === 'partDone'"
         key="frame"
         :label="frameLabel.label"
         :label-detail="frameLabel.detail"
@@ -386,6 +410,13 @@ const handleExpressConfirm = async (selectedType: string) => {
             :selected="quizStore.answers[quizStore.currentQuestion.id] ?? null"
             :backup-reason="quizStore.currentBackupReason"
             @answer="handleAnswer"
+          />
+          <QuizSelfChoiceStep
+            v-else-if="step.kind === 'choice'"
+            :key="`choice-${step.axis}`"
+            :question="SELF_CHOICE_QUESTIONS[step.axis]"
+            :selected="selfChoiceSelectedFor(step.axis)"
+            @choose="handleSelfChoice"
           />
           <QuizPartComplete
             v-else-if="step.kind === 'partDone'"

@@ -17,9 +17,16 @@ const props = withDefaults(
     size?: 'large' | 'compact'
     /** Holds the slide from the centre back this long, to follow a card's own entrance. */
     delayMs?: number
+    /**
+     * Show the large marker at the centre with no average, for a part whose
+     * letter was the user's own pick: nothing counted, so nothing leans.
+     */
+    markCentre?: boolean
   }>(),
-  { delayMs: 0 },
+  { delayMs: 0, markCentre: false },
 )
+
+const showMarker = computed(() => props.size === 'large' && (props.average !== null || props.markCentre))
 
 // 1 is the far low end, 4 the far high end.
 const position = computed(() => {
@@ -61,7 +68,7 @@ const fillStyle = computed(() => ({
         :style="fillStyle"
       />
       <span
-        v-if="size === 'large' && average !== null"
+        v-if="showMarker"
         class="quiz-lean-marker absolute top-1/2 w-5 h-5 rounded-full bg-white dark:bg-brand-surface-dark border-[3px] border-brand-primary-strong dark:border-brand-primary -translate-x-1/2 -translate-y-1/2"
         :style="{ left: `${position}%`, animationDelay: `${delayMs}ms` }"
       />

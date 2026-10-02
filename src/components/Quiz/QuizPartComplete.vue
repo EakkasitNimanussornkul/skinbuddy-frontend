@@ -36,6 +36,7 @@ const copy = computed(() => AXIS_COPY[props.result.axis])
         :high-label="copy.high"
         size="large"
         :delay-ms="150"
+        :mark-centre="result.choice"
       />
       <p class="mt-4 text-lg font-extrabold text-stone-800 dark:text-white" data-testid="lean-text">{{ leanText(result) }}</p>
       <div class="flex flex-wrap gap-2 mt-2.5">
