@@ -700,6 +700,12 @@ describe('src/api/products.ts', () => {
   })
 
   describe('getProductComparison()', () => {
+    // Signed in: with no stored token the comparison goes out as a guest
+    // request instead (productComparison.spec.ts covers that path).
+    beforeEach(() => {
+      localStorage.setItem('access_token', 'token-1')
+    })
+
     it('sends both product ids as separate query parameters', async () => {
       vi.mocked(apiClient.get).mockResolvedValue({ data: { similarity_score: 0 } })
 

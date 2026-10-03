@@ -741,11 +741,27 @@ export const getProductById = async (productId: string) => {
  * Compare two products side-by-side for similarity matrix and category clash rules
  */
 export const getProductComparison = async (productAId: string, productBId: string): Promise<CompareResponse> => {
-  const response = await apiClient.get(`/products/compare`, {
-    params: {
-      product_a_id: productAId,
-      product_b_id: productBId
+  const params = { product_a_id: productAId, product_b_id: productBId }
+  const token = localStorage.getItem('access_token')
+
+  if (!token) {
+    const response = await axios.get(`${API_BASE_URL}/products/compare`, { params })
+    return response.data
+  }
+
+  try {
+    const response = await apiClient.get(`/products/compare`, { params })
+    return response.data
+  } catch (error: unknown) {
+    // The backend answers an expired or invalid login with 401 (backend
+    // fix/expired-login-401) rather than quietly treating it as a guest. The
+    // apiClient interceptor has already cleared the session and opened the
+    // login popup; fetch the comparison as a guest so the page still loads
+    // behind it, the same as search and the product page do.
+    if ((error as { response?: { status?: number } } | null)?.response?.status === 401) {
+      const response = await axios.get(`${API_BASE_URL}/products/compare`, { params })
+      return response.data
     }
-  })
-  return response.data
+    throw error
+  }
 }

@@ -584,6 +584,14 @@ const SPEC_MAP = [
       'The view mounted with @vue/test-utils on a vue-router memory history, with a fresh Pinia and cleared localStorage per case (src/__tests__/fixtures/quizView.ts). saveSkinType and updateUserSkinType are mocked; the quiz store, auth store and toast composable are real. Vitest fake timers drive the 220ms auto-advance and the 1400ms calculating beat; the case about the pause overrides matchMedia to report no reduced-motion preference. No network access.',
     note: 'The "your choice" question on screen: a neutral banner ("One last question for this part"), the heading "Which sounds more like your skin, most days?" and two rows with no skip buttons, marked in the progress bar like an extra question and moving on like the other steps. The part-complete screen shows "You chose oily" (etc.), the amber "Close call · your choice" chip and the marker at the centre; the result card says the same and still offers "Retake this part". The save adds <part>_choice: 1 for that part only. VTU stubs <Transition>, so the motion case reads the transition name and the step\'s key, never what moves on screen.',
   },
+  {
+    file: 'src/__tests__/api/productComparison.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/products',
+    prerequisite:
+      'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage cleared per test so the token branch is controlled. No network access.',
+    note: 'Backend fix/expired-login-401 makes the optional-auth product routes answer an expired or invalid login with 401 instead of a guest result. Search and the product page already retried as a guest; compare did not, so an expired login made the comparison fail behind the login popup. It now retries as a guest the same way, and still surfaces any other failure.',
+  },
 ]
 
 function runSuite() {
