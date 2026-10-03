@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import type { RouteRecordNormalized, Router } from 'vue-router'
 
 // The route table itself, read through the router it builds. Imported by a
@@ -11,6 +11,13 @@ const loadRoutes = async (): Promise<RouteRecordNormalized[]> => {
   const { default: router } = (await import(/* @vite-ignore */ ROUTER_MODULE)) as { default: Router }
   return router.getRoutes()
 }
+
+// Loading the router pulls in every view, which can take longer than the 5 s
+// test timeout when the whole suite runs in parallel. Warm the import once,
+// with room to spare, so each case reads the cached module.
+beforeAll(async () => {
+  await loadRoutes()
+}, 60_000)
 
 const metaOf = (routes: RouteRecordNormalized[], path: string) => routes.find((r) => r.path === path)?.meta
 
