@@ -592,6 +592,14 @@ const SPEC_MAP = [
       'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage cleared per test so the token branch is controlled. No network access.',
     note: 'Backend fix/expired-login-401 makes the optional-auth product routes answer an expired or invalid login with 401 instead of a guest result. Search and the product page already retried as a guest; compare did not, so an expired login made the comparison fail behind the login popup. It now retries as a guest the same way, and still surfaces any other failure.',
   },
+  {
+    file: 'src/__tests__/api/optionalAuth.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/optionalAuth',
+    prerequisite:
+      'Both HTTP paths mocked: the shared axios client and the bare axios call used for guest requests. localStorage cleared per test so the token branch is controlled. The guard cases read the api/*.ts sources as text through import.meta.glob. No network access.',
+    note: 'The one shared guest fallback for optional-auth routes, which replaced three copies of the same logic in api/products.ts (search, slug and compare). With no stored login it sends a guest request; with one it uses apiClient; on 401 it repeats the request as a guest, so the page loads behind the login popup; any other failure is rethrown. The guard cases pin that only the product module uses it, and that the product module never calls apiClient directly, so a protected route cannot gain a guest retry by mistake.',
+  },
 ]
 
 function runSuite() {

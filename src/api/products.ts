@@ -1,5 +1,9 @@
-import { apiClient } from './index'
-import axios from 'axios'
+import { getWithGuestFallback } from './optionalAuth'
+
+// The product routes here are optional-auth on the backend (a guest gets an
+// unscored result; an expired or invalid login gets 401). Every call to one
+// goes through getWithGuestFallback, never apiClient directly - see
+// api/optionalAuth.ts.
 
 export interface SharedIngredient {
   id: string
@@ -21,7 +25,6 @@ export interface CompareResponse {
   conflicts: WarningAlert[]
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL
 
 /**
  * Search the product catalog with dynamic Baumann skin-match scoring
@@ -32,25 +35,7 @@ export const searchProducts = async (query: string = '', minPrice?: number, maxP
   if (minPrice !== undefined && minPrice !== null) params.min_price = minPrice
   if (maxPrice !== undefined && maxPrice !== null) params.max_price = maxPrice
 
-  const token = localStorage.getItem('access_token')
-
-  // If no token exists, make a direct unauthenticated request
-  if (!token) {
-    const response = await axios.get(`${API_BASE_URL}/products/search`, { params })
-    return response.data
-  }
-
-  try {
-    const response = await apiClient.get('/products/search', { params })
-    return response.data
-  } catch (error: any) {
-    // Fallback to guest search if token expired or invalid
-    if (error?.response?.status === 401) {
-      const response = await axios.get(`${API_BASE_URL}/products/search`, { params })
-      return response.data
-    }
-    throw error
-  }
+  return getWithGuestFallback('/products/search', { params })
 }
 
 /**
@@ -709,25 +694,7 @@ export const resolveCatalogState = (
  * Fetch full product specification and Baumann compatibility matrix by URL Slug or UUID
  */
 export const getProductBySlug = async (slug: string) => {
-  const token = localStorage.getItem('access_token')
-
-  if (!token) {
-    const res = await axios.get(`${API_BASE_URL}/products/slug/${encodeURIComponent(slug)}`)
-    return res.data
-  }
-
-  try {
-    // 🌟 FIXED: Changed 'api' to 'apiClient'
-    const res = await apiClient.get(`/products/slug/${encodeURIComponent(slug)}`)
-    return res.data
-  } catch (error: any) {
-    // Fallback to guest request if token is expired/invalid to prevent blocking product view
-    if (error?.response?.status === 401) {
-      const res = await axios.get(`${API_BASE_URL}/products/slug/${encodeURIComponent(slug)}`)
-      return res.data
-    }
-    throw error
-  }
+  return getWithGuestFallback(`/products/slug/${encodeURIComponent(slug)}`)
 }
 
 /**
@@ -740,28 +707,7 @@ export const getProductById = async (productId: string) => {
 /**
  * Compare two products side-by-side for similarity matrix and category clash rules
  */
-export const getProductComparison = async (productAId: string, productBId: string): Promise<CompareResponse> => {
-  const params = { product_a_id: productAId, product_b_id: productBId }
-  const token = localStorage.getItem('access_token')
-
-  if (!token) {
-    const response = await axios.get(`${API_BASE_URL}/products/compare`, { params })
-    return response.data
-  }
-
-  try {
-    const response = await apiClient.get(`/products/compare`, { params })
-    return response.data
-  } catch (error: unknown) {
-    // The backend answers an expired or invalid login with 401 (backend
-    // fix/expired-login-401) rather than quietly treating it as a guest. The
-    // apiClient interceptor has already cleared the session and opened the
-    // login popup; fetch the comparison as a guest so the page still loads
-    // behind it, the same as search and the product page do.
-    if ((error as { response?: { status?: number } } | null)?.response?.status === 401) {
-      const response = await axios.get(`${API_BASE_URL}/products/compare`, { params })
-      return response.data
-    }
-    throw error
-  }
-}
+export const getProductComparison = async (productAId: string, productBId: string): Promise<CompareResponse> =>
+  getWithGuestFallback<CompareResponse>('/products/compare', {
+    params: { product_a_id: productAId, product_b_id: productBId },
+  })
