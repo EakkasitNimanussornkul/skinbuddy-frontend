@@ -62,8 +62,9 @@ describe('src/router/index.ts', () => {
         '/checkin': { requiresAuth: true },
         '/analysis': { requiresAuth: true },
         // Product submissions (feat/22): signed-in pages, and the admin pages -
-        // the queue with an optional review id, and the full-screen product edit.
-        '/submissions/new': { requiresAuth: true },
+        // the queue with an optional review id. The submit flow and the product
+        // edit are full screen by meta.
+        '/submissions/new': { requiresAuth: true, fullScreen: true },
         '/submissions': { requiresAuth: true },
         '/admin/submissions/:id?': { requiresAuth: true, requiresAdmin: true },
         '/products/:slug/edit': { requiresAuth: true, requiresAdmin: true, fullScreen: true },
