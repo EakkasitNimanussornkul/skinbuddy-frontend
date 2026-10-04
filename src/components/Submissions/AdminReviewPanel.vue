@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   REVIEW_NOTE_LIMIT,
@@ -298,10 +298,20 @@ const removePhoto = () => {
   photoPreview.value = null
 }
 
+// After a refusal the dialog closes and gives focus back to the button that
+// opened it. A button that is now off cannot take it (a duplicate refusal
+// turns Publish off), so focus falls to <body>; the review's heading takes it.
+const reviewTitle = ref<HTMLElement | null>(null)
+const keepFocusInReview = async () => {
+  await nextTick()
+  if (!document.activeElement || document.activeElement === document.body) reviewTitle.value?.focus()
+}
+
 const publish = async () => {
   if (!reviewState.value || blockers.value.length) return
   busy.value = 'approve'
   problem.value = null
+  let refused = false
   try {
     const done = await approveSubmission(props.id, buildApproveBody(reviewState.value))
     dialog.value = null
@@ -311,15 +321,18 @@ const publish = async () => {
   } catch (error: unknown) {
     dialog.value = null
     fail(error, 'approve')
+    refused = true
   } finally {
     busy.value = null
   }
+  if (refused) await keepFocusInReview()
 }
 
 const reject = async () => {
   if (notes.value.trim().length > REVIEW_NOTE_LIMIT) return
   busy.value = 'reject'
   problem.value = null
+  let refused = false
   try {
     await rejectSubmission(props.id, notes.value.trim() || null)
     dialog.value = null
@@ -329,9 +342,11 @@ const reject = async () => {
   } catch (error: unknown) {
     dialog.value = null
     fail(error, 'reject')
+    refused = true
   } finally {
     busy.value = null
   }
+  if (refused) await keepFocusInReview()
 }
 
 const reloadAfterProblem = () => {
@@ -364,7 +379,7 @@ const fieldBorder = (key: string) =>
       <div class="flex flex-wrap justify-between items-start gap-3">
         <div class="flex flex-col gap-1 min-w-0">
           <p class="review-meta m-0 text-[13px] text-stone-500 dark:text-stone-400">{{ describeReviewMeta(detail) }}</p>
-          <h2 class="review-title m-0 font-serif text-2xl lg:text-[28px] leading-tight font-bold text-stone-800 dark:text-white break-words">{{ title }}</h2>
+          <h2 ref="reviewTitle" tabindex="-1" class="review-title outline-none m-0 font-serif text-2xl lg:text-[28px] leading-tight font-bold text-stone-800 dark:text-white break-words">{{ title }}</h2>
         </div>
         <span v-if="!isPending" :class="['status-chip shrink-0 px-2.5 py-1 rounded-full text-xs font-extrabold', statusChip(detail.status).tone]">{{ statusChip(detail.status).text }}</span>
         <span v-else-if="candidates.length === 0" class="no-duplicate shrink-0 px-[11px] py-[5px] rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-[13px] font-extrabold">No duplicate found</span>

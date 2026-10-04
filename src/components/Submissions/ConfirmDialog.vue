@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 
 // A yes-or-no question before something that cannot be taken back: publishing
 // a product, not adding a submission, leaving unsaved edits. Focus moves to the
 // safe choice (cancel), Tab stays inside, Escape cancels, and focus goes back
-// where it was on close - the same rules as LeaveDraftDialog.
+// where it was on close - the same rules as LeaveDraftDialog. While busy both
+// buttons are off, so the dialog itself holds focus (see the busy watcher).
 const props = withDefaults(
   defineProps<{
     title: string
@@ -29,6 +30,20 @@ onMounted(async () => {
   cancelButton.value?.focus()
 })
 
+// A disabled button cannot hold focus: the browser drops it to <body>, where
+// neither Tab nor Escape reaches this dialog. So while busy the dialog itself
+// takes focus, and hands it to the safe choice when the wait is over.
+watch(
+  () => props.busy,
+  (busy) => {
+    if (busy) dialog.value?.focus()
+    else if (document.activeElement === dialog.value) cancelButton.value?.focus()
+  },
+  { flush: 'post' },
+)
+
+// Focus goes back where it was. A control that is now off (Publish after a
+// refusal that added a blocker) cannot take it, so the parent places it then.
 onBeforeUnmount(() => {
   if (returnFocusTo && document.contains(returnFocusTo)) returnFocusTo.focus()
 })
@@ -47,7 +62,16 @@ const onKeydown = (event: KeyboardEvent) => {
   const buttons = Array.from(dialog.value.querySelectorAll<HTMLElement>('button:not([disabled])'))
   const first = buttons[0]
   const last = buttons[buttons.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
+  if (!first || !last) {
+    // Busy: there is nothing to move to, so focus stays on the dialog.
+    event.preventDefault()
+    dialog.value.focus()
+  } else if (document.activeElement === dialog.value) {
+    // Focus is on the dialog itself (it held it while busy): move to a button.
+    event.preventDefault()
+    const target = event.shiftKey ? last : first
+    target.focus()
+  } else if (event.shiftKey && document.activeElement === first) {
     event.preventDefault()
     last?.focus()
   } else if (!event.shiftKey && document.activeElement === last) {
@@ -66,7 +90,9 @@ const onKeydown = (event: KeyboardEvent) => {
         aria-modal="true"
         :aria-labelledby="`${uid}-title`"
         :aria-describedby="`${uid}-text`"
-        class="confirm-dialog w-full max-w-md rounded-3xl bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-600 shadow-2xl p-6"
+        :aria-busy="busy ? 'true' : undefined"
+        tabindex="-1"
+        class="confirm-dialog outline-none w-full max-w-md rounded-3xl bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-600 shadow-2xl p-6"
         @keydown="onKeydown"
       >
         <h2 :id="`${uid}-title`" class="m-0 font-serif text-[22px] font-bold text-stone-800 dark:text-white">{{ title }}</h2>

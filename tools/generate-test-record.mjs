@@ -750,6 +750,14 @@ const SPEC_MAP = [
       'Each component mounted with @vue/test-utils on a memory history with a fresh Pinia; the product hero and the ingredient explainer are stubbed. No network access.',
     note: 'A name-only ingredient (one added without details) has no functional group, and the list shows none for it rather than the "Skin Conditioning" it used to print for any ingredient without one.',
   },
+  {
+    file: 'src/__tests__/views/AdminReviewSafety.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Submissions/ConfirmDialog, components/Submissions/AdminReviewPanel',
+    prerequisite:
+      'ConfirmDialog mounted with @vue/test-utils inside a host that drives busy, with the real Teleport (the Teleport stub re-creates its content on every patch, which would move focus by itself). The review panel rendered through a real RouterView on a memory history with Teleport stubbed; the admin submission calls, the meta lists and the ingredient search mocked. Both attached to the document. No network access.',
+    note: 'While busy both dialog buttons are disabled, and a disabled button cannot hold focus, so the dialog itself takes it (tabindex -1, aria-busy) and Tab and Escape still reach its handler. After a refused publish, focus goes back to Publish when it is still on, and to the review heading when the refusal turned it off.',
+  },
 ]
 
 function runSuite() {
