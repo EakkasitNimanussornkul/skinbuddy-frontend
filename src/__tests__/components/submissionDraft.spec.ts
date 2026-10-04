@@ -326,7 +326,7 @@ describe('src/components/Submissions/submissionDraft.ts', () => {
 
     it('goes back to the earliest step that has a problem', () => {
       const reading = readServerErrors(
-        problem({ fields: [{ field: 'note', message: 'Too long' }, { field: 'category', message: 'Input should be one of' }] }),
+        problem({ fields: [{ field: 'category', message: 'Input should be one of' }, { field: 'note', message: 'Too long' }] }),
         filled(),
       )
 

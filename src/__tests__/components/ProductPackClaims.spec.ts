@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { createRouter, createMemoryHistory } from 'vue-router'
 
 vi.mock('../../api/index', () => ({
   apiClient: { get: vi.fn() },
@@ -11,6 +13,7 @@ vi.mock('axios', () => ({
 import axios from 'axios'
 import { getProductBySlug } from '../../api/products'
 import ProductPackClaims from '../../components/Catalog/ProductPackClaims.vue'
+import ProductHeroSection from '../../components/Catalog/ProductHeroSection.vue'
 
 const mountClaims = (product: unknown) => mount(ProductPackClaims, { props: { product } })
 
@@ -65,6 +68,28 @@ describe('src/components/Catalog/ProductPackClaims.vue', () => {
 
       expect(typeof product.updated_at).toBe('string')
       expect(product.updated_at).toBe(stamp)
+    })
+  })
+
+  describe('on the product page (ProductHeroSection)', () => {
+    it('shows the pack claims under the description in the product header, and nothing for a product without them', async () => {
+      const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div />' } }] })
+      await router.push('/')
+      await router.isReady()
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const product = { id: 'p-1', slug: 's', brand: 'CeraVe', name: 'Hydrating Facial Cleanser', category: 'Cleansers', product_ingredients: [] }
+      const hero = (extra: Record<string, unknown>) =>
+        mount(ProductHeroSection, {
+          props: { product: { ...product, ...extra }, mode: 'detail' },
+          global: { plugins: [pinia, router], stubs: { teleport: true, SafetyCheckModal: true } },
+        })
+
+      const withClaims = hero({ good_for: ['Dry skin'], pao_months: 12 })
+      expect(withClaims.findAll('.pack-good-for li').map((li) => li.text())).toEqual(['Dry skin'])
+      expect(withClaims.get('.pack-pao').text()).toBe('Use within 12 months after opening')
+
+      expect(hero({ good_for: null, benefits: null, pao_months: null }).find('.pack-claims').exists()).toBe(false)
     })
   })
 })

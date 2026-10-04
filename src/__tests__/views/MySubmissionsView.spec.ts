@@ -145,6 +145,25 @@ describe('src/views/MySubmissionsView.vue', () => {
       expect(cards(w)).toHaveLength(0)
       expect(w.get('.empty-tab').text()).toBe('None of your products has been published yet.')
     })
+
+    it('wraps ArrowRight from the last tab to the first, and jumps with Home and End', async () => {
+      vi.mocked(getMySubmissions).mockResolvedValue(THREE)
+      const w = await mountView()
+
+      await tabs(w)[0]!.trigger('keydown', { key: 'End' })
+      await flushPromises()
+      expect(tabs(w)[3]!.attributes('aria-selected')).toBe('true')
+
+      await tabs(w)[3]!.trigger('keydown', { key: 'ArrowRight' })
+      await flushPromises()
+      expect(tabs(w)[0]!.attributes('aria-selected')).toBe('true')
+
+      await tabs(w)[0]!.trigger('keydown', { key: 'ArrowRight' })
+      await tabs(w)[1]!.trigger('keydown', { key: 'Home' })
+      await flushPromises()
+      expect(tabs(w)[0]!.attributes('aria-selected')).toBe('true')
+      expect(document.activeElement).toBe(tabs(w)[0]!.element)
+    })
   })
 
   describe('loading, failure and empty states', () => {
@@ -156,11 +175,20 @@ describe('src/views/MySubmissionsView.vue', () => {
     })
 
     it('explains a failure and loads again on "Try again"', async () => {
-      vi.mocked(getMySubmissions).mockRejectedValueOnce(new Error('Network Error')).mockResolvedValueOnce(THREE)
+      let answer: (rows: MySubmission[]) => void = () => {}
+      vi.mocked(getMySubmissions)
+        .mockRejectedValueOnce(new Error('Network Error'))
+        .mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
       const w = await mountView()
 
       expect(w.get('.load-failed').text()).toContain("couldn't reach SkinBuddy")
       await w.get('button.retry').trigger('click')
+
+      // The failure gives way to the loading state while the retry is out.
+      expect(w.find('.load-failed').exists()).toBe(false)
+      expect(w.get('[role="status"]').attributes('aria-busy')).toBe('true')
+
+      answer(THREE)
       await flushPromises()
 
       expect(getMySubmissions).toHaveBeenCalledTimes(2)

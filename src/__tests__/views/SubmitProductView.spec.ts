@@ -202,6 +202,14 @@ describe('src/views/SubmitProductView.vue', () => {
       expect(getCategories).toHaveBeenCalledTimes(2)
       expect(button(wrapper, 'Serums').exists()).toBe(true)
     })
+
+    it('treats an empty category list as not loaded, since no category could be chosen from it', async () => {
+      vi.mocked(getCategories).mockResolvedValueOnce([])
+      const { wrapper } = await mountView()
+
+      expect(wrapper.text()).toContain("We couldn't load the categories.")
+      expect(button(wrapper, 'Try again').exists()).toBe(true)
+    })
   })
 
   describe('photo (upload)', () => {
@@ -369,6 +377,16 @@ describe('src/views/SubmitProductView.vue', () => {
       expect(toggle.attributes('aria-expanded')).toBe('true')
       expect(cards[0]!.findAll('button[aria-pressed]').map((b) => b.text())).toContain('Barrier support')
     })
+
+    it('asks for a pasted list of more than 100 to be sent in parts, without checking any of it', async () => {
+      const { wrapper } = await mountView()
+      await toIngredients(wrapper)
+
+      await paste(wrapper, Array.from({ length: 101 }, (_, i) => `Ingredient ${i + 1}`).join(', '))
+
+      expect(matchIngredients).not.toHaveBeenCalled()
+      expect(wrapper.get('.paste-message').text()).toBe("That's 101 ingredients. Paste up to 100 at a time.")
+    })
   })
 
   describe('sending', () => {
@@ -514,6 +532,7 @@ describe('src/views/SubmitProductView.vue', () => {
       await wrapper.get('[role="dialog"]').trigger('keydown', { key: 'Escape' })
       await flushPromises()
 
+      expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
       expect(router.currentRoute.value.path).toBe('/submissions/new')
     })
 

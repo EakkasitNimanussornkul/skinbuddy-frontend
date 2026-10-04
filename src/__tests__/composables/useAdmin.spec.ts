@@ -126,5 +126,17 @@ describe('src/composables/useAdmin.ts', () => {
       await expect(asked).resolves.toBeNull()
       expect(isAdmin.value).toBe(false)
     })
+
+    it('does not ask the backend after signing out, which would send /auth/me with no login', async () => {
+      signIn()
+      answersRole('admin')
+      const { ensureRole } = useAdmin()
+      await ensureRole()
+
+      useAuthStore().clearSession()
+
+      await expect(ensureRole()).resolves.toBe(false)
+      expect(apiClient.get).toHaveBeenCalledTimes(1)
+    })
   })
 })

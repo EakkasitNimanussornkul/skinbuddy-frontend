@@ -28,6 +28,7 @@ describe('null ingredient benefits', () => {
 
       expect(w.text()).toContain('Draws water into the skin.')
       expect(w.findAll('.no-description').map((p) => p.text())).toEqual(['No description yet'])
+      expect(w.findAll('.ingredient-group').map((g) => g.text())).toEqual(['Humectant'])
       expect(w.text()).not.toContain('null')
     })
 
