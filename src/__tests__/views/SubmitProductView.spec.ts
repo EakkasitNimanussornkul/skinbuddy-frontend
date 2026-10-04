@@ -557,7 +557,7 @@ describe('src/views/SubmitProductView.vue', () => {
   })
 
   describe('extras (benefits, period after opening, links)', () => {
-    const lastBody = () => vi.mocked(createSubmission).mock.calls.at(-1)![0]
+    const lastBody = () => vi.mocked(createSubmission).mock.lastCall![0]
 
     it('adds a benefit as a removable chip, and refuses the same one twice', async () => {
       const { wrapper } = await mountView()
