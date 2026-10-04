@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createMemoryHistory, RouterView } from 'vue-router'
+import { createRouter, createMemoryHistory, RouterView, type Router } from 'vue-router'
 import { defineComponent, h } from 'vue'
 
 vi.mock('../../api/products', async (importOriginal) => ({
@@ -29,6 +29,13 @@ import { searchIngredients } from '../../api/ingredientsApi'
 import ProductSpecContent from '../../components/Catalog/ProductSpecContent.vue'
 import ProductEditView from '../../views/ProductEditView.vue'
 import { useAuthStore } from '../../stores/auth'
+import App from '../../App.vue'
+
+// The real router, for its route records. Imported by a path held in a variable
+// so vue-tsc does not follow it into every view (see adminGuard.spec.ts).
+const ROUTER_MODULE = '../../router/index'
+const loadRouter = async (): Promise<Router> =>
+  ((await import(/* @vite-ignore */ ROUTER_MODULE)) as { default: Router }).default
 
 // Follow-ups to feat/22 on the product pages and the site chrome, from an
 // independent verifier's notes.
@@ -164,5 +171,52 @@ describe('feat/22 follow-ups (product pages and site chrome)', () => {
       expect(listing!.get('.claim-source').text()).toBe('javascript:alert(1)')
       expect(price!.get('a.claim-source').attributes('href')).toBe('https://shop.example/p')
     })
+  })
+
+  describe('App site navigation (the submit route by meta.fullScreen)', () => {
+    // The real route records on a memory history, with the pages themselves
+    // stubbed: what decides the navigation is the matched route, not the page.
+    const mountAppAt = async (address: string) => {
+      const real = await loadRouter()
+      const router = createRouter({ history: createMemoryHistory(), routes: real.options.routes })
+      await router.push(address)
+      await router.isReady()
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia, router],
+          stubs: { RouterView: true, TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
+        },
+      })
+      mounted.push(wrapper)
+      return wrapper
+    }
+    const chromeShown = (w: VueWrapper) => ({
+      top: w.findComponent({ name: 'TopNav' }).exists(),
+      mobile: w.findComponent({ name: 'MobileTopBar' }).exists(),
+      bottom: w.findComponent({ name: 'BottomNav' }).exists(),
+    })
+    const hidden = { top: false, mobile: false, bottom: false }
+    const shown = { top: true, mobile: true, bottom: true }
+
+    it('marks the submit route full screen in the router itself, so a trailing slash matches it too', async () => {
+      const real = await loadRouter()
+
+      expect(real.resolve('/submissions/new').meta.fullScreen).toBe(true)
+      expect(real.resolve('/submissions/new/').meta.fullScreen).toBe(true)
+      expect(real.resolve('/submissions').meta.fullScreen).toBeUndefined()
+    }, 60_000)
+
+    it('hides the site navigation on /submissions/new with or without a trailing slash', async () => {
+      expect(chromeShown(await mountAppAt('/submissions/new'))).toEqual(hidden)
+      expect(chromeShown(await mountAppAt('/submissions/new/'))).toEqual(hidden)
+    }, 60_000)
+
+    it('still hides it on the quiz and the profile setup, and keeps it on My submissions', async () => {
+      expect(chromeShown(await mountAppAt('/quiz'))).toEqual(hidden)
+      expect(chromeShown(await mountAppAt('/setup-profile'))).toEqual(hidden)
+      expect(chromeShown(await mountAppAt('/submissions'))).toEqual(shown)
+    }, 60_000)
   })
 })

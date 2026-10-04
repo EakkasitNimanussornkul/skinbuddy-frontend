@@ -134,11 +134,12 @@ const router = createRouter({
     },
 
     {
-      // Submit a product. Full screen: App.vue hides the site navigation here.
+      // Submit a product. Full screen: App.vue hides the site navigation here
+      // (by meta, so /submissions/new/ is full screen as well).
       path: '/submissions/new',
       name: 'submit-product',
       component: SubmitProductView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, fullScreen: true },
     },
     {
       path: '/submissions',

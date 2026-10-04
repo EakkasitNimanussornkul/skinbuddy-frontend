@@ -695,7 +695,7 @@ const SPEC_MAP = [
     module: 'views/ExploreView, components/Shared/TopNav, components/Shared/MobileTopBar, App',
     prerequisite:
       'Each component mounted with @vue/test-utils on a memory history with its children stubbed; searchProducts and the shared apiClient (for GET /auth/me) mocked; a fresh Pinia and the role state reset per case. No network access.',
-    note: 'Where a user finds the submit flow: the Explore no-results state and the card under the results, My submissions in both account menus, and the admin-only Review submissions item. The App cases pin that the site navigation is hidden on /submissions/new only.',
+    note: 'Where a user finds the submit flow: the Explore no-results state and the card under the results, My submissions in both account menus, and the admin-only Review submissions item. The App cases pin that the site navigation is hidden on /submissions/new only (their memory router marks that route meta.fullScreen, as the real one does).',
   },
   {
     file: 'src/__tests__/api/adminSubmissionsApi.spec.ts',
@@ -745,10 +745,10 @@ const SPEC_MAP = [
   {
     file: 'src/__tests__/views/ProductPagesFollowUp.spec.ts',
     feature: '#4 Search and compare',
-    module: 'components/Catalog/ProductSpecContent, views/ProductEditView (sources)',
+    module: 'components/Catalog/ProductSpecContent, views/ProductEditView (sources), App and router (full-screen routes)',
     prerequisite:
-      'Each component mounted with @vue/test-utils on a memory history with a fresh Pinia. ProductSpecContent has the product hero and the ingredient explainer stubbed. ProductEditView is rendered through a real RouterView, attached to the document, with Teleport stubbed and getProductBySlug, updateProduct, the meta lists and the ingredient search mocked. No network access.',
-    note: 'A name-only ingredient (one added without details) has no functional group, and the list shows none for it rather than the "Skin Conditioning" it used to print for any ingredient without one. On the product edit page a source with no web link is never sent in the PATCH while the warning about it stays, and a stored URL that is not http or https (a javascript: value in the case) is shown as text, never as a link.',
+      'Each component mounted with @vue/test-utils on a memory history with a fresh Pinia. ProductSpecContent has the product hero and the ingredient explainer stubbed. ProductEditView is rendered through a real RouterView, attached to the document, with Teleport stubbed and getProductBySlug, updateProduct, the meta lists and the ingredient search mocked. App is mounted on a memory history built from the real router's route records (the router loaded by a path held in a variable), with RouterView and the navigation components stubbed. No network access.',
+    note: 'A name-only ingredient (one added without details) has no functional group, and the list shows none for it rather than the "Skin Conditioning" it used to print for any ingredient without one. On the product edit page a source with no web link is never sent in the PATCH while the warning about it stays, and a stored URL that is not http or https (a javascript: value in the case) is shown as text, never as a link. The submit route is full screen by its meta.fullScreen, as the product edit route is, so /submissions/new/ with a trailing slash hides the site navigation too; the quiz, the profile setup and My submissions are unchanged.',
   },
   {
     file: 'src/__tests__/views/AdminReviewSafety.spec.ts',

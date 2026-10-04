@@ -28,7 +28,7 @@ const makeRouter = async (address = '/') => {
       { path: '/explore', component: { template: '<div />' } },
       { path: '/settings', component: { template: '<div class="settings-page" />' } },
       { path: '/submissions', component: { template: '<div />' } },
-      { path: '/submissions/new', component: { template: '<div />' } },
+      { path: '/submissions/new', component: { template: '<div />' }, meta: { fullScreen: true } },
       { path: '/admin/submissions', component: { template: '<div />' } },
     ],
   })

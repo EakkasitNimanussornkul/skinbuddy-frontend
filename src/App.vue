@@ -14,9 +14,9 @@ const themeStore = useThemeStore()
 const route = useRoute()
 
 // Full-screen flows draw their own way out, so the site navigation is hidden:
-// these paths, and any route with meta.fullScreen (the product edit page,
-// whose path carries the slug).
-const FULL_SCREEN_PATHS = ['/quiz', '/setup-profile', '/submissions/new']
+// these paths, and any route with meta.fullScreen (the submit flow and the
+// product edit page; a route's meta also covers a trailing slash).
+const FULL_SCREEN_PATHS = ['/quiz', '/setup-profile']
 const showChrome = computed(() => !FULL_SCREEN_PATHS.includes(route.path) && !route.meta.fullScreen)
 
 onMounted(() => {
