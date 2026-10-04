@@ -206,7 +206,8 @@ const handleGuestTrigger = () => {
                 <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0 shadow-sm" :class="getTierBgColor(item.ingredients?.awareness_tier)"></span>
                 <div>
                   <p class="text-xs sm:text-sm font-bold text-brand-text dark:text-white">{{ item.ingredients?.name || 'Active Component' }}</p>
-                  <p class="text-[11px] text-brand-text-muted mt-0.5 uppercase tracking-wider">{{ item.ingredients?.functional_group || 'Skin Conditioning' }}</p>
+                  <!-- The group as recorded; a name-only ingredient has none, so no label is shown rather than a made-up one. -->
+                  <p v-if="item.ingredients?.functional_group" class="ingredient-group text-[11px] text-brand-text-muted mt-0.5 uppercase tracking-wider">{{ item.ingredients.functional_group }}</p>
                 </div>
               </div>
 

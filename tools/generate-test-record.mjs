@@ -742,6 +742,14 @@ const SPEC_MAP = [
     prerequisite: 'Pure functions over a review detail and a product object built in the test. No mocks, no network.',
     note: 'Cases an independent verifier found missing: each rule here could be removed with every earlier case still passing. An ingredient\'s own link is published only when the admin ticks that they opened it; every refusal code the product edit reads (SBNON, SBAMB, SBVAL, 23514, 401, 404, no answer) has its own words; and a source with no web link is never sent in the PATCH, while the page still lists it as having none.',
   },
+  {
+    file: 'src/__tests__/views/ProductPagesFollowUp.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/ProductSpecContent',
+    prerequisite:
+      'Each component mounted with @vue/test-utils on a memory history with a fresh Pinia; the product hero and the ingredient explainer are stubbed. No network access.',
+    note: 'A name-only ingredient (one added without details) has no functional group, and the list shows none for it rather than the "Skin Conditioning" it used to print for any ingredient without one.',
+  },
 ]
 
 function runSuite() {
