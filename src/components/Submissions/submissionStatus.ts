@@ -34,12 +34,16 @@ export const countByTab = (rows: MySubmission[]): Record<SubmissionTab, number> 
 export const filterByTab = (rows: MySubmission[], tab: SubmissionTab): MySubmission[] =>
   tab === 'all' ? rows : rows.filter((r) => r.status === tab)
 
-/** "4 Oct 2026". Null for a missing or unreadable date, so nothing invented is shown. */
+// Spelled out rather than left to toLocaleDateString, whose short month for
+// September differs between ICU versions ("Sep" / "Sept").
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "4 Oct 2026", in the viewer's own time zone. Null for a missing or unreadable date, so nothing invented is shown. */
 export const formatDay = (value: string | null): string | null => {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`
 }
 
 /**
