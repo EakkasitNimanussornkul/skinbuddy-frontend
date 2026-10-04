@@ -61,8 +61,9 @@ const removePhoto = () => {
   photoError.value = ''
 }
 
-const toggleCategory = (category: string) => {
-  draft.category = draft.category === category ? '' : category
+// One category: choosing another replaces it.
+const chooseCategory = (category: string) => {
+  draft.category = category
   delete errors.category
 }
 
@@ -134,7 +135,7 @@ const clear = (field: string) => {
           :key="category"
           :label="category"
           :pressed="draft.category === category"
-          @toggle="toggleCategory(category)"
+          @toggle="chooseCategory(category)"
         />
       </div>
       <FieldError id="category-err" :message="errors.category" />

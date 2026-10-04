@@ -81,7 +81,7 @@ const getThemeClasses = (tier?: string) => {
              nobody had described. -->
         <span
           v-if="ing.functional_group"
-          class="text-[11px] font-mono font-bold uppercase block transition-colors duration-300"
+          class="ingredient-group text-[11px] font-mono font-bold uppercase block transition-colors duration-300"
           :class="getThemeClasses(ing.awareness_tier).text"
         >
           {{ ing.functional_group }}

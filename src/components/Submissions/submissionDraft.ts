@@ -195,11 +195,10 @@ export const moveItem = <T>(list: T[], from: number, to: number) => {
 // Validation
 // ---------------------------------------------------------------------------
 
-const HTTP_URL = /^https?:\/\/[^\s/$.?#][^\s]*$/i
-
+/** The backend's rule (schemas._http_url): an http or https scheme and a host. */
 export const isHttpUrl = (value: string): boolean => {
   const trimmed = value.trim()
-  if (!HTTP_URL.test(trimmed)) return false
+  if (!trimmed) return false
   try {
     const url = new URL(trimmed)
     return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.length > 0

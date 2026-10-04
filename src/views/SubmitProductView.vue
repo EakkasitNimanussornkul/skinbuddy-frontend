@@ -184,15 +184,16 @@ const send = async () => {
   }
 }
 
+// The draft was emptied when it was sent.
 const startAnother = () => {
-  Object.assign(draft, emptyDraft())
   replaceErrors({})
   sent.value = null
   step.value = 1
 }
 
 // --- Leaving -----------------------------------------------------------------
-const needsLeaveWarning = () => !sent.value && isDraftDirty(draft)
+// Sending empties the draft, so a sent submission never asks.
+const needsLeaveWarning = () => isDraftDirty(draft)
 const leaveDialogOpen = ref(false)
 let settleLeave: ((leave: boolean) => void) | null = null
 
