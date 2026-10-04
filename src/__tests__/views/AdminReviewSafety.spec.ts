@@ -190,6 +190,27 @@ describe('feat/22 follow-ups (review screens)', () => {
       expect(press(dialogEl(), 'Tab', true)).toBe(false)
       expect(document.activeElement).toBe(confirmEl())
     })
+
+    it('answers Tab while busy without throwing, since there is no button to move to', async () => {
+      await mountDialog()
+      await setBusy(true)
+      // An exception in a keydown handler reaches the window as an error event.
+      const errors: unknown[] = []
+      const onError = (event: ErrorEvent) => {
+        errors.push(event.error)
+        event.preventDefault()
+      }
+      window.addEventListener('error', onError)
+      try {
+        press(dialogEl(), 'Tab')
+        press(dialogEl(), 'Tab', true)
+      } finally {
+        window.removeEventListener('error', onError)
+      }
+
+      expect(errors).toEqual([])
+      expect(document.activeElement).toBe(dialogEl())
+    })
   })
 
   describe('AdminReviewPanel focus after a refused publish', () => {
