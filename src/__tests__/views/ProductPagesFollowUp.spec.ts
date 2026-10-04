@@ -21,11 +21,21 @@ vi.mock('../../api/ingredientsApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/ingredientsApi')>()),
   searchIngredients: vi.fn(),
 }))
+vi.mock('../../api/accountApi', () => ({ fetchMyRole: vi.fn() }))
+vi.mock('../../api/shelfapi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/shelfapi')>()),
+  analyzeProduct: vi.fn(),
+}))
 
 import { getProductBySlug } from '../../api/products'
 import { updateProduct } from '../../api/productAdminApi'
 import { getCategories, getConcernTags } from '../../api/metaApi'
 import { searchIngredients } from '../../api/ingredientsApi'
+import { fetchMyRole } from '../../api/accountApi'
+import { analyzeProduct } from '../../api/shelfapi'
+import { resetAdminState } from '../../composables/useAdmin'
+import MobileTopBar from '../../components/Shared/MobileTopBar.vue'
+import ProductHeroSection from '../../components/Catalog/ProductHeroSection.vue'
 import ProductSpecContent from '../../components/Catalog/ProductSpecContent.vue'
 import ProductEditView from '../../views/ProductEditView.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -56,6 +66,7 @@ describe('feat/22 follow-ups (product pages and site chrome)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    resetAdminState()
   })
   afterEach(() => {
     while (mounted.length) mounted.pop()!.unmount()
@@ -218,5 +229,84 @@ describe('feat/22 follow-ups (product pages and site chrome)', () => {
       expect(chromeShown(await mountAppAt('/setup-profile'))).toEqual(hidden)
       expect(chromeShown(await mountAppAt('/submissions'))).toEqual(shown)
     }, 60_000)
+  })
+
+  describe('MobileTopBar account menu (aria-controls)', () => {
+    it('points aria-controls at the account menu only while the menu is there to point at', async () => {
+      vi.mocked(fetchMyRole).mockResolvedValue('user')
+      const router = await memoryRouter([{ path: '/' }, { path: '/settings' }, { path: '/submissions' }], '/')
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      useAuthStore().setAuth('token-1', { id: 'u-1', skin_type: 'OSPW' })
+      const wrapper = mount(MobileTopBar, { global: { plugins: [pinia, router], stubs: { SearchAutocompleteInput: true } }, attachTo: document.body })
+      mounted.push(wrapper)
+      const cog = wrapper.get('button[aria-label="Account menu"]')
+
+      expect(cog.attributes('aria-controls')).toBeUndefined()
+      await cog.trigger('click')
+      await flushPromises()
+      expect(cog.attributes('aria-controls')).toBe('mobile-account-menu')
+      expect(document.getElementById('mobile-account-menu')).not.toBeNull()
+
+      await cog.trigger('click')
+      await flushPromises()
+      expect(cog.attributes('aria-controls')).toBeUndefined()
+      expect(document.getElementById('mobile-account-menu')).toBeNull()
+    })
+  })
+
+  describe('ProductHeroSection Edit product link (signing in on the page)', () => {
+    const mountHero = async (mode: 'detail' | 'explore' = 'detail') => {
+      vi.mocked(analyzeProduct).mockResolvedValue({ is_safe: true, warnings: [] } as never)
+      const router = await memoryRouter([{ path: '/' }, { path: '/products/:slug/edit' }], '/')
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const wrapper = mount(ProductHeroSection, {
+        props: { product: { id: 'p-1', slug: 'cerave-hydrating-facial-cleanser', brand: 'CeraVe', name: 'Hydrating Facial Cleanser', category: 'Cleansers' }, mode },
+        global: { plugins: [pinia, router], stubs: { teleport: true, SafetyCheckModal: true } },
+      })
+      mounted.push(wrapper)
+      await flushPromises()
+      return wrapper
+    }
+
+    it('shows Edit product once an admin signs in on the product page, without navigating, and hides it on sign-out', async () => {
+      vi.mocked(fetchMyRole).mockResolvedValue('admin')
+      const wrapper = await mountHero()
+      expect(wrapper.find('a.edit-product').exists()).toBe(false)
+      expect(fetchMyRole).not.toHaveBeenCalled()
+
+      useAuthStore().setAuth('token-admin', { id: 'u-1', skin_type: 'OSPW' })
+      await flushPromises()
+      expect(fetchMyRole).toHaveBeenCalledTimes(1)
+      expect(wrapper.get('a.edit-product').attributes('href')).toBe('/products/cerave-hydrating-facial-cleanser/edit')
+
+      useAuthStore().clearSession()
+      await flushPromises()
+      expect(wrapper.find('a.edit-product').exists()).toBe(false)
+    })
+
+    it('asks again when the page switches from a normal account to an admin one', async () => {
+      vi.mocked(fetchMyRole).mockResolvedValueOnce('user').mockResolvedValueOnce('admin')
+      const wrapper = await mountHero()
+      useAuthStore().setAuth('token-user', { id: 'u-1', skin_type: 'OSPW' })
+      await flushPromises()
+      expect(wrapper.find('a.edit-product').exists()).toBe(false)
+
+      useAuthStore().setAuth('token-admin', { id: 'u-2', skin_type: 'OSPW' })
+      await flushPromises()
+      expect(fetchMyRole).toHaveBeenCalledTimes(2)
+      expect(wrapper.find('a.edit-product').exists()).toBe(true)
+    })
+
+    it('does not ask for the role from the explore preview, where the link is never shown', async () => {
+      vi.mocked(fetchMyRole).mockResolvedValue('admin')
+      const wrapper = await mountHero('explore')
+
+      useAuthStore().setAuth('token-admin', { id: 'u-1', skin_type: 'OSPW' })
+      await flushPromises()
+      expect(fetchMyRole).not.toHaveBeenCalled()
+      expect(wrapper.find('a.edit-product').exists()).toBe(false)
+    })
   })
 })

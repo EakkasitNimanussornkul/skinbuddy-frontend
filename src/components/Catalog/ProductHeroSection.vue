@@ -48,8 +48,16 @@ const authStore = useAuthStore()
 
 // The admin-only Edit product link (feat/22). Only what the page offers: the
 // edit route checks the role again, and the backend answers 403 to anyone else.
+// Asked again whenever the login changes, so an admin who signs in on this page
+// sees the link without navigating (useAdmin forgets a role read for an old token).
 const { isAdmin, ensureRole } = useAdmin()
-if (props.mode === 'detail' && authStore.isAuthenticated) ensureRole()
+watch(
+  () => authStore.token,
+  (token) => {
+    if (props.mode === 'detail' && token) ensureRole()
+  },
+  { immediate: true },
+)
 const editPath = computed(() =>
   props.mode === 'detail' && isAdmin.value && props.product?.slug ? `/products/${encodeURIComponent(props.product.slug)}/edit` : null,
 )
