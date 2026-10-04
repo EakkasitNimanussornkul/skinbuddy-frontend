@@ -697,6 +697,44 @@ const SPEC_MAP = [
       'Each component mounted with @vue/test-utils on a memory history with its children stubbed; searchProducts and the shared apiClient (for GET /auth/me) mocked; a fresh Pinia and the role state reset per case. No network access.',
     note: 'Where a user finds the submit flow: the Explore no-results state and the card under the results, My submissions in both account menus, and the admin-only Review submissions item. The App cases pin that the site navigation is hidden on /submissions/new only.',
   },
+  {
+    file: 'src/__tests__/api/adminSubmissionsApi.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/submissionsApi (admin), api/productAdminApi',
+    prerequisite:
+      'The shared apiClient mocked (admin routes), and bare axios mocked to show it is never used for them. No network access; nothing is approved, rejected, patched or uploaded on the live backend.',
+    note: 'The review queue, the review detail (duplicate candidates with exact, ingredients with existing_matches), corrections, approve, reject, and the product edit and photo upload. The PATCH /products case pins that updated_at is sent exactly as given.',
+  },
+  {
+    file: 'src/__tests__/components/adminReview.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Submissions/adminReview',
+    prerequisite: 'Pure functions over review details built in the test; VITE_SUPABASE_URL stubbed for the photo address case. No mocks of the network, no network access.',
+    note: 'The review rules kept out of the components: the queue card flags, what blocks Publish (an exact duplicate, a name matching several ingredients, a missing decision or functional group, dropping everything, unsaved corrections, the old format), the approve body with 0-based positions and only ticked extras, the corrections PATCH, and the plain words for every refusal code (409 duplicate, SBNPD, SBDEC, SBNON, SBLEG, SBAMB, SBFGR, SBUNK, SBVAL, 23514, 500).',
+  },
+  {
+    file: 'src/__tests__/components/productEdit.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Submissions/productEdit',
+    prerequisite: 'Pure functions over a product object built in the test. No mocks, no network.',
+    note: 'The product edit rules: updated_at kept as the exact string read, only changed fields sent, the photo sent by its upload path or as null, the ingredients replaced in order, sources kept one per fact, and the refusals read into the stale banner, the duplicate clash, the 403 state or field errors.',
+  },
+  {
+    file: 'src/__tests__/views/AdminSubmissionsView.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/AdminSubmissionsView (AdminQueuePanel, AdminReviewPanel, AdminIngredientDecision, ConfirmDialog)',
+    prerequisite:
+      'The view rendered through a real RouterView on a memory history, attached to the document, with a fresh Pinia and Teleport stubbed. The admin submission calls, the meta lists and the ingredient search are mocked; the review rules and the components are real. No network access.',
+    note: 'The review screens as an admin meets them: tabs and counts, the designed empty state, a failed load with retry, the exact and close duplicate warnings, existing matches (none, one, several) and picking one, the decision cards, the publish ticks, the publish dialog (focus, Escape, focus return), approve and reject, refusals on screen, a legacy row converted, and the 403 state.',
+  },
+  {
+    file: 'src/__tests__/views/ProductEditView.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/ProductEditView, components/Catalog/ProductHeroSection (Edit product link)',
+    prerequisite:
+      'The view rendered through a real RouterView on a memory history, attached to the document, with a fresh Pinia and Teleport stubbed. getProductBySlug, updateProduct, uploadProductPhoto, the meta lists, the ingredient search and GET /auth/me (fetchMyRole) are mocked. No network access.',
+    note: 'The admin product edit: the exact updated_at echoed, only changed fields sent, the photo uploaded before the save, the ingredient list replaced in order, sources by fact, the stale banner with Reload their version, the duplicate clash, field errors, the 403 state, the unsaved-changes guard, and moving to the slug the save returns. The last group pins that the Edit product link shows to admins only, on the product page only.',
+  },
 ]
 
 function runSuite() {
