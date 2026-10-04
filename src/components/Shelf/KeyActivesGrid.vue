@@ -108,8 +108,14 @@ const isContentVisible = computed(() => !props.collapsible || !isCollapsed.value
                 {{ pi.ingredients?.functional_group || 'Active' }}
               </span>
             </div>
-            <p class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
-              {{ pi.ingredients?.benefits || 'No target physiological benefit descriptions logged for this active component compound.' }}
+            <!-- Ingredient benefits can be null (migration 0013: name-only
+                 ingredients). Said neutrally rather than with the old line
+                 about "physiological benefit descriptions". -->
+            <p v-if="pi.ingredients?.benefits" class="text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium">
+              {{ pi.ingredients.benefits }}
+            </p>
+            <p v-else class="no-description text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed italic">
+              No description yet
             </p>
             <SourceList :entries="readIngredientSources(pi.ingredients?.ingredient_sources)" class="mt-2" />
           </div>

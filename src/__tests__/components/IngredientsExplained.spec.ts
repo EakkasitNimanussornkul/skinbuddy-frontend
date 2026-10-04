@@ -31,11 +31,16 @@ describe('src/components/Catalog/IngredientsExplained.vue', () => {
       expect(wrapper.text()).toContain('1 Total')
     })
 
-    it('falls back to a base-formula explanation when no benefit is recorded', () => {
+    it('says "No description yet" and names no group for an ingredient with no profile', () => {
+      // Rewritten in place for feat/22 (null ingredient benefits, migration
+      // 0013). The old fallbacks - "Formulation Base" and a sentence about pH
+      // and shelf life - were claims about an ingredient nobody had described.
       const wrapper = mountExplained([ingredient('Water', { benefits: null, functional_group: null })])
 
-      expect(wrapper.text()).toContain('Formulation Base')
-      expect(wrapper.text()).toContain('Supports the overall formula')
+      expect(wrapper.text()).toContain('No description yet')
+      expect(wrapper.text()).not.toContain('Formulation Base')
+      expect(wrapper.text()).not.toContain('Supports the overall formula')
+      expect(wrapper.text()).not.toContain('null')
     })
   })
 

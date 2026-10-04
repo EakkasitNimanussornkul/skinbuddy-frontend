@@ -4,6 +4,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     requiresSkinType?: boolean
+    requiresAdmin?: boolean
   }
 }
 
@@ -20,6 +21,24 @@ export interface GuardAuth {
 }
 
 /**
+ * What is known about the user's role for this navigation: true for an admin,
+ * false for anyone else, null when it could not be read. Only asked for on a
+ * requiresAdmin route (see router/index.ts), so null elsewhere.
+ */
+export interface GuardAccess {
+  isAdmin: boolean | null
+}
+
+/** Where a signed-in user who is not an admin is sent from an admin page. */
+export const ADMIN_ONLY_REDIRECT = {
+  name: 'error',
+  query: {
+    title: 'For the SkinBuddy team',
+    message: 'This page is for the people who review product submissions. You can follow your own submissions in My submissions.',
+  },
+} as const
+
+/**
  * Decide whether a navigation may proceed.
  *
  * Deliberately in its own module, importing nothing but a type. Kept next to
@@ -29,7 +48,7 @@ export interface GuardAuth {
  * augmentation of pinia, so a test importing the route table fails to compile
  * on an unrelated file. Isolating the guard keeps the unit genuinely a unit.
  */
-export const resolveNavigation = (to: GuardTarget, auth: GuardAuth) => {
+export const resolveNavigation = (to: GuardTarget, auth: GuardAuth, access: GuardAccess = { isAdmin: null }) => {
   // Always allow callback, error, and wildcard 404 pages without checking
   if (to.name === 'authCallback' || to.name === 'error' || to.name === 'not-found') {
     return true
@@ -39,6 +58,18 @@ export const resolveNavigation = (to: GuardTarget, auth: GuardAuth) => {
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     auth.triggerLoginPopup('Sign in to access your personalized skin routine.')
     return false // Stops navigation gracefully
+  }
+
+  // An admin page turns away a user known not to be an admin. A role that
+  // could not be read (null) lets them through: the page's own requests answer
+  // 403 to a non-admin, and the page shows that, so a failed role check does
+  // not lock an admin out. This is about what the page offers, not security -
+  // the backend enforces every admin route.
+  //
+  // After the requiresAuth block, so a signed-out visitor gets the login popup
+  // rather than being told the page is not for them.
+  if (to.meta.requiresAdmin && access.isAdmin === false) {
+    return { name: ADMIN_ONLY_REDIRECT.name, query: { ...ADMIN_ONLY_REDIRECT.query } }
   }
 
   // A page that cannot work without a skin type sends a user who has none to

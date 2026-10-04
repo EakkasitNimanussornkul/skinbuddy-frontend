@@ -56,12 +56,15 @@ describe('src/components/Compare/CompareIngredientsGrid.vue', () => {
       expect(b).toEqual(['Water', 'Glycerin', 'Salicylic Acid'])
     })
 
-    it('marks an ingredient with a recorded benefit as active and one without as base', () => {
+    it('marks an ingredient with a recorded benefit as active and gives no label to one with no profile', () => {
+      // Rewritten in place for feat/22. Water here has no benefits and no
+      // functional group - the shape of a name-only ingredient (migration
+      // 0013) - and calling it "Base" was a claim nobody had made.
       const wrapper = mountGrid(compareData())
       const badges = wrapper.findAll('span.text-\\[9px\\]').map((s) => s.text())
 
-      // A's column: Water (no benefit), Glycerin, Retinol.
-      expect(badges.slice(0, 3)).toEqual(['Base', 'Active', 'Active'])
+      // A: Water (no label), Glycerin, Retinol. B: Water (no label), Glycerin, Salicylic Acid.
+      expect(badges).toEqual(['Active', 'Active', 'Active', 'Active'])
     })
 
     it('falls back to the column position when a product has no brand', () => {

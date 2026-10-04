@@ -2,9 +2,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useAdmin } from '../../composables/useAdmin'
 import SearchAutocompleteInput from './SearchAutocompleteInput.vue'
 
 const authStore = useAuthStore()
+// The admin-only menu item. The role is asked for when the menu first opens,
+// not on every page load; useAdmin keeps it for the rest of the login.
+const { isAdmin, ensureRole } = useAdmin()
 
 const isUserMenuOpen = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
@@ -15,6 +19,7 @@ const toggleUserMenu = () => {
     return
   }
   isUserMenuOpen.value = !isUserMenuOpen.value
+  if (isUserMenuOpen.value) ensureRole()
 }
 
 const handleLogoutClick = () => {
@@ -143,6 +148,8 @@ onUnmounted(() => {
       <!-- Profile Section -->
       <div ref="userMenuRef" class="relative pl-4 border-l border-brand-surface-border dark:border-stone-800">
         <button
+          type="button"
+          :aria-expanded="isUserMenuOpen ? 'true' : 'false'"
           @click.stop="toggleUserMenu"
           class="flex items-center gap-3 p-1.5 rounded-2xl hover:bg-brand-bg-light dark:hover:bg-stone-800/60 transition-all cursor-pointer group border border-transparent hover:border-brand-surface-border dark:hover:border-stone-700"
         >
@@ -204,6 +211,33 @@ onUnmounted(() => {
         </svg>
       </div>
       <span>Settings</span>
+    </RouterLink>
+
+    <!-- My submissions: the products this user has sent for review. -->
+    <RouterLink
+      to="/submissions"
+      @click="isUserMenuOpen = false"
+      class="menu-my-submissions flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800/80 hover:text-brand-primary transition-all group"
+    >
+      <div class="w-9 h-9 rounded-xl bg-brand-bg-light dark:bg-stone-800 flex items-center justify-center text-brand-text-muted group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors shrink-0 shadow-2xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.2L4 17.2z" /><path d="M8 9h8M8 12h5" /></svg>
+      </div>
+      <span>My submissions</span>
+    </RouterLink>
+
+    <!-- Review submissions: admins only. What the menu offers, not security;
+         every admin route answers 403 to anyone else. -->
+    <RouterLink
+      v-if="isAdmin"
+      to="/admin/submissions"
+      @click="isUserMenuOpen = false"
+      class="menu-review-submissions flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800/80 hover:text-brand-primary transition-all group"
+    >
+      <div class="w-9 h-9 rounded-xl bg-brand-bg-light dark:bg-stone-800 flex items-center justify-center text-brand-text-muted group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors shrink-0 shadow-2xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></svg>
+      </div>
+      <span>Review submissions</span>
+      <span class="ml-auto text-[10px] font-extrabold text-brand-text-muted tracking-wider">ADMIN</span>
     </RouterLink>
 
     <!-- Item 2: SkinBuddy AI Assistant -->

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { resolveNavigation } from './guard'
+import { useAdmin } from '../composables/useAdmin'
 import { scrollBehavior } from './scroll'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 import ChatbotView from '../views/ChatbotView.vue'
@@ -19,6 +20,9 @@ import SkinProfileView from '../views/SkinProfileView.vue'
 import SkinQuizView from '../views/SkinQuizView.vue'
 import SkinTypeLanding from '../views/SkinTypeLanding.vue'
 import WeeklyCheckInView from '../views/WeeklyCheckInView.vue'
+import SubmitProductView from '../views/SubmitProductView.vue'
+import MySubmissionsView from '../views/MySubmissionsView.vue'
+import AdminSubmissionsView from '../views/AdminSubmissionsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -129,6 +133,28 @@ const router = createRouter({
     },
 
     {
+      // Submit a product. Full screen: App.vue hides the site navigation here.
+      path: '/submissions/new',
+      name: 'submit-product',
+      component: SubmitProductView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/submissions',
+      name: 'my-submissions',
+      component: MySubmissionsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      // The review queue (placeholder until feat/22 part B). requiresAdmin is
+      // about what the page offers; the backend answers 403 to anyone else.
+      path: '/admin/submissions',
+      name: 'admin-submissions',
+      component: AdminSubmissionsView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: ErrorView,
@@ -146,6 +172,13 @@ const router = createRouter({
 // Route Guard: Check if the user is allowed to view the page.
 // The decision itself lives in ./guard so it can be unit tested without
 // pulling every view into the test's tsconfig project.
-router.beforeEach((to) => resolveNavigation(to, useAuthStore()))
+//
+// The role is asked for only on an admin route, and only for a signed-in user:
+// a signed-out visitor is stopped by requiresAuth first.
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  const isAdmin = to.meta.requiresAdmin && auth.isAuthenticated ? await useAdmin().ensureRole() : null
+  return resolveNavigation(to, auth, { isAdmin })
+})
 
 export default router

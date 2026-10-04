@@ -32,6 +32,7 @@ import { readProductSources, readProductSourceUrl } from '../../api/sources'
 import { useCountUp } from '../../composables/useCountUp'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
 import SourceList from '../Shared/SourceList.vue'
+import ProductPackClaims from './ProductPackClaims.vue'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
 const props = defineProps<{
@@ -443,6 +444,8 @@ const handleCommitToShelf = async () => {
         <p class="text-xs sm:text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium pt-1">
           {{ productDescription }}
         </p>
+        <!-- The pack's own claims: good_for, benefits, pao_months (migration 0013). -->
+        <ProductPackClaims :product="product" />
         <a
           v-if="productSourceUrl"
           :href="productSourceUrl"

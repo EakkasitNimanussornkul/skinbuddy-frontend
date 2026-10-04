@@ -61,6 +61,10 @@ describe('src/router/index.ts', () => {
         '/compare': { requiresAuth: true },
         '/checkin': { requiresAuth: true },
         '/analysis': { requiresAuth: true },
+        // Product submissions (feat/22): signed-in pages, and an admin page.
+        '/submissions/new': { requiresAuth: true },
+        '/submissions': { requiresAuth: true },
+        '/admin/submissions': { requiresAuth: true, requiresAdmin: true },
         '/:pathMatch(.*)*': {},
       })
     })

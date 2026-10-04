@@ -16,6 +16,18 @@ const props = defineProps<{ data: CompareResponse }>()
 // components each kept their own copy of the match thresholds.
 const similarity = computed(() => resolveComparisonSimilarity(props.data))
 
+/**
+ * "Active" for an ingredient with recorded benefits, "Base" for one with a
+ * functional group and none, and no label at all for one with neither. That
+ * last is a name-only ingredient (migration 0013), and calling it "Base" was
+ * a claim about something nobody had described.
+ */
+const deckLabel = (ingredient: { benefits?: string | null; functional_group?: string | null } | null | undefined) => {
+  if (ingredient?.benefits) return 'Active'
+  if (ingredient?.functional_group) return 'Base'
+  return null
+}
+
 const SIMILARITY_STYLES: Record<string, string> = {
   high: 'bg-brand-primary text-white border-brand-primary',
   moderate: 'bg-semantic-warning/15 text-semantic-warning border-semantic-warning/30',
@@ -86,8 +98,8 @@ const SIMILARITY_STYLES: Record<string, string> = {
               <span v-if="item.ingredients?.functional_group" class="text-[10px] font-semibold text-brand-text-muted dark:text-stone-400 block mt-0.5 uppercase tracking-wider">{{ item.ingredients.functional_group }}</span>
             </div>
 
-            <span :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 shadow-3xs', item.ingredients?.benefits ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/20' : 'bg-brand-surface-light dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700']">
-              {{ item.ingredients?.benefits ? 'Active' : 'Base' }}
+            <span v-if="deckLabel(item.ingredients)" :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 shadow-3xs', deckLabel(item.ingredients) === 'Active' ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/20' : 'bg-brand-surface-light dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700']">
+              {{ deckLabel(item.ingredients) }}
             </span>
           </div>
         </div>
@@ -109,8 +121,8 @@ const SIMILARITY_STYLES: Record<string, string> = {
               <span v-if="item.ingredients?.functional_group" class="text-[10px] font-semibold text-brand-text-muted dark:text-stone-400 block mt-0.5 uppercase tracking-wider">{{ item.ingredients.functional_group }}</span>
             </div>
 
-            <span :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 shadow-3xs', item.ingredients?.benefits ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/20' : 'bg-brand-surface-light dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700']">
-              {{ item.ingredients?.benefits ? 'Active' : 'Base' }}
+            <span v-if="deckLabel(item.ingredients)" :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 shadow-3xs', deckLabel(item.ingredients) === 'Active' ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/20' : 'bg-brand-surface-light dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700']">
+              {{ deckLabel(item.ingredients) }}
             </span>
           </div>
         </div>

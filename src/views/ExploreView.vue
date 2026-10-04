@@ -544,15 +544,40 @@ watch(
         />
       </TransitionGroup>
 
-      <div v-else class="py-12 flex justify-center w-full">
+      <div v-else class="py-12 flex flex-col items-center gap-4 w-full">
         <EmptyState
           title="No Formulation Matches"
           message="No curated cosmetic items align with your selected target pricing intervals or catalog filtering boundaries."
           action-label="Reset Filter Criteria"
           @action="handlePriceClear(); selectedCategory = 'All'; selectedBrand = 'All'; router.push('/explore')"
         />
+        <!-- Not in the catalogue at all? Product submissions (feat/22). -->
+        <p class="text-sm text-stone-600 dark:text-stone-300 text-center">Can't find it? Tell us about it.</p>
+        <router-link
+          to="/submissions/new"
+          class="submit-this-product min-h-12 px-5 rounded-[14px] bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white text-[15px] font-bold inline-flex items-center gap-2 transition-colors"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          Submit this product
+        </router-link>
       </div>
       </div>
+
+      <!-- Under the results: a way to send a product the catalogue lacks. -->
+      <router-link
+        v-if="catalogState === 'results'"
+        to="/submissions/new"
+        class="missing-product mt-6 rounded-[18px] px-4 py-3.5 flex items-center gap-3 bg-brand-primary-light dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent hover:bg-brand-primary-light/70 dark:hover:bg-brand-primary/25 transition-colors"
+      >
+        <span class="w-10 h-10 rounded-xl bg-brand-surface-light dark:bg-brand-surface-dark flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        </span>
+        <span class="flex flex-col gap-0.5 flex-grow">
+          <span class="text-[15px] font-extrabold">Missing a product?</span>
+          <span class="text-[13px]">Send it to us and we'll add it after a check.</span>
+        </span>
+        <svg class="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+      </router-link>
       </div>
 
     </div>

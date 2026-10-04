@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import BottomNav from './components/Shared/BottomNav.vue'
 import TopNav from './components/Shared/TopNav.vue'
@@ -12,6 +12,10 @@ import ScrollToTopButton from './components/Shared/ScrollToTopButton.vue'
 
 const themeStore = useThemeStore()
 const route = useRoute()
+
+// Full-screen flows draw their own way out, so the site navigation is hidden.
+const FULL_SCREEN_PATHS = ['/quiz', '/setup-profile', '/submissions/new']
+const showChrome = computed(() => !FULL_SCREEN_PATHS.includes(route.path))
 
 onMounted(() => {
   themeStore.initTheme()
@@ -29,16 +33,16 @@ onMounted(() => {
     <LogoutModal />
 
     <!-- Desktop Top Navigation (Hidden on Mobile) -->
-    <TopNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
+    <TopNav v-if="showChrome" />
 
     <!-- Mobile Header Top Bar (Hidden on Desktop) -->
-    <MobileTopBar v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
+    <MobileTopBar v-if="showChrome" />
 
     <!-- Main View Canvas -->
     <RouterView />
       <ScrollToTopButton />
     <!-- Mobile Bottom Navigation (5-Tab Layout) -->
-    <BottomNav v-if="route.path !== '/quiz' && route.path !== '/setup-profile'" />
+    <BottomNav v-if="showChrome" />
 
     <ToastProvider />
   </div>

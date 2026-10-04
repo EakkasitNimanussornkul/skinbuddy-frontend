@@ -74,15 +74,24 @@ const getThemeClasses = (tier?: string) => {
           <h4 class="text-base font-bold text-brand-text dark:text-white">{{ ing.name }}</h4>
         </div>
 
+        <!-- No group and no benefits is the ordinary state of an ingredient added
+             by name only (a product submission approved with no profile). It
+             says so, neutrally: the old fallbacks - "Formulation Base" and a
+             sentence about pH and shelf life - were claims about an ingredient
+             nobody had described. -->
         <span
+          v-if="ing.functional_group"
           class="text-[11px] font-mono font-bold uppercase block transition-colors duration-300"
           :class="getThemeClasses(ing.awareness_tier).text"
         >
-          {{ ing.functional_group || 'Formulation Base' }}
+          {{ ing.functional_group }}
         </span>
 
-        <p class="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed max-w-3xl font-medium">
-          {{ ing.benefits || 'Supports the overall formula by balancing pH, binding ingredients, or maintaining shelf life.' }}
+        <p v-if="ing.benefits" class="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed max-w-3xl font-medium">
+          {{ ing.benefits }}
+        </p>
+        <p v-else class="no-description text-xs sm:text-sm text-stone-500 dark:text-stone-400 leading-relaxed italic">
+          No description yet
         </p>
 
         <!-- The published sources behind this ingredient's notes, per claim;
