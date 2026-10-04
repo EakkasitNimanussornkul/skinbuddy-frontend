@@ -133,6 +133,13 @@ describe('src/components/Submissions/productEdit.ts', () => {
   })
 
   describe('sources, one per fact', () => {
+    it('leaves out a source type the backend would refuse, rather than sending it', () => {
+      const before = formFromProduct(product)
+      const now = cloneForm(before)
+      now.sources = [{ key: 'k', url: 'https://blog.example/p', title: 'A blog', publisher: null, sourceType: 'website', claims: ['description'] }]
+      expect(productChanges(before, now).sources).toEqual([{ url: 'https://blog.example/p', title: 'A blog', claims: ['description'] }])
+    })
+
     it('adds a fact to a link already listed rather than listing it twice', () => {
       const sources = setClaimSource(sourcesFromProduct(product), 'description', { url: 'https://world.openbeautyfacts.org/p/1', title: 'ignored' })
       expect(sources).toHaveLength(1)
@@ -164,6 +171,10 @@ describe('src/components/Submissions/productEdit.ts', () => {
         description: 'Keep the description to 2000 characters',
         ingredients: 'Keep at least one ingredient',
       })
+    })
+
+    it('allows a description of exactly 2000 characters', () => {
+      expect(validateProductForm({ ...formFromProduct(product), description: 'x'.repeat(2000) }, ['Cleansers'])).toEqual({})
     })
 
     it('allows at most 8 benefits', () => {

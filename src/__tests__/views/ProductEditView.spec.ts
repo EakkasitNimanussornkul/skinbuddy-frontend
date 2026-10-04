@@ -38,6 +38,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useToast } from '../../composables/useToast'
 import ProductEditView from '../../views/ProductEditView.vue'
 import ProductHeroSection from '../../components/Catalog/ProductHeroSection.vue'
+import App from '../../App.vue'
 
 // Microseconds and an offset: a JS Date would keep neither, and the save would be stale.
 const UPDATED_AT = '2026-10-04T07:26:19.406488+00:00'
@@ -406,8 +407,55 @@ describe('src/views/ProductEditView.vue', () => {
       expect((await mountHero(null)).find('a.edit-product').exists()).toBe(false)
     })
 
-    it('shows it on the product page only, not on the explore preview', async () => {
-      expect((await mountHero('admin', 'explore')).find('a.edit-product').exists()).toBe(false)
+    it('shows it on the product page only, not on the explore preview, even to a known admin', async () => {
+      // The role is read first (by the product page), so only the mode can hide it.
+      const onPage = await mountHero('admin')
+      expect(onPage.find('a.edit-product').exists()).toBe(true)
+      const wrapper = mount(ProductHeroSection, {
+        props: { product: product(), mode: 'explore' },
+        global: { plugins: [onPage.vm.$pinia, onPage.vm.$router], stubs: { teleport: true, SafetyCheckModal: true } },
+      })
+      mounted.push(wrapper)
+      await flushPromises()
+      expect(wrapper.find('a.edit-product').exists()).toBe(false)
+    })
+  })
+
+  describe('App (site navigation on the product edit page)', () => {
+    const mountAppAt = async (address: string) => {
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+          { path: '/product/:slug', component: { template: '<div />' } },
+          { path: '/products/:slug/edit', component: { template: '<div />' }, meta: { fullScreen: true } },
+        ],
+      })
+      await router.push(address)
+      await router.isReady()
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia, router],
+          stubs: { TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
+        },
+      })
+      mounted.push(wrapper)
+      return wrapper
+    }
+
+    it('hides the site navigation on a full-screen route such as the product edit page, which has its own Cancel and save bar', async () => {
+      const w = await mountAppAt('/products/cerave/edit')
+
+      expect(w.findComponent({ name: 'TopNav' }).exists()).toBe(false)
+      expect(w.findComponent({ name: 'BottomNav' }).exists()).toBe(false)
+    })
+
+    it('keeps the site navigation on the product page itself', async () => {
+      const w = await mountAppAt('/product/cerave')
+
+      expect(w.findComponent({ name: 'TopNav' }).exists()).toBe(true)
+      expect(w.findComponent({ name: 'BottomNav' }).exists()).toBe(true)
     })
   })
 })
