@@ -555,4 +555,70 @@ describe('src/views/SubmitProductView.vue', () => {
       expect(unload()).toBe(true)
     })
   })
+
+  describe('extras (benefits, period after opening, links)', () => {
+    const lastBody = () => vi.mocked(createSubmission).mock.calls.at(-1)![0]
+
+    it('adds a benefit as a removable chip, and refuses the same one twice', async () => {
+      const { wrapper } = await mountView()
+      await toExtras(wrapper)
+      const input = wrapper.get('input[placeholder="Add a benefit"]')
+
+      await input.setValue('Hydrates')
+      await wrapper.get('button.add-benefit').trigger('click')
+      await input.setValue('hydrates')
+      await wrapper.get('button.add-benefit').trigger('click')
+
+      expect(wrapper.findAll('.benefit-list li').map((li) => li.text())).toEqual(['Hydrates'])
+      expect(wrapper.text()).toContain("That one's already added")
+      expect(wrapper.find('button[aria-label="Remove Hydrates"]').exists()).toBe(true)
+    })
+
+    it('sends "Not printed" as no period after opening, and turns off a month chosen before it', async () => {
+      vi.mocked(createSubmission).mockResolvedValue({ id: 's-1', status: 'pending', created_at: null })
+      const { wrapper } = await mountView()
+      await toExtras(wrapper)
+
+      await button(wrapper, '24 months').trigger('click')
+      await button(wrapper, 'Not printed').trigger('click')
+
+      expect(button(wrapper, 'Not printed').attributes('aria-pressed')).toBe('true')
+      expect(button(wrapper, '24 months').attributes('aria-pressed')).toBe('false')
+      await wrapper.get('button.send').trigger('click')
+      await flushPromises()
+      expect(lastBody().pao_months).toBeNull()
+    })
+
+    it('offers up to five link cards, and sends a filled one with what it shows', async () => {
+      vi.mocked(createSubmission).mockResolvedValue({ id: 's-1', status: 'pending', created_at: null })
+      const { wrapper } = await mountView()
+      await toExtras(wrapper)
+
+      const card = wrapper.get('.source-card')
+      await card.get('input[type="url"]').setValue('https://brand.example/toner')
+      await card.get('input[placeholder="e.g. Brand product page"]').setValue('Brand product page')
+      await card.findAll('button[aria-pressed]').find((b) => b.text() === 'Ingredient list')!.trigger('click')
+      for (let i = 0; i < 4; i++) await wrapper.get('button.add-source').trigger('click')
+
+      expect(wrapper.findAll('.source-card')).toHaveLength(5)
+      expect(wrapper.find('button.add-source').exists()).toBe(false)
+
+      await wrapper.get('button.send').trigger('click')
+      await flushPromises()
+      expect(lastBody().sources).toEqual([{ url: 'https://brand.example/toner', title: 'Brand product page', claims: ['listing'] }])
+    })
+
+    it('holds Send with an inline error on a link card that is only half filled', async () => {
+      const { wrapper } = await mountView()
+      await toExtras(wrapper)
+
+      await wrapper.get('.source-card input[type="url"]').setValue('brand.example')
+      await wrapper.get('button.send').trigger('click')
+      await flushPromises()
+
+      expect(createSubmission).not.toHaveBeenCalled()
+      expect(wrapper.get('.source-card input[type="url"]').attributes('aria-invalid')).toBe('true')
+      expect(wrapper.get('.source-card').text()).toContain('Choose what the link shows')
+    })
+  })
 })

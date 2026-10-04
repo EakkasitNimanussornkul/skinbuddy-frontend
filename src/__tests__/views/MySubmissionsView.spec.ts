@@ -178,4 +178,27 @@ describe('src/views/MySubmissionsView.vue', () => {
       expect(w.find('[role="tablist"]').exists()).toBe(false)
     })
   })
+
+  describe('status-only actions (render)', () => {
+    it('offers View product only on a published one, and the team note only on one not added', async () => {
+      // A waiting row carrying a slug or a note (an odd answer) must not offer
+      // a product that is not published, or a verdict that was not given.
+      vi.mocked(getMySubmissions).mockResolvedValue([
+        row({ product_slug: 'not-yet', review_notes: 'Draft note' }),
+        row({ id: 's-9', status: 'approved', product_slug: null, review_notes: 'Looks good' }),
+      ])
+      const w = await mountView()
+
+      expect(w.find('a.view-product').exists()).toBe(false)
+      expect(w.find('.review-note').exists()).toBe(false)
+    })
+
+    it('shows a status it does not know in plain words under All, and counts it in no status tab', async () => {
+      vi.mocked(getMySubmissions).mockResolvedValue([row({ status: 'archived' })])
+      const w = await mountView()
+
+      expect(cards(w)[0]!.get('.status-chip').text()).toBe('archived')
+      expect(tabs(w).map((t) => t.text())).toEqual(['All 1', 'Waiting 0', 'Published 0', 'Not added 0'])
+    })
+  })
 })
