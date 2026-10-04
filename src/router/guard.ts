@@ -5,6 +5,8 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     requiresSkinType?: boolean
     requiresAdmin?: boolean
+    /** The page draws its own way out, so App.vue hides the site navigation. */
+    fullScreen?: boolean
   }
 }
 

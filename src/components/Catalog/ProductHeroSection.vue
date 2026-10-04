@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { addToShelf, analyzeProduct } from '../../api/shelfapi'
 import {
   describeMatchAvailability,
@@ -33,6 +34,7 @@ import { useCountUp } from '../../composables/useCountUp'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
 import SourceList from '../Shared/SourceList.vue'
 import ProductPackClaims from './ProductPackClaims.vue'
+import { useAdmin } from '../../composables/useAdmin'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
 
 const props = defineProps<{
@@ -43,6 +45,14 @@ const props = defineProps<{
 const emit = defineEmits(['open-compare-selector', 'shelf-updated', 'close'])
 const { addToast } = useToast()
 const authStore = useAuthStore()
+
+// The admin-only Edit product link (feat/22). Only what the page offers: the
+// edit route checks the role again, and the backend answers 403 to anyone else.
+const { isAdmin, ensureRole } = useAdmin()
+if (props.mode === 'detail' && authStore.isAuthenticated) ensureRole()
+const editPath = computed(() =>
+  props.mode === 'detail' && isAdmin.value && props.product?.slug ? `/products/${encodeURIComponent(props.product.slug)}/edit` : null,
+)
 
 // 🌟 Smart description with ingredient fallback
 // The product's own entry on the public database it was checked against, when
@@ -428,8 +438,20 @@ const handleCommitToShelf = async () => {
     <!-- Right Specification Panel -->
     <div class="lg:col-span-7 p-6 sm:p-10 space-y-5 flex flex-col justify-between">
       <div class="space-y-3">
-        <span class="text-xs font-bold text-brand-primary uppercase tracking-widest">{{ product.brand }}</span>
-        <h1 class="text-2xl sm:text-4xl font-serif font-bold text-brand-text dark:text-white mt-1">{{ product.name }}</h1>
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <span class="text-xs font-bold text-brand-primary uppercase tracking-widest">{{ product.brand }}</span>
+            <h1 class="text-2xl sm:text-4xl font-serif font-bold text-brand-text dark:text-white mt-1">{{ product.name }}</h1>
+          </div>
+          <RouterLink
+            v-if="editPath"
+            :to="editPath"
+            class="edit-product shrink-0 min-h-11 px-3 rounded-xl border-[1.5px] border-brand-surface-border dark:border-stone-600 text-sm font-extrabold text-stone-800 dark:text-white inline-flex items-center gap-1.5 hover:border-brand-primary-strong dark:hover:border-brand-primary transition-colors"
+          >
+            <svg class="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+            Edit product
+          </RouterLink>
+        </div>
 
         <div v-if="product.price_thb || product.price_usd" class="inline-flex items-center gap-2 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 px-4 py-2 rounded-2xl font-mono font-bold text-sm">
           <span v-if="product.price_thb" class="text-brand-primary">฿{{ product.price_thb }}</span>

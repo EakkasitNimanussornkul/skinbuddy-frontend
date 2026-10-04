@@ -61,10 +61,12 @@ describe('src/router/index.ts', () => {
         '/compare': { requiresAuth: true },
         '/checkin': { requiresAuth: true },
         '/analysis': { requiresAuth: true },
-        // Product submissions (feat/22): signed-in pages, and an admin page.
+        // Product submissions (feat/22): signed-in pages, and the admin pages -
+        // the queue with an optional review id, and the full-screen product edit.
         '/submissions/new': { requiresAuth: true },
         '/submissions': { requiresAuth: true },
-        '/admin/submissions': { requiresAuth: true, requiresAdmin: true },
+        '/admin/submissions/:id?': { requiresAuth: true, requiresAdmin: true },
+        '/products/:slug/edit': { requiresAuth: true, requiresAdmin: true, fullScreen: true },
         '/:pathMatch(.*)*': {},
       })
     })

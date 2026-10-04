@@ -23,6 +23,7 @@ import WeeklyCheckInView from '../views/WeeklyCheckInView.vue'
 import SubmitProductView from '../views/SubmitProductView.vue'
 import MySubmissionsView from '../views/MySubmissionsView.vue'
 import AdminSubmissionsView from '../views/AdminSubmissionsView.vue'
+import ProductEditView from '../views/ProductEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -146,12 +147,21 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      // The review queue (placeholder until feat/22 part B). requiresAdmin is
+      // The review queue, and with an id the review of one submission (beside
+      // the queue on a wide screen, its own page on a phone). requiresAdmin is
       // about what the page offers; the backend answers 403 to anyone else.
-      path: '/admin/submissions',
+      path: '/admin/submissions/:id?',
       name: 'admin-submissions',
       component: AdminSubmissionsView,
       meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      // An admin's edit of a product, from its page. Full screen: it has its
+      // own Cancel and save bar. The backend answers 403 to anyone else.
+      path: '/products/:slug/edit',
+      name: 'product-edit',
+      component: ProductEditView,
+      meta: { requiresAuth: true, requiresAdmin: true, fullScreen: true },
     },
 
     {

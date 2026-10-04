@@ -13,9 +13,11 @@ import ScrollToTopButton from './components/Shared/ScrollToTopButton.vue'
 const themeStore = useThemeStore()
 const route = useRoute()
 
-// Full-screen flows draw their own way out, so the site navigation is hidden.
+// Full-screen flows draw their own way out, so the site navigation is hidden:
+// these paths, and any route with meta.fullScreen (the product edit page,
+// whose path carries the slug).
 const FULL_SCREEN_PATHS = ['/quiz', '/setup-profile', '/submissions/new']
-const showChrome = computed(() => !FULL_SCREEN_PATHS.includes(route.path))
+const showChrome = computed(() => !FULL_SCREEN_PATHS.includes(route.path) && !route.meta.fullScreen)
 
 onMounted(() => {
   themeStore.initTheme()
