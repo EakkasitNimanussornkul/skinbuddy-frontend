@@ -735,6 +735,13 @@ const SPEC_MAP = [
       'The view rendered through a real RouterView on a memory history, attached to the document, with a fresh Pinia and Teleport stubbed. getProductBySlug, updateProduct, uploadProductPhoto, the meta lists, the ingredient search and GET /auth/me (fetchMyRole) are mocked. No network access.',
     note: 'The admin product edit: the exact updated_at echoed, only changed fields sent, the photo uploaded before the save, the ingredient list replaced in order, sources by fact, the stale banner with Reload their version, the duplicate clash, field errors, the 403 state, the unsaved-changes guard, and moving to the slug the save returns. The last group pins that the Edit product link shows to admins only, on the product page only.',
   },
+  {
+    file: 'src/__tests__/components/submissionRuleGaps.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Submissions/adminReview, components/Submissions/productEdit',
+    prerequisite: 'Pure functions over a review detail and a product object built in the test. No mocks, no network.',
+    note: 'Cases an independent verifier found missing: each rule here could be removed with every earlier case still passing. An ingredient\'s own link is published only when the admin ticks that they opened it; every refusal code the product edit reads (SBNON, SBAMB, SBVAL, 23514, 401, 404, no answer) has its own words; and a source with no web link is never sent in the PATCH, while the page still lists it as having none.',
+  },
 ]
 
 function runSuite() {
