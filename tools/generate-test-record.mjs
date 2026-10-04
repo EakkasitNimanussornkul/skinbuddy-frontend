@@ -618,14 +618,14 @@ const SPEC_MAP = [
   },
   {
     file: 'src/__tests__/api/apiProblem.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'api/apiProblem',
     prerequisite: 'Pure function over a thrown error object built in the test. No mocks, no network.',
     note: 'One reading of the three error shapes the submission routes answer with: a route error ({"detail": text}), a database-function error ({"detail", "code", "details"}) and a Pydantic 422 list. A null status means no answer arrived, which the screens word differently from any server answer.',
   },
   {
     file: 'src/__tests__/api/metaApi.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'api/metaApi',
     prerequisite:
       'Bare axios and the shared apiClient both mocked; the in-memory cache cleared and localStorage emptied per case. No network access.',
@@ -633,20 +633,20 @@ const SPEC_MAP = [
   },
   {
     file: 'src/__tests__/api/ingredientsApi.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'api/ingredientsApi',
     prerequisite: 'Bare axios and the shared apiClient both mocked; localStorage emptied per case. No network access.',
   },
   {
     file: 'src/__tests__/api/submissionsApi.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'api/submissionsApi',
     prerequisite:
       'The shared apiClient mocked (these are protected routes), and bare axios mocked to show it is never used for them. No network access; nothing is uploaded or posted to the live backend.',
   },
   {
     file: 'src/__tests__/composables/useAdmin.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'composables/useAdmin, api/accountApi',
     prerequisite:
       'The shared apiClient mocked so GET /auth/me answers with a chosen role. A fresh Pinia per case with the real auth store; the module-level role state reset per case. No network access.',
@@ -654,7 +654,7 @@ const SPEC_MAP = [
   },
   {
     file: 'src/__tests__/router/adminGuard.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'router/guard (requiresAdmin)',
     prerequisite:
       'resolveNavigation called directly for the rule cases. The wiring cases load the real router (by a path held in a variable, as profileRoute.spec does) with apiClient mocked, a fresh Pinia and the role state reset per case. No network access.',
@@ -662,21 +662,21 @@ const SPEC_MAP = [
   },
   {
     file: 'src/__tests__/components/submissionDraft.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'components/Submissions/submissionDraft',
     prerequisite: 'Pure functions over draft objects built in the test. No mocks, no network.',
     note: 'The rules of the submit form, kept out of the components: the checks for each step, the POST /submissions body, and the reading of a server 422 (field paths and SBUNK) back onto the form fields.',
   },
   {
     file: 'src/__tests__/components/IngredientCombobox.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'components/Submissions/IngredientCombobox',
     prerequisite:
       'The component mounted with @vue/test-utils and attached to the document; searchIngredients mocked; Vitest fake timers drive the 250 ms typing pause. No network access.',
   },
   {
     file: 'src/__tests__/views/SubmitProductView.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'views/SubmitProductView',
     prerequisite:
       'The view rendered through a real RouterView on a memory history (the leave warning is a route guard), with a fresh Pinia and Teleport stubbed. The meta lists, the image upload, createSubmission, searchIngredients and matchIngredients are mocked; the draft rules and the step components are real. Each view is unmounted after its case. No network access.',
@@ -684,14 +684,14 @@ const SPEC_MAP = [
   },
   {
     file: 'src/__tests__/views/MySubmissionsView.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'views/MySubmissionsView',
     prerequisite:
       'The view mounted with @vue/test-utils on a memory history, attached to the document; getMySubmissions mocked. No network access.',
   },
   {
     file: 'src/__tests__/components/SubmissionEntryPoints.spec.ts',
-    feature: '#9 Submit and review products',
+    feature: '#4 Search and compare',
     module: 'views/ExploreView, components/Shared/TopNav, components/Shared/MobileTopBar, App',
     prerequisite:
       'Each component mounted with @vue/test-utils on a memory history with its children stubbed; searchProducts and the shared apiClient (for GET /auth/me) mocked; a fresh Pinia and the role state reset per case. No network access.',
