@@ -600,6 +600,103 @@ const SPEC_MAP = [
       'Both HTTP paths mocked: the shared axios client and the bare axios call used for guest requests. localStorage cleared per test so the token branch is controlled. The guard cases read the api/*.ts sources as text through import.meta.glob. No network access.',
     note: 'The one shared guest fallback for optional-auth routes, which replaced three copies of the same logic in api/products.ts (search, slug and compare). With no stored login it sends a guest request; with one it uses apiClient; on 401 it repeats the request as a guest, so the page loads behind the login popup; any other failure is rethrown. The guard cases pin that only the product module uses it, and that the product module never calls apiClient directly, so a protected route cannot gain a guest retry by mistake.',
   },
+  {
+    file: 'src/__tests__/components/ProductPackClaims.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/ProductPackClaims',
+    prerequisite:
+      'The component mounted with @vue/test-utils with a product object passed directly. For the getProductBySlug case, both HTTP paths are mocked (the shared axios client and the bare axios call used for guests) and localStorage is cleared, so the request goes out as a guest. No network access.',
+    note: 'Migration 0013 gives products good_for (concern tags), benefits and pao_months, shown on the product page under the description, headed as what the brand says. Only what an admin published at approve, or set in an edit, reaches these fields. Empty or null shows nothing. The updated_at case pins that the product read keeps the timestamp as the exact string sent: PATCH /products/{id} needs it back unchanged, and a trip through new Date() would drop the microseconds.',
+  },
+  {
+    file: 'src/__tests__/components/NullIngredientBenefits.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components (IngredientsExplained, KeyActivesGrid, CompareIngredientsGrid)',
+    prerequisite:
+      'Each component mounted with @vue/test-utils with ingredient rows passed directly; the compare grid uses the shared compare fixture with its lists replaced. No store, no router, no network.',
+    note: 'Since migration 0013 an ingredient approved "name only" has null benefits and no functional group. The three screens that show ingredient notes now say "No description yet" (or show no label) instead of the old filler sentences and the "Formulation Base" / "Base" labels, which were claims about an ingredient nobody had described. Two existing cases that pinned the old fallback text were rewritten in place, keeping their IDs: the IngredientsExplained "explanations (render)" case and the CompareIngredientsGrid "ingredient decks (render)" case.',
+  },
+  {
+    file: 'src/__tests__/api/apiProblem.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'api/apiProblem',
+    prerequisite: 'Pure function over a thrown error object built in the test. No mocks, no network.',
+    note: 'One reading of the three error shapes the submission routes answer with: a route error ({"detail": text}), a database-function error ({"detail", "code", "details"}) and a Pydantic 422 list. A null status means no answer arrived, which the screens word differently from any server answer.',
+  },
+  {
+    file: 'src/__tests__/api/metaApi.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'api/metaApi',
+    prerequisite:
+      'Bare axios and the shared apiClient both mocked; the in-memory cache cleared and localStorage emptied per case. No network access.',
+    note: 'The categories, concern tags and functional groups come from the backend, which validates against the same lists. They are public routes, so they go out with no login, and a stale stored login cannot open the login popup.',
+  },
+  {
+    file: 'src/__tests__/api/ingredientsApi.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'api/ingredientsApi',
+    prerequisite: 'Bare axios and the shared apiClient both mocked; localStorage emptied per case. No network access.',
+  },
+  {
+    file: 'src/__tests__/api/submissionsApi.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'api/submissionsApi',
+    prerequisite:
+      'The shared apiClient mocked (these are protected routes), and bare axios mocked to show it is never used for them. No network access; nothing is uploaded or posted to the live backend.',
+  },
+  {
+    file: 'src/__tests__/composables/useAdmin.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'composables/useAdmin, api/accountApi',
+    prerequisite:
+      'The shared apiClient mocked so GET /auth/me answers with a chosen role. A fresh Pinia per case with the real auth store; the module-level role state reset per case. No network access.',
+    note: 'isAdmin decides only what the page offers (the Review submissions menu item, the admin route guard). It is never a security check: every admin route answers 403 to anyone else. The role belongs to the login it was read with, so a sign-out or a different account reads as not an admin until asked again.',
+  },
+  {
+    file: 'src/__tests__/router/adminGuard.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'router/guard (requiresAdmin)',
+    prerequisite:
+      'resolveNavigation called directly for the rule cases. The wiring cases load the real router (by a path held in a variable, as profileRoute.spec does) with apiClient mocked, a fresh Pinia and the role state reset per case. No network access.',
+    note: 'A signed-in user known not to be an admin is sent to the error page with an explanation. A role that could not be read lets the navigation through, so a failed check does not lock an admin out; the admin pages handle the backend 403 themselves.',
+  },
+  {
+    file: 'src/__tests__/components/submissionDraft.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'components/Submissions/submissionDraft',
+    prerequisite: 'Pure functions over draft objects built in the test. No mocks, no network.',
+    note: 'The rules of the submit form, kept out of the components: the checks for each step, the POST /submissions body, and the reading of a server 422 (field paths and SBUNK) back onto the form fields.',
+  },
+  {
+    file: 'src/__tests__/components/IngredientCombobox.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'components/Submissions/IngredientCombobox',
+    prerequisite:
+      'The component mounted with @vue/test-utils and attached to the document; searchIngredients mocked; Vitest fake timers drive the 250 ms typing pause. No network access.',
+  },
+  {
+    file: 'src/__tests__/views/SubmitProductView.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'views/SubmitProductView',
+    prerequisite:
+      'The view rendered through a real RouterView on a memory history (the leave warning is a route guard), with a fresh Pinia and Teleport stubbed. The meta lists, the image upload, createSubmission, searchIngredients and matchIngredients are mocked; the draft rules and the step components are real. Each view is unmounted after its case. No network access.',
+    note: 'The whole submit flow as a user meets it: the three steps, inline errors with aria-invalid and aria-describedby and focus on the first one, the photo checks, search, paste-and-match with "Pick one", reordering, the body sent, server refusals read back onto the fields, the done state, and the leave warning (dialog and beforeunload).',
+  },
+  {
+    file: 'src/__tests__/views/MySubmissionsView.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'views/MySubmissionsView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a memory history, attached to the document; getMySubmissions mocked. No network access.',
+  },
+  {
+    file: 'src/__tests__/components/SubmissionEntryPoints.spec.ts',
+    feature: '#9 Submit and review products',
+    module: 'views/ExploreView, components/Shared/TopNav, components/Shared/MobileTopBar, App',
+    prerequisite:
+      'Each component mounted with @vue/test-utils on a memory history with its children stubbed; searchProducts and the shared apiClient (for GET /auth/me) mocked; a fresh Pinia and the role state reset per case. No network access.',
+    note: 'Where a user finds the submit flow: the Explore no-results state and the card under the results, My submissions in both account menus, and the admin-only Review submissions item. The App cases pin that the site navigation is hidden on /submissions/new only.',
+  },
 ]
 
 function runSuite() {
