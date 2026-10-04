@@ -104,7 +104,7 @@ const EMPTY_TAB_TEXT: Record<SubmissionStatus, string> = {
         @click="choose(t.id)"
         @keydown="onTabKey($event, i)"
       >
-        {{ t.label }}<template v-if="counts"> {{ counts[t.id] }}</template>
+        {{ counts ? `${t.label} ${counts[t.id]}` : t.label }}
       </button>
     </div>
 

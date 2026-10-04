@@ -167,25 +167,32 @@ getFunctionalGroups()
   .catch(() => (groupsFailed.value = true))
 
 // --- Derived ---------------------------------------------------------------
-const isPending = computed(() => detail.value?.status === 'pending')
-const correctionEdit = computed<SubmissionEdit>(() => correctionChanges(baseline.value, corrections))
-const correctionsDirty = computed(() => Object.keys(correctionEdit.value).length > 0)
-const reviewState = computed(() =>
-  detail.value && payload.value
-    ? { detail: detail.value, payload: payload.value, decisions, ticks, correctionsDirty: correctionsDirty.value }
-    : null,
-)
-const blockers = computed(() => (reviewState.value ? publishBlockers(reviewState.value) : []))
-const legacy = computed(() => (payload.value ? isLegacyPayload(payload.value) : false))
-const title = computed(() => [payload.value?.brand, payload.value?.name].filter(Boolean).join(' ') || 'Unnamed product')
-const submitter = computed(() => detail.value?.submitter_name ?? null)
-
 const candidates = computed<DuplicateCandidate[]>(() => {
   const all = [...refusedCandidates.value, ...(detail.value?.duplicate_candidates ?? [])]
   return all.filter((c, i) => all.findIndex((o) => o.id === c.id) === i)
 })
 const exact = computed(() => candidates.value.filter((c) => c.exact))
 const close = computed(() => candidates.value.filter((c) => !c.exact))
+const isPending = computed(() => detail.value?.status === 'pending')
+const correctionEdit = computed<SubmissionEdit>(() => correctionChanges(baseline.value, corrections))
+const correctionsDirty = computed(() => Object.keys(correctionEdit.value).length > 0)
+// The candidates a refused approve named count as exact too: Publish stays off
+// once the backend has said the product exists.
+const reviewState = computed(() =>
+  detail.value && payload.value
+    ? {
+        detail: { ...detail.value, duplicate_candidates: candidates.value },
+        payload: payload.value,
+        decisions,
+        ticks,
+        correctionsDirty: correctionsDirty.value,
+      }
+    : null,
+)
+const blockers = computed(() => (reviewState.value ? publishBlockers(reviewState.value) : []))
+const legacy = computed(() => (payload.value ? isLegacyPayload(payload.value) : false))
+const title = computed(() => [payload.value?.brand, payload.value?.name].filter(Boolean).join(' ') || 'Unnamed product')
+const submitter = computed(() => detail.value?.submitter_name ?? null)
 
 const knownCount = computed(() => detail.value?.ingredients.filter((i) => i.status === 'known').length ?? 0)
 const newCount = computed(() => (detail.value?.ingredients.length ?? 0) - knownCount.value)
