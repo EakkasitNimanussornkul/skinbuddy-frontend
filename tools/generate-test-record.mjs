@@ -745,18 +745,18 @@ const SPEC_MAP = [
   {
     file: 'src/__tests__/views/ProductPagesFollowUp.spec.ts',
     feature: '#4 Search and compare',
-    module: 'components/Catalog/ProductSpecContent',
+    module: 'components/Catalog/ProductSpecContent, views/ProductEditView (sources)',
     prerequisite:
-      'Each component mounted with @vue/test-utils on a memory history with a fresh Pinia; the product hero and the ingredient explainer are stubbed. No network access.',
-    note: 'A name-only ingredient (one added without details) has no functional group, and the list shows none for it rather than the "Skin Conditioning" it used to print for any ingredient without one.',
+      'Each component mounted with @vue/test-utils on a memory history with a fresh Pinia. ProductSpecContent has the product hero and the ingredient explainer stubbed. ProductEditView is rendered through a real RouterView, attached to the document, with Teleport stubbed and getProductBySlug, updateProduct, the meta lists and the ingredient search mocked. No network access.',
+    note: 'A name-only ingredient (one added without details) has no functional group, and the list shows none for it rather than the "Skin Conditioning" it used to print for any ingredient without one. On the product edit page a source with no web link is never sent in the PATCH while the warning about it stays, and a stored URL that is not http or https (a javascript: value in the case) is shown as text, never as a link.',
   },
   {
     file: 'src/__tests__/views/AdminReviewSafety.spec.ts',
     feature: '#4 Search and compare',
-    module: 'components/Submissions/ConfirmDialog, components/Submissions/AdminReviewPanel',
+    module: 'components/Submissions/ConfirmDialog, components/Submissions/AdminReviewPanel, components/Submissions/AdminIngredientDecision',
     prerequisite:
       'ConfirmDialog mounted with @vue/test-utils inside a host that drives busy, with the real Teleport (the Teleport stub re-creates its content on every patch, which would move focus by itself). The review panel rendered through a real RouterView on a memory history with Teleport stubbed; the admin submission calls, the meta lists and the ingredient search mocked. Both attached to the document. No network access.',
-    note: 'While busy both dialog buttons are disabled, and a disabled button cannot hold focus, so the dialog itself takes it (tabindex -1, aria-busy) and Tab and Escape still reach its handler. After a refused publish, focus goes back to Publish when it is still on, and to the review heading when the refusal turned it off.',
+    note: 'While busy both dialog buttons are disabled, and a disabled button cannot hold focus, so the dialog itself takes it (tabindex -1, aria-busy) and Tab and Escape still reach its handler. After a refused publish, focus goes back to Publish when it is still on, and to the review heading when the refusal turned it off. A link the sender typed (a product source or an ingredient's own link) becomes a link only when it is an http or https address; a javascript: value is shown as text.',
   },
 ]
 

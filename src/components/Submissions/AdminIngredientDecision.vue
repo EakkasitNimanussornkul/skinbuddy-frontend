@@ -3,6 +3,7 @@ import { computed, useId } from 'vue'
 import type { IngredientHit } from '../../api/ingredientsApi'
 import type { IngredientDecision, ReviewIngredient, SubmissionIngredient } from '../../api/submissionsApi'
 import { decisionOptions, matchState, type DecisionDraft } from './adminReview'
+import { isHttpUrl } from './submissionDraft'
 import IngredientCombobox from './IngredientCombobox.vue'
 import FieldError from './FieldError.vue'
 
@@ -58,13 +59,15 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
       <template v-if="ingredient.details">
         <span v-if="ingredient.details.roles.length" class="block mt-1 text-sm leading-relaxed text-stone-800 dark:text-white">What it does: {{ ingredient.details.roles.join(', ') }}</span>
         <span v-if="ingredient.details.known_for" class="block text-sm leading-relaxed text-stone-800 dark:text-white break-words">Known for: {{ ingredient.details.known_for }}</span>
+        <!-- A link only for a web address: what the sender typed is not trusted to be one. -->
         <a
-          v-if="ingredient.details.source_url"
+          v-if="ingredient.details.source_url && isHttpUrl(ingredient.details.source_url)"
           :href="ingredient.details.source_url"
           target="_blank"
           rel="noopener noreferrer"
-          class="block text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent underline break-all"
+          class="ingredient-source-link block text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent underline break-all"
         >{{ ingredient.details.source_url }}</a>
+        <span v-else-if="ingredient.details.source_url" class="ingredient-source-text block text-[13px] text-stone-700 dark:text-stone-200 break-all">{{ ingredient.details.source_url }} (not a web link)</span>
         <span v-else class="block text-[13px] text-stone-500 dark:text-stone-400">No link given</span>
       </template>
       <span v-else class="block mt-1 text-sm text-stone-500 dark:text-stone-400">No details given</span>

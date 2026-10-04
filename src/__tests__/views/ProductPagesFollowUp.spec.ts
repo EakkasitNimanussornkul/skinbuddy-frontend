@@ -1,9 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { createRouter, createMemoryHistory, RouterView } from 'vue-router'
+import { defineComponent, h } from 'vue'
 
+vi.mock('../../api/products', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/products')>()),
+  getProductBySlug: vi.fn(),
+}))
+vi.mock('../../api/productAdminApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/productAdminApi')>()),
+  updateProduct: vi.fn(),
+  uploadProductPhoto: vi.fn(),
+}))
+vi.mock('../../api/metaApi', () => ({
+  getCategories: vi.fn(),
+  getConcernTags: vi.fn(),
+}))
+vi.mock('../../api/ingredientsApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/ingredientsApi')>()),
+  searchIngredients: vi.fn(),
+}))
+
+import { getProductBySlug } from '../../api/products'
+import { updateProduct } from '../../api/productAdminApi'
+import { getCategories, getConcernTags } from '../../api/metaApi'
+import { searchIngredients } from '../../api/ingredientsApi'
 import ProductSpecContent from '../../components/Catalog/ProductSpecContent.vue'
+import ProductEditView from '../../views/ProductEditView.vue'
 import { useAuthStore } from '../../stores/auth'
 
 // Follow-ups to feat/22 on the product pages and the site chrome, from an
@@ -23,6 +47,7 @@ const memoryRouter = async (routes: { path: string; meta?: Record<string, unknow
 
 describe('feat/22 follow-ups (product pages and site chrome)', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     localStorage.clear()
   })
   afterEach(() => {
@@ -63,6 +88,81 @@ describe('feat/22 follow-ups (product pages and site chrome)', () => {
       const wrapper = await mountSpec([{ ingredients: { id: 'i-gly', name: 'Glycerin', awareness_tier: 'low', functional_group: 'Humectant' } }])
 
       expect(rows(wrapper)[0]!.get('.ingredient-group').text()).toBe('Humectant')
+    })
+  })
+
+  describe('ProductEditView sources (no web link, unsafe link)', () => {
+    const UPDATED_AT = '2026-10-04T07:26:19.406488+00:00'
+    const sourceRow = (claim: string, id: string, url: string, title: string) => ({ claim, sources: { id, url, title } })
+
+    const mountEdit = async (productSources: unknown[]) => {
+      vi.mocked(getProductBySlug).mockResolvedValue({
+        id: 'p-1',
+        slug: 'cerave-hydrating-facial-cleanser',
+        brand: 'CeraVe',
+        name: 'Hydrating Facial Cleanser',
+        category: 'Cleansers',
+        updated_at: UPDATED_AT,
+        product_ingredients: [{ ingredients: { id: 'i-water', name: 'Water', functional_group: 'Solvent' } }],
+        product_sources: productSources,
+      })
+      vi.mocked(getCategories).mockResolvedValue(['Cleansers'])
+      vi.mocked(getConcernTags).mockResolvedValue([])
+      vi.mocked(searchIngredients).mockResolvedValue([])
+      vi.mocked(updateProduct).mockResolvedValue({ product: {}, slug: 'cerave-hydrating-facial-cleanser', updated_at: null })
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+          { path: '/product/:slug', component: { template: '<div />' } },
+          { path: '/products/:slug/edit', component: ProductEditView },
+        ],
+      })
+      await router.push('/products/cerave-hydrating-facial-cleanser/edit')
+      await router.isReady()
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
+        global: { plugins: [pinia, router], stubs: { teleport: true } },
+        attachTo: document.body,
+      })
+      mounted.push(wrapper)
+      await flushPromises()
+      return wrapper
+    }
+
+    it('leaves a source with no web link out of the save, and still warns that it has none', async () => {
+      const wrapper = await mountEdit([
+        sourceRow('listing', 's-leaflet', '', 'A printed leaflet'),
+        sourceRow('image', 's-file', 'ftp://files.example/p', 'An old file'),
+      ])
+      expect(wrapper.get('.unlinked-note').text()).toContain('A printed leaflet, An old file have no web link')
+
+      const price = wrapper.findAll('.claim-row')[2]!
+      await price.get('button.claim-toggle').trigger('click')
+      await wrapper.get('#claim-price-url').setValue('https://shop.example/p')
+      await wrapper.get('#claim-price-title').setValue('Shop page')
+      await wrapper.get('button.claim-save').trigger('click')
+      expect(wrapper.get('.unlinked-note').text()).toContain("A printed leaflet, An old file have no web link, so they can't be kept if you change this section.")
+      await wrapper.get('button.save').trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(updateProduct).mock.lastCall![1]).toEqual({
+        updated_at: UPDATED_AT,
+        sources: [{ url: 'https://shop.example/p', title: 'Shop page', claims: ['price'] }],
+      })
+    })
+
+    it('shows a stored javascript: source as plain text, not as a link, and keeps a web link as a link', async () => {
+      const wrapper = await mountEdit([
+        sourceRow('listing', 's-bad', 'javascript:alert(1)', ''),
+        sourceRow('price', 's-shop', 'https://shop.example/p', 'Shop page'),
+      ])
+      const [listing, , price] = wrapper.findAll('.claim-row')
+
+      expect(wrapper.findAll('a').some((a) => (a.attributes('href') ?? '').startsWith('javascript:'))).toBe(false)
+      expect(listing!.find('a.claim-source').exists()).toBe(false)
+      expect(listing!.get('.claim-source').text()).toBe('javascript:alert(1)')
+      expect(price!.get('a.claim-source').attributes('href')).toBe('https://shop.example/p')
     })
   })
 })

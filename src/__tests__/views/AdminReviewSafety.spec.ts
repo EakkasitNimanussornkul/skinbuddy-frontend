@@ -243,4 +243,45 @@ describe('feat/22 follow-ups (review screens)', () => {
       expect(document.activeElement).toBe(publishButton(wrapper).element)
     })
   })
+
+  describe('source links on the review (only web addresses become links)', () => {
+    const unsafe = 'javascript:alert(1)'
+    const withLinks = (sourceUrl: string, ingredientUrl: string) =>
+      detail({
+        submission: { ...detail().submission, sources: [{ url: sourceUrl, title: 'Sent link', claims: ['listing'] }] },
+        ingredients: [
+          known(0, 'Water'),
+          {
+            position: 1,
+            ingredient_id: null,
+            name: 'Phytosphingosine',
+            status: 'new',
+            details: { roles: [], known_for: 'Supports the skin barrier', source_url: ingredientUrl },
+            existing_matches: [],
+          },
+        ],
+      })
+    const javascriptLinks = (w: VueWrapper) => w.findAll('a').filter((a) => (a.attributes('href') ?? '').toLowerCase().startsWith('javascript:'))
+
+    it('shows a javascript: source link and ingredient link as text, never as a link', async () => {
+      vi.mocked(getAdminSubmission).mockResolvedValue(withLinks(unsafe, unsafe))
+      const wrapper = await mountReview()
+
+      expect(javascriptLinks(wrapper)).toHaveLength(0)
+      expect(wrapper.find('a.source-link').exists()).toBe(false)
+      expect(wrapper.get('.source-text').text()).toBe('javascript:alert(1) (not a web link)')
+      expect(wrapper.find('a.ingredient-source-link').exists()).toBe(false)
+      expect(wrapper.get('.ingredient-source-text').text()).toBe('javascript:alert(1) (not a web link)')
+    })
+
+    it('keeps a web address as a link that opens in a new tab', async () => {
+      vi.mocked(getAdminSubmission).mockResolvedValue(withLinks('https://brand.example/cleanser', 'https://ingredient.example/phyto'))
+      const wrapper = await mountReview()
+
+      expect(wrapper.get('a.source-link').attributes('href')).toBe('https://brand.example/cleanser')
+      expect(wrapper.get('a.ingredient-source-link').attributes('href')).toBe('https://ingredient.example/phyto')
+      expect(wrapper.get('a.ingredient-source-link').attributes('rel')).toBe('noopener noreferrer')
+      expect(wrapper.find('.source-text').exists()).toBe(false)
+    })
+  })
 })

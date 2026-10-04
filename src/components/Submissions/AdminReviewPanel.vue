@@ -43,7 +43,7 @@ import {
   type ReviewPayload,
   type ReviewProblem,
 } from './adminReview'
-import { checkPhotoFile, type FieldErrors } from './submissionDraft'
+import { checkPhotoFile, isHttpUrl, type FieldErrors } from './submissionDraft'
 import { formatDay, statusChip } from './submissionStatus'
 import AdminIngredientDecision from './AdminIngredientDecision.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -589,7 +589,9 @@ const fieldBorder = (key: string) =>
             </fieldset>
             <div v-for="s in payload.sources" :key="s.url" class="mt-2 px-3 py-2.5 rounded-xl bg-brand-bg-light dark:bg-stone-800 flex flex-col gap-1">
               <span class="text-[13px] font-extrabold text-stone-800 dark:text-white">Source link</span>
-              <a :href="s.url" target="_blank" rel="noopener noreferrer" class="text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent underline break-all">{{ s.url }}</a>
+              <!-- A link only for a web address: what the sender typed is not trusted to be one. -->
+              <a v-if="isHttpUrl(s.url)" :href="s.url" target="_blank" rel="noopener noreferrer" class="source-link text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent underline break-all">{{ s.url }}</a>
+              <span v-else class="source-text text-[13px] text-stone-700 dark:text-stone-200 break-all">{{ s.url }} (not a web link)</span>
               <span class="text-xs text-stone-500 dark:text-stone-400">{{ s.title || 'No title' }}<template v-if="s.claims.length"> · shows the {{ s.claims.map((c) => SOURCE_CLAIM_LABEL[c].toLowerCase()).join(', ') }}</template></span>
               <label class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
                 <input type="checkbox" class="tick-source w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary" :checked="ticks.sourceUrls.includes(s.url)" @change="toggle(ticks.sourceUrls, s.url, ($event.target as HTMLInputElement).checked)" />

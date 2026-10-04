@@ -28,7 +28,7 @@ import {
   type ProductForm,
 } from '../components/Submissions/productEdit'
 import { readErrorCandidates } from '../components/Submissions/adminReview'
-import { checkBenefit, checkPhotoFile, moveItem, nextKey, type FieldErrors } from '../components/Submissions/submissionDraft'
+import { checkBenefit, checkPhotoFile, isHttpUrl, moveItem, nextKey, type FieldErrors } from '../components/Submissions/submissionDraft'
 import IngredientCombobox from '../components/Submissions/IngredientCombobox.vue'
 import ChoiceChip from '../components/Submissions/ChoiceChip.vue'
 import FieldError from '../components/Submissions/FieldError.vue'
@@ -548,8 +548,9 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
                   <div class="flex items-center gap-2.5">
                     <span class="flex-grow flex flex-col gap-0.5 min-w-0">
                       <span class="text-xs font-extrabold text-stone-500 dark:text-stone-400">{{ SOURCE_CLAIM_LABEL[claim] }}</span>
-                      <a v-if="sourceForClaim(form.sources, claim)?.url" :href="sourceForClaim(form.sources, claim)!.url" target="_blank" rel="noopener noreferrer" class="claim-source text-sm font-bold text-stone-800 dark:text-white underline break-words">{{ sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url }}</a>
-                      <span v-else-if="sourceForClaim(form.sources, claim)" class="claim-source text-sm font-bold text-stone-800 dark:text-white">{{ sourceForClaim(form.sources, claim)!.title }}</span>
+                      <!-- A link only for a web address: the stored URL is not trusted to be one. -->
+                      <a v-if="isHttpUrl(sourceForClaim(form.sources, claim)?.url ?? '')" :href="sourceForClaim(form.sources, claim)!.url" target="_blank" rel="noopener noreferrer" class="claim-source text-sm font-bold text-stone-800 dark:text-white underline break-words">{{ sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url }}</a>
+                      <span v-else-if="sourceForClaim(form.sources, claim)" class="claim-source text-sm font-bold text-stone-800 dark:text-white break-words">{{ sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url }}</span>
                       <span v-else class="claim-empty text-sm font-bold text-stone-500 dark:text-stone-400">{{ NO_SOURCE_YET }}</span>
                     </span>
                     <button
