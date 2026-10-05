@@ -186,6 +186,16 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(chips(wrapper).map((c) => c.text())).toEqual(['฿200 to ฿800'])
     })
 
+    it('counts and shows a price filter that only raises the lower bound', async () => {
+      const { wrapper } = await mountExplore()
+
+      slider(wrapper).vm.$emit('apply', { min: 200, max: 1500 })
+      await flushPromises()
+
+      expect(chips(wrapper).map((c) => c.text())).toEqual(['฿200 to ฿1,500'])
+      expect(wrapper.get('.filters-count').text()).toBe('1')
+    })
+
     it('clears the price filter from its chip, asking for the full range again', async () => {
       const { wrapper } = await mountExplore()
       slider(wrapper).vm.$emit('apply', { min: 200, max: 800 })
@@ -238,6 +248,33 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
 
       await close.trigger('keydown', { key: 'Tab', shiftKey: true })
       expect(document.activeElement).toBe(show.element)
+    })
+
+    it('moves Tab from the sheet itself, where focus lands on opening, to its first or last control', async () => {
+      const { wrapper } = await mountExplore()
+      const dialog = await openSheet(wrapper)
+      expect(document.activeElement).toBe(dialog.element)
+
+      await dialog.trigger('keydown', { key: 'Tab' })
+      expect(document.activeElement).toBe(wrapper.get('[role="dialog"] button[aria-label="Close filters"]').element)
+
+      ;(dialog.element as HTMLElement).focus()
+      await dialog.trigger('keydown', { key: 'Tab', shiftKey: true })
+      expect(document.activeElement).toBe(sheetButton(wrapper, 'Show products').element)
+    })
+
+    it('closes, dropping the changes, on a tap outside the sheet', async () => {
+      const { wrapper, router } = await mountExplore()
+      await openSheet(wrapper)
+      await sheetButton(wrapper, 'Serums').trigger('click')
+
+      await wrapper.get('[role="dialog"]').trigger('click')
+      expect(sheet(wrapper).exists()).toBe(true)
+      await wrapper.get('.bottom-sheet-backdrop').trigger('click')
+      await flushPromises()
+
+      expect(sheet(wrapper).exists()).toBe(false)
+      expect(router.currentRoute.value.query).toEqual({})
     })
 
     it('starts from the filters on screen, and marks the chosen category with aria-pressed', async () => {
