@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { inject, ref } from 'vue'
-import { readApiProblem } from '../../api/apiProblem'
+import { photoRefusalMessage, readApiProblem } from '../../api/apiProblem'
 import { uploadSubmissionImage, ACCEPTED_IMAGE_TYPES } from '../../api/submissionsApi'
+import { previewFromFile, releasePreview, safeImageSrc, uploadedImageUrl } from '../../utils/safeImages'
 import { DRAFT_CONTEXT, checkPhotoFile } from './submissionDraft'
 import ChoiceChip from './ChoiceChip.vue'
 import FieldError from './FieldError.vue'
@@ -19,13 +20,17 @@ const { draft, errors } = inject(DRAFT_CONTEXT)!
 const fileInput = ref<HTMLInputElement | null>(null)
 const photoError = ref('')
 
-/** The server's answer to a refused upload, in plain words. */
+/**
+ * The server's answer to a refused upload, in plain words. The rate limit and
+ * the size, type and decoding checks are worded once for every photo field
+ * (apiProblem), in the backend's words when it gave some.
+ */
 const uploadFailure = (error: unknown): string => {
-  const { status } = readApiProblem(error)
-  if (status === 413) return 'That photo is over 5 MB. Choose a smaller one.'
-  if (status === 415) return "That file isn't a JPG, PNG or WebP image. Choose a photo in one of those."
+  const problem = readApiProblem(error)
+  const refused = photoRefusalMessage(problem)
+  if (refused) return refused
+  const { status } = problem
   if (status === 401) return 'Your sign-in has expired. Sign in again, then add the photo.'
-  if (status === 422) return 'The photo did not arrive. Choose it again.'
   if (status === null) return "We couldn't upload the photo. Check your connection and try again."
   return "We couldn't upload the photo. Try again, or carry on without one."
 }
@@ -47,7 +52,13 @@ const onPick = async (event: Event) => {
   uploading.value = true
   try {
     const uploaded = await uploadSubmissionImage(file)
-    draft.photo = { imagePath: uploaded.image_path, previewUrl: uploaded.public_url, fileName: file.name }
+    // The file just picked, shown from memory; never the address the answer
+    // gave. The one it replaces is let go. SubmitProductView lets go of the
+    // last one when the draft is sent or the page closes, since this step
+    // unmounts while the draft lives on.
+    releasePreview(draft.photo?.previewUrl)
+    const previewUrl = previewFromFile(file) ?? uploadedImageUrl(uploaded.image_path)
+    draft.photo = { imagePath: uploaded.image_path, previewUrl, fileName: file.name }
     delete errors.photo
   } catch (error: unknown) {
     photoError.value = uploadFailure(error)
@@ -57,6 +68,7 @@ const onPick = async (event: Event) => {
 }
 
 const removePhoto = () => {
+  releasePreview(draft.photo?.previewUrl)
   draft.photo = null
   photoError.value = ''
 }
@@ -160,13 +172,13 @@ const clear = (field: string) => {
         class="photo-preview flex items-center gap-3.5 p-3 rounded-2xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark"
       >
         <img
-          v-if="draft.photo.previewUrl"
-          :src="draft.photo.previewUrl"
+          v-if="safeImageSrc(draft.photo.previewUrl)"
+          :src="safeImageSrc(draft.photo.previewUrl)!"
           alt="The photo you added"
           class="w-20 h-20 rounded-xl object-cover bg-brand-bg-light dark:bg-stone-800"
         />
         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span class="text-sm font-bold text-stone-800 dark:text-white truncate">{{ draft.photo.fileName }}</span>
+          <span class="photo-name text-sm font-bold text-stone-800 dark:text-white truncate">{{ draft.photo.fileName }}</span>
           <span class="text-xs text-stone-500 dark:text-stone-400">Added</span>
         </span>
         <button

@@ -4,12 +4,14 @@ import { RouterLink } from 'vue-router'
 import { getAdminQueue, type AdminQueueRow, type SubmissionStatus } from '../../api/submissionsApi'
 import { readApiProblem } from '../../api/apiProblem'
 import { ADMIN_TABS, CHIP_TONE, describeQueueRow, queueFlagChips } from './adminReview'
+import RevealedText from './RevealedText.vue'
 
 /**
  * The review queue (owner-approved design, 2026-10-04): status tabs with
  * counts, Waiting first, each list oldest first as the backend sends it. A
  * card opens the review - beside the queue on a wide screen, as its own page
- * on a phone (the view decides which).
+ * on a phone (the view decides which). The sender's name, brand and product
+ * name show any hidden character as a visible marker (RevealedText).
  */
 defineProps<{ selectedId: string | null }>()
 const emit = defineEmits<{ forbidden: [] }>()
@@ -179,12 +181,12 @@ const EMPTY_TAB_TEXT: Record<SubmissionStatus, string> = {
           >
             <span class="flex justify-between gap-2.5">
               <span class="flex flex-col gap-[3px] min-w-0">
-                <span v-if="row.summary.brand" class="text-xs font-extrabold uppercase tracking-[0.08em] text-brand-primary-strong-hover dark:text-brand-primary-accent break-words">{{ row.summary.brand }}</span>
-                <span class="queue-name text-[15px] font-extrabold text-stone-800 dark:text-white break-words">{{ row.summary.name || 'Unnamed product' }}</span>
+                <span v-if="row.summary.brand" class="text-xs font-extrabold uppercase tracking-[0.08em] text-brand-primary-strong-hover dark:text-brand-primary-accent break-words"><RevealedText :text="row.summary.brand" /></span>
+                <span class="queue-name text-[15px] font-extrabold text-stone-800 dark:text-white break-words"><RevealedText :text="row.summary.name || 'Unnamed product'" /></span>
               </span>
               <svg class="w-[18px] h-[18px] mt-1 shrink-0 text-stone-500 dark:text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
             </span>
-            <span class="queue-meta block mt-1.5 text-[13px] text-stone-500 dark:text-stone-400">{{ describeQueueRow(row) }}</span>
+            <span class="queue-meta block mt-1.5 text-[13px] text-stone-500 dark:text-stone-400"><RevealedText :text="describeQueueRow(row)" /></span>
             <span class="mt-2.5 flex flex-wrap gap-1.5">
               <span
                 v-for="chip in queueFlagChips(row.flags)"

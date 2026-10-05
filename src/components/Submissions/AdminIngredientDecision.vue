@@ -3,9 +3,13 @@ import { computed, useId } from 'vue'
 import type { IngredientHit } from '../../api/ingredientsApi'
 import type { IngredientDecision, ReviewIngredient, SubmissionIngredient } from '../../api/submissionsApi'
 import { decisionOptions, matchState, type DecisionDraft } from './adminReview'
-import { isHttpUrl } from './submissionDraft'
+import { revealHiddenChars, stripHiddenChars } from '../../utils/hiddenChars'
+import { isHttpUrl } from '../../utils/safeLinks'
 import IngredientCombobox from './IngredientCombobox.vue'
 import FieldError from './FieldError.vue'
+import HiddenCharsNotice from './HiddenCharsNotice.vue'
+import RevealedText from './RevealedText.vue'
+import ExternalLink from '../Shared/ExternalLink.vue'
 
 /**
  * What to do with one new ingredient (owner-approved design, 2026-10-04).
@@ -19,7 +23,9 @@ import FieldError from './FieldError.vue'
  *   one, which saves the choice to the submission first.
  *
  * The sender's details are shown as theirs and unchecked; nothing here is
- * published unless chosen.
+ * published unless chosen. They are shown as text, with any hidden character
+ * as a visible marker, and their link only as an http(s) link, host first.
+ * `submitter` arrives with its hidden characters already shown as markers.
  */
 const props = defineProps<{
   ingredient: ReviewIngredient
@@ -35,6 +41,7 @@ const uid = useId()
 const state = computed(() => matchState(props.ingredient))
 const options = computed(() => decisionOptions(props.ingredient, props.submitter))
 const name = computed(() => props.ingredient.name ?? 'Unnamed ingredient')
+const nameText = computed(() => revealHiddenChars(name.value))
 const whose = computed(() => (props.submitter ? `${props.submitter}'s details` : "The sender's details"))
 const groupMissing = computed(() => props.draft.decision === 'with_details' && !props.draft.functionalGroup)
 
@@ -47,7 +54,7 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
   <div class="ingredient-decision mt-3 rounded-[14px] border-[1.5px] border-amber-200 dark:border-amber-800 p-3">
     <div class="flex flex-wrap items-center gap-2">
       <span class="px-2 py-[3px] rounded-full bg-amber-50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-[11px] font-extrabold">New ingredient</span>
-      <span class="decision-name text-[15px] font-extrabold text-stone-800 dark:text-white break-words">{{ name }}</span>
+      <span class="decision-name text-[15px] font-extrabold text-stone-800 dark:text-white break-words"><RevealedText :text="name" /></span>
     </div>
 
     <p v-if="state === 'one'" class="match-one mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-200">
@@ -58,16 +65,20 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
       <span class="block text-xs font-extrabold text-stone-500 dark:text-stone-400">{{ whose }} (not checked)</span>
       <template v-if="ingredient.details">
         <span v-if="ingredient.details.roles.length" class="block mt-1 text-sm leading-relaxed text-stone-800 dark:text-white">What it does: {{ ingredient.details.roles.join(', ') }}</span>
-        <span v-if="ingredient.details.known_for" class="block text-sm leading-relaxed text-stone-800 dark:text-white break-words">Known for: {{ ingredient.details.known_for }}</span>
-        <!-- A link only for a web address: what the sender typed is not trusted to be one. -->
-        <a
-          v-if="ingredient.details.source_url && isHttpUrl(ingredient.details.source_url)"
-          :href="ingredient.details.source_url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="ingredient-source-link block text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent underline break-all"
-        >{{ ingredient.details.source_url }}</a>
-        <span v-else-if="ingredient.details.source_url" class="ingredient-source-text block text-[13px] text-stone-700 dark:text-stone-200 break-all">{{ ingredient.details.source_url }} (not a web link)</span>
+        <span v-if="ingredient.details.known_for" class="known-for block text-sm leading-relaxed text-stone-800 dark:text-white break-words">Known for: <RevealedText :text="ingredient.details.known_for" /></span>
+        <!-- A link only for a web address: what the sender typed is not trusted to be one.
+             The host comes first, so a lookalike domain stands out. -->
+        <ExternalLink
+          v-if="ingredient.details.source_url"
+          :url="ingredient.details.source_url"
+          show-host
+          class="ingredient-source-link mt-1 min-h-11 flex flex-col justify-center text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent break-all"
+        >
+          <RevealedText :text="ingredient.details.source_url" />
+          <template #fallback>
+            <span class="ingredient-source-text block text-[13px] text-stone-700 dark:text-stone-200 break-all"><RevealedText :text="ingredient.details.source_url" /> (not a web link)</span>
+          </template>
+        </ExternalLink>
         <span v-else class="block text-[13px] text-stone-500 dark:text-stone-400">No link given</span>
       </template>
       <span v-else class="block mt-1 text-sm text-stone-500 dark:text-stone-400">No details given</span>
@@ -89,7 +100,7 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
         </button>
       </div>
       <div class="mt-3">
-        <IngredientCombobox :label="`Or search our list for ${name}`" :input-id="`${uid}-search`" @pick-known="pickKnown" @pick-new="pickNew" />
+        <IngredientCombobox :label="`Or search our list for ${nameText}`" :input-id="`${uid}-search`" @pick-known="pickKnown" @pick-new="pickNew" />
       </div>
     </div>
 
@@ -142,8 +153,10 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
             @input="emit('update', { benefits: ($event.target as HTMLTextAreaElement).value })"
           />
           <span class="text-xs text-stone-500 dark:text-stone-400">Starts as what {{ submitter ?? 'the sender' }} wrote. Leave it empty to show nothing.</span>
+          <!-- Approve stores this text exactly, so a hidden character in it would be published. -->
+          <HiddenCharsNotice :value="draft.benefits" label="description" @clean="emit('update', { benefits: stripHiddenChars(draft.benefits) })" />
         </div>
-        <label v-if="ingredient.details?.source_url" class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
+        <label v-if="isHttpUrl(ingredient.details?.source_url ?? '')" class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
           <input
             type="checkbox"
             :checked="draft.publishSource"

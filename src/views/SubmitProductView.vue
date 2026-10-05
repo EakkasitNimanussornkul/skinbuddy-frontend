@@ -3,7 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref 
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { getCategories, getConcernTags } from '../api/metaApi'
 import { createSubmission } from '../api/submissionsApi'
-import { readApiProblem } from '../api/apiProblem'
+import { detailSentence, plainDetail, rateLimitMessage, readApiProblem, type ApiProblem } from '../api/apiProblem'
+import { releasePreview } from '../utils/safeImages'
 import {
   DRAFT_CONTEXT,
   buildSubmissionBody,
@@ -142,9 +143,16 @@ const goBack = () => {
 }
 
 // --- Sending -----------------------------------------------------------------
-const failureMessage = (status: number | null): string => {
+// The rate limit and the cap on submissions waiting for review (429) and a
+// refusal no field is named for (422) say why in the backend's own words when
+// it gave some; a 422 that names a field is put on it by readServerErrors.
+const failureMessage = (problem: ApiProblem): string => {
+  const { status } = problem
+  const limited = rateLimitMessage(problem)
+  if (limited) return limited
   if (status === null) return "We couldn't reach SkinBuddy, so it wasn't sent. Check your connection and try again."
   if (status === 401) return "Your sign-in has expired, so it wasn't sent. Sign in again to send it."
+  if (status === 422 && plainDetail(problem)) return `It wasn't sent. ${detailSentence(plainDetail(problem)!)}`
   if (status === 422) return "Something in the form wasn't accepted. Check the details and try again."
   return "Something went wrong on our side, so it wasn't sent. Try again in a moment."
 }
@@ -166,6 +174,7 @@ const send = async () => {
   try {
     await createSubmission(buildSubmissionBody(draft))
     sent.value = { brand: draft.brand.trim(), name: draft.name.trim() }
+    releasePreview(draft.photo?.previewUrl)
     Object.assign(draft, emptyDraft())
     replaceErrors({})
   } catch (error: unknown) {
@@ -177,7 +186,7 @@ const send = async () => {
       banner.value = reading.message
       await focusFirstError()
     } else {
-      banner.value = failureMessage(problem.status)
+      banner.value = failureMessage(problem)
     }
   } finally {
     sending.value = false
@@ -228,7 +237,11 @@ onMounted(() => {
   loadCategories()
   loadConcernTags()
 })
-onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  // The photo preview lives with the draft, not the step that made it.
+  releasePreview(draft.photo?.previewUrl)
+})
 </script>
 
 <template>

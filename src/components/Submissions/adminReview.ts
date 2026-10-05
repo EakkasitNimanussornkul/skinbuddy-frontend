@@ -1,4 +1,5 @@
-import type { ApiProblem } from '../../api/apiProblem'
+import { detailClause, plainDetail, rateLimitMessage, type ApiProblem } from '../../api/apiProblem'
+import { uploadedImageUrl } from '../../utils/safeImages'
 import type { ProductSourceClaim } from '../../api/sources'
 import {
   PAO_MONTHS,
@@ -21,6 +22,7 @@ import {
 } from '../../api/submissionsApi'
 import { formatDay } from './submissionStatus'
 import { readPrice, type FieldErrors } from './submissionDraft'
+import { isHttpUrl } from '../../utils/safeLinks'
 
 /**
  * The review screens' rules, kept out of the components so they can be tested
@@ -155,19 +157,13 @@ export const readReviewPayload = (raw: Record<string, unknown>): ReviewPayload =
 export const isLegacyPayload = (payload: ReviewPayload): boolean =>
   payload.ingredients.some((item) => typeof item === 'string')
 
-const UPLOADED_PATH = /^(submissions|products)\/[0-9a-f-]{36}\.(jpg|png|webp)$/
-
 /**
  * The public address of an uploaded photo. The detail carries only the
- * image_path, and the bucket is public (backend image_upload.public_url), so
- * the address is built the way Supabase builds it. Only for paths the upload
+ * image_path, so the address is built from it - only for paths the upload
  * routes create; anything else shows no photo rather than a guessed address.
+ * The rule lives in utils/safeImages, shared with the submit and edit screens.
  */
-export const uploadedImageUrl = (path: string | null): string | null => {
-  const base = import.meta.env.VITE_SUPABASE_URL
-  if (!path || !UPLOADED_PATH.test(path) || typeof base !== 'string' || !base) return null
-  return `${base.replace(/\/+$/, '')}/storage/v1/object/public/product-images/${path}`
-}
+export { uploadedImageUrl }
 
 // ---------------------------------------------------------------------------
 // Corrections
@@ -408,10 +404,11 @@ export const buildApproveBody = (state: ReviewState): ApproveBody => {
   return {
     publish_benefits: payload.benefits.filter((b) => ticks.benefits.includes(b)),
     publish_good_for: payload.goodFor.filter((g) => ticks.goodFor.includes(g)),
+    // Only a web link is ever published: anything else could not have been opened to check.
     publish_source_urls: unique([
       ...payload.sources.map((s) => s.url).filter((url) => ticks.sourceUrls.includes(url)),
       ...ingredientUrls,
-    ]),
+    ]).filter(isHttpUrl),
     new_ingredients: fresh.map((i) => {
       const d = decisions[i.position]!
       const withDetails = d.decision === 'with_details'
@@ -474,6 +471,8 @@ export const readReviewProblem = (problem: ApiProblem, action: ReviewAction, can
     out.message = `We couldn't reach SkinBuddy, ${NOTHING_DONE[action]}. Check your connection and try again.`
   } else if (status === 401) {
     out.message = `Your sign-in has expired, ${NOTHING_DONE[action]}. Sign in again, then try once more.`
+  } else if (status === 429) {
+    out.message = rateLimitMessage(problem)!
   } else if (status === 403) {
     out.forbidden = true
     out.message = 'Only the SkinBuddy team can review submissions.'
@@ -516,6 +515,9 @@ export const readReviewProblem = (problem: ApiProblem, action: ReviewAction, can
     }
     const first = problem.fields[0]!
     out.message = `Something wasn't accepted (${first.field || 'the request'}: ${first.message}), ${NOTHING_DONE[action]}.`
+  } else if (status === 422 && plainDetail(problem)) {
+    // A refusal in the backend's own words, such as a link it does not accept.
+    out.message = `Something wasn't accepted: ${detailClause(plainDetail(problem)!)}, ${NOTHING_DONE[action]}.`
   } else if (status === 422) {
     out.message = `Something wasn't accepted, ${NOTHING_DONE[action]}. Check the details and try again.`
   } else if (status >= 500) {

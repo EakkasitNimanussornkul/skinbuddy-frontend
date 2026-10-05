@@ -13,6 +13,7 @@
  */
 
 import { parseLocalDate } from './dates'
+import { isHttpUrl } from '../utils/safeLinks'
 
 export type SourceType =
   | 'regulatory_register'
@@ -72,10 +73,11 @@ export const NO_SOURCE_YET = 'No published source linked yet'
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value : null)
 
 // Only http(s) links are rendered as links. A source row is written by hand,
-// and a javascript: or data: URL in an href would run on click.
+// or published from a user's submission, and a javascript: or data: URL in an
+// href would run on click. The rule is the shared one (utils/safeLinks).
 const safeUrl = (value: unknown): string | null => {
   const url = text(value)
-  return url && /^https?:\/\//i.test(url) ? url : null
+  return url && isHttpUrl(url) ? url : null
 }
 
 /** One source row as sent, or null for anything that is not one. */

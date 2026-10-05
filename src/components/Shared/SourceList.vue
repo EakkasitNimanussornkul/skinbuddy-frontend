@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { NO_SOURCE_YET, SOURCE_CLAIM_LABEL, SOURCE_TYPE_LABEL, describeSourceSeen, type SourceEntry, type SourceType } from '../../api/sources'
+import ExternalLink from './ExternalLink.vue'
 
 /**
  * The sources behind one ingredient, concern or warning, as a compact line.
@@ -7,8 +8,10 @@ import { NO_SOURCE_YET, SOURCE_CLAIM_LABEL, SOURCE_TYPE_LABEL, describeSourceSee
  * An empty list says so - "No published source linked yet" - rather than
  * disappearing (owner request: be open about what the data rests on). A source
  * with no link (a book) is named without one. Links open in a new tab and are
- * only ever http(s): readSourceRef drops anything else. A price source also
- * says when it was seen, since a price is only true on that day.
+ * only ever http(s): readSourceRef drops anything else, and ExternalLink
+ * checks again. The team attaches each source after opening it, so they are
+ * "curated" links. A price source also says when it was seen, since a price
+ * is only true on that day.
  */
 withDefaults(
   defineProps<{
@@ -29,15 +32,15 @@ const typeLabel = (type: string) => SOURCE_TYPE_LABEL[type as SourceType] ?? nul
     <template v-if="entries.length">
       <span v-for="(entry, i) in entries" :key="`${entry.source.id}:${entry.claim ?? ''}`" class="source-entry inline-flex items-baseline gap-1">
         <span v-if="entry.claim" class="source-claim font-semibold">{{ SOURCE_CLAIM_LABEL[entry.claim] }}:</span>
-        <a
-          v-if="entry.source.url"
-          :href="entry.source.url"
-          target="_blank"
-          rel="noopener noreferrer"
+        <ExternalLink
+          :url="entry.source.url"
+          kind="curated"
           class="source-link font-bold text-brand-primary hover:underline"
           :title="typeLabel(entry.source.source_type) ?? undefined"
-        >{{ entry.source.title }}</a>
-        <span v-else class="source-title font-bold text-brand-text dark:text-stone-200" :title="typeLabel(entry.source.source_type) ?? undefined">{{ entry.source.title }}</span>
+        >{{ entry.source.title }}<template #fallback>
+            <span class="source-title font-bold text-brand-text dark:text-stone-200" :title="typeLabel(entry.source.source_type) ?? undefined">{{ entry.source.title }}</span>
+          </template>
+        </ExternalLink>
         <span v-if="entry.source.publisher" class="source-publisher">({{ entry.source.publisher }})</span>
         <span v-if="entry.claim === 'price' && describeSourceSeen(entry.source)" class="source-seen">{{ describeSourceSeen(entry.source) }}</span><span v-if="i < entries.length - 1">;</span>
       </span>

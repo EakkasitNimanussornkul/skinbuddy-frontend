@@ -33,6 +33,7 @@ import { readProductSources, readProductSourceUrl } from '../../api/sources'
 import { useCountUp } from '../../composables/useCountUp'
 import SafetyCheckModal from '../Shared/SafetyCheckModal.vue'
 import SourceList from '../Shared/SourceList.vue'
+import ExternalLink from '../Shared/ExternalLink.vue'
 import ProductPackClaims from './ProductPackClaims.vue'
 import { useAdmin } from '../../composables/useAdmin'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
@@ -476,18 +477,17 @@ const handleCommitToShelf = async () => {
         </p>
         <!-- The pack's own claims: good_for, benefits, pao_months (migration 0013). -->
         <ProductPackClaims :product="product" />
-        <a
+        <ExternalLink
           v-if="productSourceUrl"
-          :href="productSourceUrl"
-          target="_blank"
-          rel="noopener noreferrer"
+          :url="productSourceUrl"
+          kind="curated"
           class="product-source-link inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline"
         >
           {{ productSourceLabel }}
           <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
-        </a>
+        </ExternalLink>
         <SourceList :entries="productSources" label="Where these details come from:" class="product-sources" />
       </div>
 

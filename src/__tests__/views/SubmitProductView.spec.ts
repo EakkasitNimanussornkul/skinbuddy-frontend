@@ -242,20 +242,24 @@ describe('src/views/SubmitProductView.vue', () => {
 
     it('uploads an accepted photo and shows it with its name', async () => {
       vi.mocked(uploadSubmissionImage).mockResolvedValue({ image_path: 'submissions/abc.jpg', public_url: 'https://cdn.example/abc.jpg' })
+      // The preview is the picked file itself, never the address the answer gave.
+      const preview = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:front-preview')
       const { wrapper } = await mountView()
 
       await choose(wrapper, new File(['x'], 'front.jpg', { type: 'image/jpeg' }))
 
       expect(uploadSubmissionImage).toHaveBeenCalledTimes(1)
-      expect(wrapper.get('.photo-preview img').attributes('src')).toBe('https://cdn.example/abc.jpg')
+      expect(wrapper.get('.photo-preview img').attributes('src')).toBe('blob:front-preview')
       expect(wrapper.get('.photo-preview').text()).toContain('front.jpg')
+      preview.mockRestore()
     })
 
     it.each([
       [413, 'over 5 MB'],
       [415, 'JPG, PNG or WebP'],
     ])('words the server refusing the photo with %i', async (status, words) => {
-      vi.mocked(uploadSubmissionImage).mockRejectedValue({ response: { status, data: { detail: 'refused' } } })
+      // No detail text, so the form's own words; a detail is shown as given (SubmissionHardening.spec).
+      vi.mocked(uploadSubmissionImage).mockRejectedValue({ response: { status, data: {} } })
       const { wrapper } = await mountView()
 
       await choose(wrapper, new File(['x'], 'front.png', { type: 'image/png' }))

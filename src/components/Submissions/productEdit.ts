@@ -1,4 +1,4 @@
-import type { ApiProblem } from '../../api/apiProblem'
+import { detailClause, photoRefusalMessage, plainDetail, rateLimitMessage, type ApiProblem } from '../../api/apiProblem'
 import type { ProductSourceClaim } from '../../api/sources'
 import { PAO_MONTHS, readCandidates, type DuplicateCandidate, type PaoMonths } from '../../api/submissionsApi'
 import {
@@ -9,6 +9,7 @@ import {
   type ProductSourceInput,
 } from '../../api/productAdminApi'
 import { isHttpUrl, nextKey, readPrice, type FieldErrors } from './submissionDraft'
+import { productImageUrl } from '../../utils/safeImages'
 
 /**
  * The product edit form and its rules (admin only), kept out of the page so
@@ -110,7 +111,8 @@ export const sourcesFromProduct = (product: unknown): EditSource[] => {
 export const formFromProduct = (product: unknown): ProductForm => {
   const p = record(product)
   const pao = p.pao_months
-  const imageUrl = str(p.image_url).trim()
+  // Only an http(s) image_url is shown; anything else reads as no photo.
+  const imageUrl = productImageUrl(p.image_url)
   const ingredients = (Array.isArray(p.product_ingredients) ? p.product_ingredients : []).flatMap((row) => {
     const ing = record(record(row).ingredients)
     const id = str(ing.id)
@@ -295,8 +297,19 @@ const FORM_FIELD: Record<string, string> = {
   sources: 'sources',
 }
 
-/** A refused save, read into what the page shows: the stale banner, the clash, the 403 state or a message. */
-export const readEditProblem = (problem: ApiProblem, candidates: unknown = null): EditProblem => {
+/**
+ * A refused save, read into what the page shows: the stale banner, the clash,
+ * the 403 state or a message.
+ *
+ * `sent` is the sources list the save sent, in order, so a refusal naming
+ * "sources.1.url" (the link checks) is shown on the facts that link backs, as
+ * `source.<claim>`.
+ */
+export const readEditProblem = (
+  problem: ApiProblem,
+  candidates: unknown = null,
+  sent: { claims: ProductSourceClaim[] }[] = [],
+): EditProblem => {
   const { status, code, detail } = problem
   if (status === 409 && detail === 'stale') return { kind: 'stale' }
   if (status === 409 && detail === 'duplicate') return { kind: 'duplicate', candidates: readCandidates(candidates, true) }
@@ -310,6 +323,7 @@ export const readEditProblem = (problem: ApiProblem, candidates: unknown = null)
   })
   if (status === null) return plain("We couldn't reach SkinBuddy, so nothing was saved. Check your connection and try again.")
   if (status === 401) return plain('Your sign-in has expired, so nothing was saved. Sign in again, then save once more.')
+  if (status === 429) return plain(rateLimitMessage(problem)!)
   if (status === 404) return plain('This product no longer exists, so nothing was saved.')
   if (code === 'SBUNK') {
     const ids = Array.isArray(problem.details) ? problem.details.map(String) : []
@@ -334,19 +348,31 @@ export const readEditProblem = (problem: ApiProblem, candidates: unknown = null)
   if (status === 422) {
     const fields: FieldErrors = {}
     for (const { field, message } of problem.fields) {
-      const key = FORM_FIELD[field.split('.')[0] ?? '']
+      const [top = '', index = ''] = field.split('.')
+      const source = top === 'sources' && /^\d+$/.test(index) ? sent[Number(index)] : undefined
+      if (source) {
+        for (const claim of source.claims) fields[`source.${claim}`] ??= message
+        continue
+      }
+      const key = FORM_FIELD[top]
       if (key) fields[key] ??= message
     }
+    const said = plainDetail(problem)
+    if (Object.keys(fields).length === 0 && said) return plain(`Something wasn't accepted: ${detailClause(said)}. Nothing was saved.`)
     return plain('Some fields need a fix before this can be saved.', fields)
   }
   if (status >= 500) return plain('The catalogue refused the change, so nothing was saved. Try again in a moment.')
   return plain('Something went wrong, so nothing was saved. Try again in a moment.')
 }
 
-/** A refused photo upload, in plain words. */
-export const photoUploadMessage = (status: number | null): string => {
-  if (status === 413) return 'That photo is over 5 MB. Choose a smaller one.'
-  if (status === 415) return "That file isn't a JPG, PNG or WebP image. Choose a photo in one of those."
+/**
+ * A refused photo upload, in plain words. The rate limit and the size, type
+ * and decoding refusals are worded once for every photo field (apiProblem),
+ * in the backend's words when it gave some.
+ */
+export const photoUploadMessage = (status: number | null, detail: string | null = null): string => {
+  const refused = photoRefusalMessage({ status, detail })
+  if (refused) return refused
   if (status === 403) return 'Only the SkinBuddy team can change product photos.'
   if (status === null) return "We couldn't reach SkinBuddy, so the photo wasn't uploaded. Try again."
   return "The photo couldn't be uploaded. Try again in a moment."

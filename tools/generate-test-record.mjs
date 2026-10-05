@@ -758,6 +758,56 @@ const SPEC_MAP = [
       'ConfirmDialog mounted with @vue/test-utils inside a host that drives busy, with the real Teleport (the Teleport stub re-creates its content on every patch, which would move focus by itself). The review panel rendered through a real RouterView on a memory history with Teleport stubbed; the admin submission calls, the meta lists and the ingredient search mocked. Both attached to the document. No network access.',
     note: 'While busy both dialog buttons are disabled, and a disabled button cannot hold focus, so the dialog itself takes it (tabindex -1, aria-busy) and Tab and Escape still reach its handler. After a refused publish, focus goes back to Publish when it is still on, and to the review heading when the refusal turned it off. A link the sender typed (a product source, or the link given for an ingredient) becomes a link only when it is an http or https address; a javascript: value is shown as text.',
   },
+  {
+    file: 'src/__tests__/utils/safeLinks.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'utils/safeLinks',
+    prerequisite: 'Pure functions over strings built in the test. No mocks, no network.',
+    note: 'The one rule for turning a typed or stored address into a link: only http and https with a host, read the way the browser reads it (new URL), so javascript:, data:, a scheme hidden by a tab, and a scheme-relative address are refused. The host shown before a link is the real one, in punycode for a lookalike. A link a user sent is marked nofollow ugc.',
+  },
+  {
+    file: 'src/__tests__/utils/safeImages.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'utils/safeImages',
+    prerequisite: 'Pure functions; VITE_SUPABASE_URL stubbed with vi.stubEnv, and URL.createObjectURL and URL.revokeObjectURL spied on. No network.',
+    note: 'Where a submission or product photo may come from: the public address built from an upload path of the exact shape submissions/<uuid>.(jpg|png|webp) or products/<uuid>.(jpg|png|webp), a product image_url that is http(s), or a local preview of the file just picked, released once. A path with "../", a javascript: value, an http address in image_path and a wrong extension are refused.',
+  },
+  {
+    file: 'src/__tests__/utils/hiddenChars.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'utils/hiddenChars',
+    prerequisite: 'Pure functions over strings built in the test. No mocks, no network.',
+    note: 'Zero-width and bidi control characters (U+200B-U+200F, U+202A-U+202E, U+2066-U+2069, U+FEFF) are found, shown as visible markers such as [U+202E], or taken out; characters just outside those ranges, Thai and accented letters are left alone.',
+  },
+  {
+    file: 'src/__tests__/components/submissionHardeningRules.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/apiProblem, components/Submissions/submissionDraft, components/Submissions/adminReview, components/Submissions/productEdit',
+    prerequisite: 'Pure functions over refusals and drafts built in the test. No mocks, no network.',
+    note: "The refusals from the backend's submission hardening, worded once: a 429 (the rate limit or the cap on submissions waiting) and the 413, 415 and 422 photo refusals in the backend's detail text when it is plain text, with words of our own per status otherwise. A link refused as a Pydantic field error (sources.N.url, ingredients.N.details.source_url) lands on that link card, ingredient link or product fact, with the backend's msg. The submit body carries no hidden character, and the approve body publishes only web links.",
+  },
+  {
+    file: 'src/__tests__/components/safeDisplay.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/ExternalLink, components/Submissions/RevealedText, components/Submissions/HiddenCharsNotice',
+    prerequisite: 'Each component mounted on its own with @vue/test-utils. No mocks, no network.',
+    note: 'ExternalLink renders a link only for an http(s) address, in a new tab with the rel for who supplied it, and the fallback slot otherwise; with show-host the real host comes first. RevealedText shows hidden characters as markers with a warning and markup as text. HiddenCharsNotice offers to remove hidden characters from an input.',
+  },
+  {
+    file: 'src/__tests__/components/noRawHtmlGuard.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Submissions/*, views/SubmitProductView, views/MySubmissionsView, views/AdminSubmissionsView, views/ProductEditView, components/Catalog/ProductPackClaims, components/Shared/ExternalLink, components/Shared/SourceList',
+    prerequisite: "The files' source text, read with import.meta.glob ('?raw'). No mocks, no network.",
+    note: 'A guard on the code itself: no file that shows user-submitted text uses v-html, innerHTML, outerHTML or insertAdjacentHTML, and none binds :href or :src straight to a value; links go through ExternalLink and photos through safeImageSrc. The chat markdown (sanitised, owned by the teammate) is not in scope.',
+  },
+  {
+    file: 'src/__tests__/views/SubmissionHardening.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/AdminSubmissionsView (AdminQueuePanel, AdminReviewPanel, AdminIngredientDecision), views/ProductEditView, views/SubmitProductView (SubmitBasicsStep)',
+    prerequisite:
+      'Each view rendered through a real RouterView on a memory history, attached to the document, with a fresh Pinia and Teleport stubbed. The submission and product admin calls, the product read, the meta lists and the ingredient search and match are mocked; URL.createObjectURL and URL.revokeObjectURL are spied on and VITE_SUPABASE_URL stubbed where a case needs them. Each view is unmounted after its case. No network access.',
+    note: "The hardening as an admin and a user meet it: a sent link's host shown first and marked nofollow ugc, no tick to publish a link that is not a web address, hidden characters shown as markers everywhere on the review and the edit form (and removed only when the admin asks), photos only from an upload path or the picked file and released when replaced or the page closes, and the 429, photo and link refusals shown on the field or at the top of the form.",
+  },
 ]
 
 function runSuite() {

@@ -28,8 +28,13 @@ import {
   type ProductForm,
 } from '../components/Submissions/productEdit'
 import { readErrorCandidates } from '../components/Submissions/adminReview'
-import { checkBenefit, checkPhotoFile, isHttpUrl, moveItem, nextKey, type FieldErrors } from '../components/Submissions/submissionDraft'
+import { checkBenefit, checkPhotoFile, moveItem, nextKey, type FieldErrors } from '../components/Submissions/submissionDraft'
+import { previewFromFile, releasePreview, safeImageSrc, uploadedImageUrl } from '../utils/safeImages'
+import { revealHiddenChars, stripHiddenChars } from '../utils/hiddenChars'
 import IngredientCombobox from '../components/Submissions/IngredientCombobox.vue'
+import HiddenCharsNotice from '../components/Submissions/HiddenCharsNotice.vue'
+import RevealedText from '../components/Submissions/RevealedText.vue'
+import ExternalLink from '../components/Shared/ExternalLink.vue'
 import ChoiceChip from '../components/Submissions/ChoiceChip.vue'
 import FieldError from '../components/Submissions/FieldError.vue'
 import ConfirmDialog from '../components/Submissions/ConfirmDialog.vue'
@@ -45,6 +50,11 @@ import AdminForbidden from '../components/Submissions/AdminForbidden.vue'
  * (409 "stale") and the edits stay on screen until the admin reloads.
  * A brand or name change gives the product a new address, and the old one no
  * longer works, so the page moves to the address the save returns.
+ *
+ * A published product can hold text a user sent, so the form shows it as
+ * text with any hidden character as a visible marker, links only as http(s)
+ * (ExternalLink), and the photo only from the API's image_url, an upload path
+ * or the file just picked (utils/safeImages).
  */
 const route = useRoute()
 const router = useRouter()
@@ -89,7 +99,7 @@ const replaceErrors = (next: FieldErrors) => {
 }
 
 const revokePreview = () => {
-  if (form.photo.kind === 'new' && form.photo.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(form.photo.previewUrl)
+  if (form.photo.kind === 'new') releasePreview(form.photo.previewUrl)
 }
 
 const show = (product: unknown) => {
@@ -132,6 +142,8 @@ const changes = computed<ProductChanges>(() => (original.value ? productChanges(
 const changeCount = computed(() => Object.keys(changes.value).length)
 const changed = (key: keyof ProductChanges) => key in changes.value
 const title = computed(() => [original.value?.brand, original.value?.name].filter(Boolean).join(' ') || 'This product')
+// For labels that cannot hold markup: hidden characters as markers.
+const shown = (text: string) => revealHiddenChars(text)
 const unlinked = computed(() => sourcesWithoutLink(form.sources))
 
 const discard = () => {
@@ -148,7 +160,7 @@ const discard = () => {
 // --- Photo -------------------------------------------------------------------
 const photoInput = ref<HTMLInputElement | null>(null)
 const photoUrl = computed(() =>
-  form.photo.kind === 'current' ? form.photo.url : form.photo.kind === 'new' ? form.photo.previewUrl : null,
+  safeImageSrc(form.photo.kind === 'current' ? form.photo.url : form.photo.kind === 'new' ? form.photo.previewUrl : null),
 )
 
 const onPhotoChosen = async (event: Event) => {
@@ -167,12 +179,13 @@ const onPhotoChosen = async (event: Event) => {
     // Stored now, so a refused file is said at once; the product changes only on save.
     const uploaded = await uploadProductPhoto(productId.value, file)
     revokePreview()
-    const preview = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : uploaded.public_url
+    // The file just picked, shown from memory; never the address the answer gave.
+    const preview = previewFromFile(file) ?? uploadedImageUrl(uploaded.image_path)
     form.photo = { kind: 'new', imagePath: uploaded.image_path, previewUrl: preview }
   } catch (error: unknown) {
-    const { status } = readApiProblem(error)
+    const { status, detail } = readApiProblem(error)
     if (status === 403) forbidden.value = true
-    photoError.value = photoUploadMessage(status)
+    photoError.value = photoUploadMessage(status, detail)
   } finally {
     uploading.value = false
   }
@@ -267,7 +280,7 @@ const save = async () => {
     // The returned slug: after a rename the old address no longer resolves.
     await router.push(`/product/${encodeURIComponent(result.slug)}`)
   } catch (error: unknown) {
-    const read = readEditProblem(readApiProblem(error), readErrorCandidates(error))
+    const read = readEditProblem(readApiProblem(error), readErrorCandidates(error), changes.value.sources ?? [])
     if (read.kind === 'stale') stale.value = true
     else if (read.kind === 'duplicate') clash.value = read.candidates
     else if (read.kind === 'forbidden') forbidden.value = true
@@ -351,7 +364,7 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
               <svg class="w-[13px] h-[13px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
               Edit product
             </span>
-            <span class="font-serif text-xl font-bold text-stone-800 dark:text-white truncate">{{ title }}</span>
+            <span class="font-serif text-xl font-bold text-stone-800 dark:text-white truncate"><RevealedText :text="title" :warn="false" /></span>
           </span>
           <span class="change-count flex-grow lg:flex-grow-0 text-[13px] font-bold text-brand-primary-strong-hover dark:text-brand-primary-accent" aria-live="polite">
             {{ changeCount === 0 ? 'No changes yet' : changeCount === 1 ? '1 unsaved change' : `${changeCount} unsaved changes` }}
@@ -376,7 +389,7 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
           <span class="w-[52px]" />
         </div>
         <div>
-          <h1 class="m-0 font-serif text-2xl leading-tight font-bold text-stone-800 dark:text-white lg:sr-only">{{ title }}</h1>
+          <h1 class="m-0 font-serif text-2xl leading-tight font-bold text-stone-800 dark:text-white lg:sr-only"><RevealedText :text="title" /></h1>
           <p class="mt-1.5 mb-0 text-[13px] text-stone-500 dark:text-stone-400">Changes go live as soon as you save.</p>
         </div>
 
@@ -410,12 +423,14 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
                   <label for="e-name" class="text-[13px] font-bold text-stone-500 dark:text-stone-400">Product name</label>
                   <input id="e-name" v-model="form.name" type="text" :maxlength="PRODUCT_EDIT_LIMITS.name" :class="[field, border('name')]" :aria-invalid="errors.name ? 'true' : 'false'" :aria-describedby="errors.name ? 'e-name-error' : undefined" />
                   <FieldError id="e-name-error" :message="errors.name" />
+                  <HiddenCharsNotice :value="form.name" label="product name" @clean="form.name = stripHiddenChars(form.name)" />
                   <span v-if="changed('name')" class="text-xs font-bold text-brand-primary-strong-hover dark:text-brand-primary-accent">Changed. The product's address changes too.</span>
                 </div>
                 <div class="flex flex-col gap-1.5 min-w-0">
                   <label for="e-brand" class="text-[13px] font-bold text-stone-500 dark:text-stone-400">Brand</label>
                   <input id="e-brand" v-model="form.brand" type="text" :maxlength="PRODUCT_EDIT_LIMITS.brand" :class="[field, border('brand')]" :aria-invalid="errors.brand ? 'true' : 'false'" :aria-describedby="errors.brand ? 'e-brand-error' : undefined" />
                   <FieldError id="e-brand-error" :message="errors.brand" />
+                  <HiddenCharsNotice :value="form.brand" label="brand" @clean="form.brand = stripHiddenChars(form.brand)" />
                   <span v-if="changed('brand')" class="text-xs font-bold text-brand-primary-strong-hover dark:text-brand-primary-accent">Changed. The product's address changes too.</span>
                 </div>
               </div>
@@ -431,6 +446,7 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
                 />
                 <span id="e-desc-count" class="text-xs text-stone-500 dark:text-stone-400">{{ form.description.trim().length }} of {{ PRODUCT_EDIT_LIMITS.description }} characters<template v-if="changed('description')"> · <strong class="text-brand-primary-strong-hover dark:text-brand-primary-accent">Changed</strong></template></span>
                 <FieldError id="e-desc-error" :message="errors.description" />
+                <HiddenCharsNotice :value="form.description" label="description" @clean="form.description = stripHiddenChars(form.description)" />
               </div>
               <div class="grid grid-cols-3 lg:grid-cols-4 gap-2.5 lg:gap-3">
                 <div class="col-span-3 lg:col-span-1 flex flex-col gap-1.5 min-w-0">
@@ -471,17 +487,17 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
               <ol class="mt-2 list-none p-0 m-0">
                 <li v-for="(ing, i) in form.ingredients" :key="ing.key" :class="['edit-ingredient flex items-center gap-1.5 min-h-[46px] border-t border-brand-surface-border dark:border-stone-600', ing.id && unknownIds.includes(ing.id) ? 'bg-red-50 dark:bg-red-900/30' : '']">
                   <span class="flex-grow flex flex-col min-w-0 py-1">
-                    <span class="edit-ingredient-name text-sm font-bold text-stone-800 dark:text-white break-words">{{ ing.name }}</span>
+                    <span class="edit-ingredient-name text-sm font-bold text-stone-800 dark:text-white break-words"><RevealedText :text="ing.name" /></span>
                     <span v-if="!ing.id" class="text-xs text-amber-800 dark:text-amber-200">New: added by name only</span>
                     <span v-else-if="unknownIds.includes(ing.id)" class="text-xs text-red-800 dark:text-red-300">No longer in our list</span>
                   </span>
-                  <button type="button" :aria-label="`Move ${ing.name} up`" class="move-up w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400 disabled:opacity-30" :disabled="i === 0" @click="moveItem(form.ingredients, i, i - 1)">
+                  <button type="button" :aria-label="`Move ${shown(ing.name)} up`" class="move-up w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400 disabled:opacity-30" :disabled="i === 0" @click="moveItem(form.ingredients, i, i - 1)">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6" /></svg>
                   </button>
-                  <button type="button" :aria-label="`Move ${ing.name} down`" class="move-down w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400 disabled:opacity-30" :disabled="i === form.ingredients.length - 1" @click="moveItem(form.ingredients, i, i + 1)">
+                  <button type="button" :aria-label="`Move ${shown(ing.name)} down`" class="move-down w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400 disabled:opacity-30" :disabled="i === form.ingredients.length - 1" @click="moveItem(form.ingredients, i, i + 1)">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
                   </button>
-                  <button type="button" :aria-label="`Remove ${ing.name}`" class="remove-ingredient w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400" @click="removeIngredient(i)">
+                  <button type="button" :aria-label="`Remove ${shown(ing.name)}`" class="remove-ingredient w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400" @click="removeIngredient(i)">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                   </button>
                 </li>
@@ -526,8 +542,8 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
               <h2 class="mt-4 mb-0 text-[15px] lg:text-base font-extrabold text-stone-800 dark:text-white">Key benefits</h2>
               <ul class="mt-2 list-none p-0 m-0">
                 <li v-for="(b, i) in form.benefits" :key="`${i}-${b}`" class="edit-benefit flex items-center gap-2 min-h-11 border-t border-brand-surface-border dark:border-stone-600">
-                  <span class="flex-grow text-sm text-stone-800 dark:text-white break-words">{{ b }}</span>
-                  <button type="button" :aria-label="`Remove ${b}`" class="w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400" @click="form.benefits.splice(i, 1)">
+                  <span class="flex-grow text-sm text-stone-800 dark:text-white break-words"><RevealedText :text="b" /></span>
+                  <button type="button" :aria-label="`Remove ${shown(b)}`" class="w-11 h-11 flex items-center justify-center text-stone-500 dark:text-stone-400" @click="form.benefits.splice(i, 1)">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                   </button>
                 </li>
@@ -549,8 +565,12 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
                     <span class="flex-grow flex flex-col gap-0.5 min-w-0">
                       <span class="text-xs font-extrabold text-stone-500 dark:text-stone-400">{{ SOURCE_CLAIM_LABEL[claim] }}</span>
                       <!-- A link only for a web address: the stored URL is not trusted to be one. -->
-                      <a v-if="isHttpUrl(sourceForClaim(form.sources, claim)?.url ?? '')" :href="sourceForClaim(form.sources, claim)!.url" target="_blank" rel="noopener noreferrer" class="claim-source text-sm font-bold text-stone-800 dark:text-white underline break-words">{{ sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url }}</a>
-                      <span v-else-if="sourceForClaim(form.sources, claim)" class="claim-source text-sm font-bold text-stone-800 dark:text-white break-words">{{ sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url }}</span>
+                      <ExternalLink v-if="sourceForClaim(form.sources, claim)" :url="sourceForClaim(form.sources, claim)!.url" class="claim-source text-sm font-bold text-stone-800 dark:text-white underline break-words">
+                        <RevealedText :text="sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url" />
+                        <template #fallback>
+                          <span class="claim-source text-sm font-bold text-stone-800 dark:text-white break-words"><RevealedText :text="sourceForClaim(form.sources, claim)!.title || sourceForClaim(form.sources, claim)!.url" /></span>
+                        </template>
+                      </ExternalLink>
                       <span v-else class="claim-empty text-sm font-bold text-stone-500 dark:text-stone-400">{{ NO_SOURCE_YET }}</span>
                     </span>
                     <button
@@ -566,6 +586,8 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
                       Remove<span class="sr-only"> the source for the {{ SOURCE_CLAIM_LABEL[claim].toLowerCase() }}</span>
                     </button>
                   </div>
+                  <!-- A link the save was refused for (the backend's link checks), on the facts it backs. -->
+                  <FieldError :id="`claim-${claim}-error`" :message="errors[`source.${claim}`]" />
                   <div v-if="editingClaim === claim" :id="`claim-${claim}`" class="claim-editor mt-2 flex flex-col gap-2">
                     <label :for="`claim-${claim}-url`" class="text-xs font-bold text-stone-500 dark:text-stone-400">Web link</label>
                     <input :id="`claim-${claim}-url`" v-model="linkDraft.url" type="url" placeholder="https://" :class="[field, linkErrors.url ? 'border-red-700 dark:border-red-300' : 'border-brand-surface-border dark:border-stone-600']" :aria-invalid="linkErrors.url ? 'true' : 'false'" :aria-describedby="linkErrors.url ? `claim-${claim}-url-error` : undefined" />
@@ -582,7 +604,7 @@ const card = 'rounded-[18px] lg:rounded-[22px] border border-brand-surface-borde
               </ul>
               <p class="mt-2.5 mb-0 text-xs leading-relaxed text-stone-500 dark:text-stone-400">Add a link only after opening it and checking it shows this.</p>
               <p v-if="unlinked.length" class="unlinked-note mt-1.5 mb-0 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
-                {{ unlinked.map((s) => s.title || 'A source').join(', ') }} {{ unlinked.length === 1 ? 'has' : 'have' }} no web link, so {{ unlinked.length === 1 ? 'it' : 'they' }} can't be kept if you change this section.
+                {{ unlinked.map((s) => (s.title ? shown(s.title) : 'A source')).join(', ') }} {{ unlinked.length === 1 ? 'has' : 'have' }} no web link, so {{ unlinked.length === 1 ? 'it' : 'they' }} can't be kept if you change this section.
               </p>
               <FieldError id="e-sources-error" :message="errors.sources" />
             </section>

@@ -11,6 +11,10 @@ import {
   type SubmissionBody,
   type SubmissionIngredient,
 } from '../../api/submissionsApi'
+import { isHttpUrl } from '../../utils/safeLinks'
+import { stripHiddenChars } from '../../utils/hiddenChars'
+
+export { isHttpUrl }
 
 /**
  * The submit-a-product draft and every rule about it, kept out of the
@@ -103,7 +107,15 @@ export const emptyDraft = (): SubmissionDraft => ({
   note: '',
 })
 
-const blank = (value: string) => value.trim().length === 0
+/**
+ * A typed value as it will be sent: trimmed, and with any zero-width or bidi
+ * control characters taken out (utils/hiddenChars). They show nothing on this
+ * form but can make a name read as another on the review screen, so they are
+ * never sent. What the user typed stays in the fields as typed.
+ */
+const clean = (value: string) => stripHiddenChars(value).trim()
+
+const blank = (value: string) => clean(value).length === 0
 
 const isBlankSource = (source: DraftSource) => blank(source.url) && blank(source.title) && source.claims.length === 0
 
@@ -195,18 +207,6 @@ export const moveItem = <T>(list: T[], from: number, to: number) => {
 // Validation
 // ---------------------------------------------------------------------------
 
-/** The backend's rule (schemas._http_url): an http or https scheme and a host. */
-export const isHttpUrl = (value: string): boolean => {
-  const trimmed = value.trim()
-  if (!trimmed) return false
-  try {
-    const url = new URL(trimmed)
-    return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.length > 0
-  } catch {
-    return false
-  }
-}
-
 /**
  * A price as typed, read as a number: "450", "12.50" and "1,200" all read.
  * Blank is null (not given). Anything else is undefined, which is an error.
@@ -234,9 +234,9 @@ export const checkPhotoFile = (file: { type: string; size: number }): string | n
 export const validateBasics = (draft: SubmissionDraft, categories: string[]): FieldErrors => {
   const errors: FieldErrors = {}
   if (blank(draft.name)) errors.name = 'Add the product name'
-  else if (draft.name.trim().length > SUBMISSION_LIMITS.name) errors.name = `Keep the name to ${SUBMISSION_LIMITS.name} characters`
+  else if (clean(draft.name).length > SUBMISSION_LIMITS.name) errors.name = `Keep the name to ${SUBMISSION_LIMITS.name} characters`
   if (blank(draft.brand)) errors.brand = 'Add the brand name'
-  else if (draft.brand.trim().length > SUBMISSION_LIMITS.brand) errors.brand = `Keep the brand to ${SUBMISSION_LIMITS.brand} characters`
+  else if (clean(draft.brand).length > SUBMISSION_LIMITS.brand) errors.brand = `Keep the brand to ${SUBMISSION_LIMITS.brand} characters`
   if (!draft.category) errors.category = 'Choose a category'
   else if (categories.length > 0 && !categories.includes(draft.category)) errors.category = 'Choose one of these categories'
   return errors
@@ -259,13 +259,13 @@ export const validateIngredients = (draft: SubmissionDraft): FieldErrors => {
     }
     if (item.kind !== 'new') continue
     if (blank(item.name)) errors[`ing.${item.key}.name`] = 'Add the ingredient name'
-    else if (item.name.trim().length > SUBMISSION_LIMITS.newName) {
+    else if (clean(item.name).length > SUBMISSION_LIMITS.newName) {
       errors[`ing.${item.key}.name`] = `Too long for one ingredient (${SUBMISSION_LIMITS.newName} characters at most). Check the list was split at the commas.`
     }
-    if (item.knownFor.trim().length > SUBMISSION_LIMITS.knownFor) {
+    if (clean(item.knownFor).length > SUBMISSION_LIMITS.knownFor) {
       errors[`ing.${item.key}.knownFor`] = `Keep this to ${SUBMISSION_LIMITS.knownFor} characters`
     }
-    if (!blank(item.sourceUrl) && !isHttpUrl(item.sourceUrl)) {
+    if (!blank(item.sourceUrl) && !isHttpUrl(clean(item.sourceUrl))) {
       errors[`ing.${item.key}.sourceUrl`] = 'Use a full web link, starting with http:// or https://'
     }
   }
@@ -287,25 +287,25 @@ export const validateExtras = (draft: SubmissionDraft, concernTags: string[]): F
   const filled = draft.sources.filter((source) => !isBlankSource(source))
   if (filled.length > SUBMISSION_LIMITS.sources) errors.sources = `Up to ${SUBMISSION_LIMITS.sources} links`
   for (const source of filled) {
-    if (!isHttpUrl(source.url)) errors[`source.${source.key}.url`] = 'Use a full web link, starting with http:// or https://'
+    if (!isHttpUrl(clean(source.url))) errors[`source.${source.key}.url`] = 'Use a full web link, starting with http:// or https://'
     if (blank(source.title)) errors[`source.${source.key}.title`] = 'Say what the link is, like "Brand product page"'
-    else if (source.title.trim().length > SUBMISSION_LIMITS.sourceTitle) {
+    else if (clean(source.title).length > SUBMISSION_LIMITS.sourceTitle) {
       errors[`source.${source.key}.title`] = `Keep this to ${SUBMISSION_LIMITS.sourceTitle} characters`
     }
     if (source.claims.length === 0) errors[`source.${source.key}.claims`] = 'Choose what the link shows'
   }
 
-  if (draft.note.trim().length > SUBMISSION_LIMITS.note) errors.note = `Keep the note to ${SUBMISSION_LIMITS.note} characters`
+  if (clean(draft.note).length > SUBMISSION_LIMITS.note) errors.note = `Keep the note to ${SUBMISSION_LIMITS.note} characters`
   return errors
 }
 
 /** A benefit about to be added: why it cannot be, or null when it can. */
 export const checkBenefit = (benefits: string[], typed: string): string | null => {
-  const value = typed.trim()
+  const value = clean(typed)
   if (!value) return 'Type a benefit first'
   if (value.length > SUBMISSION_LIMITS.benefit) return `Keep each benefit to ${SUBMISSION_LIMITS.benefit} characters`
   if (benefits.length >= SUBMISSION_LIMITS.benefits) return `Up to ${SUBMISSION_LIMITS.benefits} benefits`
-  if (benefits.some((b) => b.toLowerCase() === value.toLowerCase())) return "That one's already added"
+  if (benefits.some((b) => clean(b).toLowerCase() === value.toLowerCase())) return "That one's already added"
   return null
 }
 
@@ -316,37 +316,38 @@ export const checkBenefit = (benefits: string[], typed: string): string | null =
 const details = (item: DraftIngredient): NewIngredientDetails | null => {
   const out: NewIngredientDetails = {}
   if (item.roles.length > 0) out.roles = [...item.roles]
-  if (!blank(item.knownFor)) out.known_for = item.knownFor.trim()
-  if (!blank(item.sourceUrl)) out.source_url = item.sourceUrl.trim()
+  if (!blank(item.knownFor)) out.known_for = clean(item.knownFor)
+  if (!blank(item.sourceUrl)) out.source_url = clean(item.sourceUrl)
   return Object.keys(out).length > 0 ? out : null
 }
 
 const bodyIngredient = (item: DraftIngredient): SubmissionIngredient => {
   if (item.kind === 'known' && item.id) return { ingredient_id: item.id }
   const extra = details(item)
-  return extra ? { new_name: item.name.trim(), details: extra } : { new_name: item.name.trim() }
+  return extra ? { new_name: clean(item.name), details: extra } : { new_name: clean(item.name) }
 }
 
 /**
  * The POST /submissions body, in pack order. Assumes the draft passed every
  * step's checks; blank optional fields go as null or empty lists, never as
- * empty strings, and a link card left blank is not sent.
+ * empty strings, and a link card left blank is not sent. Every typed value
+ * goes through clean(), so no hidden character is sent.
  */
 export const buildSubmissionBody = (draft: SubmissionDraft): SubmissionBody => ({
-  name: draft.name.trim(),
-  brand: draft.brand.trim(),
+  name: clean(draft.name),
+  brand: clean(draft.brand),
   category: draft.category,
   image_path: draft.photo?.imagePath ?? null,
   ingredients: draft.ingredients.map(bodyIngredient),
   price_thb: readPrice(draft.priceThb) ?? null,
   price_usd: readPrice(draft.priceUsd) ?? null,
   pao_months: draft.paoMonths,
-  benefits: draft.benefits.map((b) => b.trim()).filter(Boolean),
+  benefits: draft.benefits.map(clean).filter(Boolean),
   good_for: [...draft.goodFor],
   sources: draft.sources
     .filter((source) => !isBlankSource(source))
-    .map((source) => ({ url: source.url.trim(), title: source.title.trim(), claims: [...source.claims] })),
-  note: blank(draft.note) ? null : draft.note.trim(),
+    .map((source) => ({ url: clean(source.url), title: clean(source.title), claims: [...source.claims] })),
+  note: blank(draft.note) ? null : clean(draft.note),
 })
 
 /** "Price, 2 benefits, 2 concerns, 1 link", or "Nothing added" - for the check before sending. */

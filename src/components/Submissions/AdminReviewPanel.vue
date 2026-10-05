@@ -15,8 +15,11 @@ import {
   type SubmissionIngredient,
 } from '../../api/submissionsApi'
 import { getCategories, getFunctionalGroups } from '../../api/metaApi'
-import { readApiProblem } from '../../api/apiProblem'
+import { photoRefusalMessage, readApiProblem } from '../../api/apiProblem'
 import { SOURCE_CLAIM_LABEL } from '../../api/sources'
+import { previewFromFile, releasePreview, safeImageSrc } from '../../utils/safeImages'
+import { isHttpUrl } from '../../utils/safeLinks'
+import { revealHiddenChars, stripHiddenChars } from '../../utils/hiddenChars'
 import { useToast } from '../../composables/useToast'
 import {
   buildApproveBody,
@@ -43,11 +46,14 @@ import {
   type ReviewPayload,
   type ReviewProblem,
 } from './adminReview'
-import { checkPhotoFile, isHttpUrl, type FieldErrors } from './submissionDraft'
+import { checkPhotoFile, type FieldErrors } from './submissionDraft'
 import { formatDay, statusChip } from './submissionStatus'
 import AdminIngredientDecision from './AdminIngredientDecision.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import FieldError from './FieldError.vue'
+import HiddenCharsNotice from './HiddenCharsNotice.vue'
+import RevealedText from './RevealedText.vue'
+import ExternalLink from '../Shared/ExternalLink.vue'
 
 /**
  * One submission under review (owner-approved design, 2026-10-04): correct its
@@ -57,6 +63,11 @@ import FieldError from './FieldError.vue'
  * Publishing creates a NEW product only and never changes an existing product
  * or ingredient (backend approve_submission). Every rule shown here is also
  * enforced there; this screen says why before Publish, not after.
+ *
+ * Everything here was typed by the sender, so it is shown as text only: links
+ * through ExternalLink (http(s) only, host first), the photo only from an
+ * upload path or a file the admin picked (utils/safeImages), and any hidden
+ * zero-width or bidi character as a visible marker (RevealedText).
  */
 const props = defineProps<{ id: string }>()
 const emit = defineEmits<{ forbidden: []; reviewed: [] }>()
@@ -94,9 +105,7 @@ const replace = <T extends object>(target: T, next: T) => {
   Object.assign(target, next)
 }
 
-const revokePreview = () => {
-  if (photoPreview.value?.startsWith('blob:')) URL.revokeObjectURL(photoPreview.value)
-}
+const revokePreview = () => releasePreview(photoPreview.value)
 
 /**
  * Show a detail. A fresh one (another submission) starts clean; the same one
@@ -192,7 +201,10 @@ const reviewState = computed(() =>
 const blockers = computed(() => (reviewState.value ? publishBlockers(reviewState.value) : []))
 const legacy = computed(() => (payload.value ? isLegacyPayload(payload.value) : false))
 const title = computed(() => [payload.value?.brand, payload.value?.name].filter(Boolean).join(' ') || 'Unnamed product')
-const submitter = computed(() => detail.value?.submitter_name ?? null)
+// For text that cannot hold markup (dialog text, toasts, labels): the hidden
+// characters as markers, so they cannot act there either.
+const titleText = computed(() => revealHiddenChars(title.value))
+const submitter = computed(() => (detail.value?.submitter_name ? revealHiddenChars(detail.value.submitter_name) : null))
 
 const knownCount = computed(() => detail.value?.ingredients.filter((i) => i.status === 'known').length ?? 0)
 const newCount = computed(() => (detail.value?.ingredients.length ?? 0) - knownCount.value)
@@ -280,13 +292,13 @@ const onPhotoChosen = async (event: Event) => {
     const uploaded = await uploadSubmissionImage(file)
     corrections.imagePath = uploaded.image_path
     revokePreview()
-    photoPreview.value = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : uploaded.public_url
+    // The file just picked, shown from memory; never the address the answer gave.
+    photoPreview.value = previewFromFile(file) ?? uploadedImageUrl(uploaded.image_path)
   } catch (error: unknown) {
-    const { status } = readApiProblem(error)
+    const problem = readApiProblem(error)
     photoError.value =
-      status === 413 ? 'That photo is over 5 MB. Choose a smaller one.'
-        : status === 415 ? "That file isn't a JPG, PNG or WebP image. Choose a photo in one of those."
-          : "The photo couldn't be uploaded. Try again in a moment."
+      photoRefusalMessage(problem) ??
+      (problem.status === null ? "We couldn't reach SkinBuddy, so the photo wasn't uploaded. Try again." : "The photo couldn't be uploaded. Try again in a moment.")
   } finally {
     busy.value = null
   }
@@ -315,7 +327,7 @@ const publish = async () => {
   try {
     const done = await approveSubmission(props.id, buildApproveBody(reviewState.value))
     dialog.value = null
-    addToast(`Published. ${title.value} is now in Explore.`, 'success', 5000)
+    addToast(`Published. ${titleText.value} is now in Explore.`, 'success', 5000)
     emit('reviewed')
     router.push(`/product/${encodeURIComponent(done.slug)}`)
   } catch (error: unknown) {
@@ -378,8 +390,8 @@ const fieldBorder = (key: string) =>
     <template v-else-if="detail && payload">
       <div class="flex flex-wrap justify-between items-start gap-3">
         <div class="flex flex-col gap-1 min-w-0">
-          <p class="review-meta m-0 text-[13px] text-stone-500 dark:text-stone-400">{{ describeReviewMeta(detail) }}</p>
-          <h2 ref="reviewTitle" tabindex="-1" class="review-title outline-none m-0 font-serif text-2xl lg:text-[28px] leading-tight font-bold text-stone-800 dark:text-white break-words">{{ title }}</h2>
+          <p class="review-meta m-0 text-[13px] text-stone-500 dark:text-stone-400"><RevealedText :text="describeReviewMeta(detail)" /></p>
+          <h2 ref="reviewTitle" tabindex="-1" class="review-title outline-none m-0 font-serif text-2xl lg:text-[28px] leading-tight font-bold text-stone-800 dark:text-white break-words"><RevealedText :text="title" /></h2>
         </div>
         <span v-if="!isPending" :class="['status-chip shrink-0 px-2.5 py-1 rounded-full text-xs font-extrabold', statusChip(detail.status).tone]">{{ statusChip(detail.status).text }}</span>
         <span v-else-if="candidates.length === 0" class="no-duplicate shrink-0 px-[11px] py-[5px] rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-[13px] font-extrabold">No duplicate found</span>
@@ -450,12 +462,14 @@ const fieldBorder = (key: string) =>
               <label for="r-name" class="text-[13px] font-bold text-stone-500 dark:text-stone-400">Product name</label>
               <input id="r-name" v-model="corrections.name" type="text" maxlength="200" :class="[field, fieldBorder('name')]" :aria-invalid="correctionErrors.name ? 'true' : 'false'" :aria-describedby="correctionErrors.name ? 'r-name-error' : undefined" />
               <FieldError id="r-name-error" :message="correctionErrors.name" />
+              <HiddenCharsNotice :value="corrections.name" label="product name" @clean="corrections.name = stripHiddenChars(corrections.name)" />
             </div>
             <div class="grid grid-cols-2 gap-2.5">
               <div class="flex flex-col gap-1.5 min-w-0">
                 <label for="r-brand" class="text-[13px] font-bold text-stone-500 dark:text-stone-400">Brand</label>
                 <input id="r-brand" v-model="corrections.brand" type="text" maxlength="200" :class="[field, fieldBorder('brand')]" :aria-invalid="correctionErrors.brand ? 'true' : 'false'" :aria-describedby="correctionErrors.brand ? 'r-brand-error' : undefined" />
                 <FieldError id="r-brand-error" :message="correctionErrors.brand" />
+                <HiddenCharsNotice :value="corrections.brand" label="brand" @clean="corrections.brand = stripHiddenChars(corrections.brand)" />
               </div>
               <div class="flex flex-col gap-1.5 min-w-0">
                 <label for="r-cat" class="text-[13px] font-bold text-stone-500 dark:text-stone-400">Category</label>
@@ -488,7 +502,7 @@ const fieldBorder = (key: string) =>
 
             <div class="flex gap-3 items-center">
               <span class="w-16 h-16 shrink-0 rounded-[14px] overflow-hidden bg-brand-bg-light dark:bg-stone-800 border border-brand-surface-border dark:border-stone-600 flex items-center justify-center">
-                <img v-if="photoPreview" :src="photoPreview" alt="" class="w-full h-full object-cover" />
+                <img v-if="safeImageSrc(photoPreview)" :src="safeImageSrc(photoPreview)!" alt="" class="review-photo w-full h-full object-cover" />
                 <svg v-else class="w-6 h-6 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M21 17l-5-5-9 7" /></svg>
               </span>
               <span class="flex flex-col gap-1">
@@ -536,7 +550,7 @@ const fieldBorder = (key: string) =>
             <ul class="mt-2.5 list-none p-0 m-0 flex flex-col">
               <li v-for="ingredient in detail.ingredients" :key="ingredient.position" class="review-ingredient flex items-center gap-2.5 min-h-11 py-1 border-t border-brand-surface-border dark:border-stone-600">
                 <span class="flex-grow flex flex-col min-w-0">
-                  <span class="text-sm font-bold text-stone-800 dark:text-white break-words">{{ ingredient.name ?? 'Unnamed ingredient' }}</span>
+                  <span class="text-sm font-bold text-stone-800 dark:text-white break-words"><RevealedText :text="ingredient.name ?? 'Unnamed ingredient'" /></span>
                   <span class="ingredient-note text-xs text-stone-500 dark:text-stone-400">{{ ingredientNote(ingredient.position) }}</span>
                 </span>
                 <span
@@ -577,23 +591,29 @@ const fieldBorder = (key: string) =>
               <legend class="p-0 text-[13px] font-extrabold text-stone-800 dark:text-white">Key benefits</legend>
               <label v-for="b in payload.benefits" :key="b" class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
                 <input type="checkbox" class="tick-benefit w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary" :checked="ticks.benefits.includes(b)" @change="toggle(ticks.benefits, b, ($event.target as HTMLInputElement).checked)" />
-                {{ b }}
+                <span><RevealedText :text="b" /></span>
               </label>
             </fieldset>
             <fieldset v-if="payload.goodFor.length" class="mt-2 border-0 p-0 m-0 flex flex-col">
               <legend class="p-0 text-[13px] font-extrabold text-stone-800 dark:text-white">Good for</legend>
               <label v-for="g in payload.goodFor" :key="g" class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
                 <input type="checkbox" class="tick-good-for w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary" :checked="ticks.goodFor.includes(g)" @change="toggle(ticks.goodFor, g, ($event.target as HTMLInputElement).checked)" />
-                {{ g }}
+                <span><RevealedText :text="g" /></span>
               </label>
             </fieldset>
             <div v-for="s in payload.sources" :key="s.url" class="mt-2 px-3 py-2.5 rounded-xl bg-brand-bg-light dark:bg-stone-800 flex flex-col gap-1">
               <span class="text-[13px] font-extrabold text-stone-800 dark:text-white">Source link</span>
-              <!-- A link only for a web address: what the sender typed is not trusted to be one. -->
-              <a v-if="isHttpUrl(s.url)" :href="s.url" target="_blank" rel="noopener noreferrer" class="source-link text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent underline break-all">{{ s.url }}</a>
-              <span v-else class="source-text text-[13px] text-stone-700 dark:text-stone-200 break-all">{{ s.url }} (not a web link)</span>
-              <span class="text-xs text-stone-500 dark:text-stone-400">{{ s.title || 'No title' }}<template v-if="s.claims.length"> · shows the {{ s.claims.map((c) => SOURCE_CLAIM_LABEL[c].toLowerCase()).join(', ') }}</template></span>
-              <label class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
+              <!-- A link only for a web address: what the sender typed is not trusted to be one.
+                   The host comes first, so a lookalike domain stands out. -->
+              <ExternalLink :url="s.url" show-host class="source-link min-h-11 flex flex-col justify-center text-[13px] text-brand-primary-strong-hover dark:text-brand-primary-accent break-all">
+                <RevealedText :text="s.url" />
+                <template #fallback>
+                  <span class="source-text text-[13px] text-stone-700 dark:text-stone-200 break-all"><RevealedText :text="s.url" /> (not a web link)</span>
+                </template>
+              </ExternalLink>
+              <span class="source-title text-xs text-stone-500 dark:text-stone-400"><RevealedText :text="s.title || 'No title'" /><template v-if="s.claims.length"> · shows the {{ s.claims.map((c) => SOURCE_CLAIM_LABEL[c].toLowerCase()).join(', ') }}</template></span>
+              <!-- Only a web link can be opened and checked, so only one can be published. -->
+              <label v-if="isHttpUrl(s.url)" class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
                 <input type="checkbox" class="tick-source w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary" :checked="ticks.sourceUrls.includes(s.url)" @change="toggle(ticks.sourceUrls, s.url, ($event.target as HTMLInputElement).checked)" />
                 I opened it and it matches
               </label>
@@ -602,7 +622,7 @@ const fieldBorder = (key: string) =>
           <p v-else class="mt-1 mb-0 text-[13px] text-stone-500 dark:text-stone-400">No benefits, concerns or links were sent.</p>
           <div v-if="payload.note" class="mt-3 px-3 py-2.5 rounded-xl bg-brand-bg-light dark:bg-stone-800">
             <span class="block text-xs font-extrabold text-stone-500 dark:text-stone-400">Note from {{ submitter ?? 'the sender' }}</span>
-            <span class="block mt-1 text-sm leading-relaxed text-stone-800 dark:text-white whitespace-pre-line">{{ payload.note }}</span>
+            <span class="block mt-1 text-sm leading-relaxed text-stone-800 dark:text-white whitespace-pre-line"><RevealedText :text="payload.note" /></span>
           </div>
         </section>
 
@@ -661,7 +681,7 @@ const fieldBorder = (key: string) =>
     <ConfirmDialog
       v-if="dialog === 'publish'"
       title="Publish this product?"
-      :text="`${title} appears in Explore straight away, with the extras you ticked. You can edit it afterwards.`"
+      :text="`${titleText} appears in Explore straight away, with the extras you ticked. You can edit it afterwards.`"
       confirm-label="Publish now"
       :busy="busy === 'approve'"
       @confirm="publish"

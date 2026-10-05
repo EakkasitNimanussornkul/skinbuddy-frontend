@@ -301,7 +301,7 @@ describe('feat/22 follow-ups (review screens)', () => {
 
       expect(wrapper.get('a.source-link').attributes('href')).toBe('https://brand.example/cleanser')
       expect(wrapper.get('a.ingredient-source-link').attributes('href')).toBe('https://ingredient.example/phyto')
-      expect(wrapper.get('a.ingredient-source-link').attributes('rel')).toBe('noopener noreferrer')
+      expect(wrapper.get('a.ingredient-source-link').attributes('rel')).toBe('noopener noreferrer nofollow ugc')
       expect(wrapper.find('.source-text').exists()).toBe(false)
     })
   })
