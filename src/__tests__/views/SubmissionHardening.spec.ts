@@ -811,4 +811,43 @@ describe('submission hardening (screens)', () => {
       expect(unknown.message).toBe("A link wasn't accepted, so nothing was published.")
     })
   })
+
+  // Cases the mutation checks on a99dd5a found missing: in every earlier case
+  // the Nth ingredient sent was also review position N.
+  describe('mutation follow-ups (ingredient positions sent)', () => {
+    it('reads ingredients.i.details.source_url as the i-th ingredient sent, not review position i', () => {
+      const refused = readApiProblem(fieldError(['ingredients', 1, 'details', 'source_url'], 'Value error, must not point at a local or internal host'))
+      const read = readReviewProblem(refused, 'save', null, { sent: { ingredientPositions: [0, 2] } })
+      expect(read.links.ingredients).toEqual({ 2: 'Must not point at a local or internal host' })
+    })
+
+    it('puts a link refused while converting an old-format row on that ingredient\'s row, past a stored item that was not sent', async () => {
+      const stored = ['Niacinamide', null, { new_name: 'Phytosphingosine', details: { source_url: 'http://localhost/phyto' } }]
+      vi.mocked(getAdminSubmission).mockResolvedValue(
+        review(
+          {
+            ingredients: [
+              { position: 0, ingredient_id: null, name: 'Niacinamide', status: 'new', details: null, existing_matches: [] },
+              { position: 2, ingredient_id: null, name: 'Phytosphingosine', status: 'new', details: { roles: [], known_for: '', source_url: 'http://localhost/phyto' }, existing_matches: [] },
+            ],
+          },
+          { ingredients: stored },
+        ),
+      )
+      vi.mocked(editAdminSubmission).mockRejectedValue(fieldError(['ingredients', 1, 'details', 'source_url'], 'Value error, must not point at a local or internal host'))
+      const { wrapper } = await mountReview()
+
+      await wrapper.get('button.convert-legacy').trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(editAdminSubmission).mock.lastCall![1].ingredients).toEqual([
+        { new_name: 'Niacinamide' },
+        { new_name: 'Phytosphingosine', details: { source_url: 'http://localhost/phyto' } },
+      ])
+      const rows = wrapper.findAll('li.review-ingredient')
+      expect(rows[1]!.get('.field-error').text()).toBe('Must not point at a local or internal host')
+      expect(rows[0]!.find('.field-error').exists()).toBe(false)
+      expect(wrapper.get('.action-problem').text()).toBe("A link wasn't accepted, so your corrections weren't saved.")
+    })
+  })
 })
