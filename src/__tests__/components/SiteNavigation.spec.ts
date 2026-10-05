@@ -114,8 +114,12 @@ describe('feat/23 desktop sidebar, search bar and entry points', () => {
     const toggle = (w: VueWrapper) => w.get('button.explore-toggle')
     const list = (w: VueWrapper) => w.get('#sidebar-explore-categories')
 
-    it('opens the nine categories by default under /explore, each linking to /explore?category=<name>', async () => {
+    it('keeps the nine categories closed by default even under /explore, and opens them with the toggle, each linking to /explore?category=<name>', async () => {
       const { w } = await mountSidebar('/explore')
+      expect(toggle(w).attributes('aria-expanded')).toBe('false')
+      expect(list(w).isVisible()).toBe(false)
+
+      await toggle(w).trigger('click')
 
       expect(toggle(w).attributes('aria-expanded')).toBe('true')
       expect(toggle(w).attributes('aria-label')).toBe('Hide categories')
@@ -160,7 +164,7 @@ describe('feat/23 desktop sidebar, search bar and entry points', () => {
       expect(w.findAll('a.sidebar-category[aria-current]')).toHaveLength(0)
     })
 
-    it('lets a click on the toggle override the default until the next page change', async () => {
+    it('keeps the categories as the toggle left them across page changes, until the page is reloaded', async () => {
       const { w, router } = await mountSidebar('/')
 
       await toggle(w).trigger('click')
@@ -170,23 +174,31 @@ describe('feat/23 desktop sidebar, search bar and entry points', () => {
 
       await router.push('/shelf')
       await flushPromises()
-      expect(toggle(w).attributes('aria-expanded')).toBe('false')
+      expect(toggle(w).attributes('aria-expanded')).toBe('true')
 
-      await router.push('/explore')
+      await router.push('/explore?category=Serums')
       await flushPromises()
       await toggle(w).trigger('click')
       expect(toggle(w).attributes('aria-expanded')).toBe('false')
-
-      // A filter change on Explore changes only the query: not a new page.
-      await router.push('/explore?category=Serums')
-      await flushPromises()
-      expect(toggle(w).attributes('aria-expanded')).toBe('false')
+      expect(toggle(w).attributes('aria-label')).toBe('Show categories')
 
       await router.push('/')
       await flushPromises()
       await router.push('/explore')
       await flushPromises()
-      expect(toggle(w).attributes('aria-expanded')).toBe('true')
+      expect(toggle(w).attributes('aria-expanded')).toBe('false')
+      expect(list(w).isVisible()).toBe(false)
+    })
+
+    it('lays the open categories out as a compact two-column grid, with the submit link across both columns', async () => {
+      const { w } = await mountSidebar('/explore')
+      await toggle(w).trigger('click')
+      const items = list(w).findAll('li')
+
+      expect(list(w).classes()).toEqual(expect.arrayContaining(['grid', 'grid-cols-2']))
+      expect(w.findAll('a.sidebar-category').every((a) => a.classes().includes('min-h-10'))).toBe(true)
+      expect(items[items.length - 1]!.classes()).toContain('col-span-2')
+      expect(items.slice(0, -1).some((li) => li.classes().includes('col-span-2'))).toBe(false)
     })
   })
 

@@ -151,11 +151,24 @@ export const nameFromQuery = (value: unknown): string => {
   return name.trim()
 }
 
-/** Starts an empty name from the link; a name already typed is kept. */
-export const prefillName = (draft: SubmissionDraft, value: unknown): void => {
+/**
+ * Starts an empty name from the link; a name already typed is kept. Returns
+ * the name it put in, or '' when it put none.
+ */
+export const prefillName = (draft: SubmissionDraft, value: unknown): string => {
   const name = nameFromQuery(value)
-  if (name && blank(draft.name)) draft.name = name
+  if (!name || !blank(draft.name)) return ''
+  draft.name = name
+  return name
 }
+
+/**
+ * Whether the user has entered anything, which is when leaving needs a
+ * warning. A name the link put in, still as it was put in, is not their
+ * input: arriving from the search and leaving straight away asks nothing.
+ */
+export const hasUserInput = (draft: SubmissionDraft, prefilledName = ''): boolean =>
+  isDraftDirty(prefilledName && draft.name === prefilledName ? { ...draft, name: '' } : draft)
 
 // ---------------------------------------------------------------------------
 // Ingredients

@@ -123,6 +123,15 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(hero.text()).toContain('Detailed ingredient breakdowns')
       expect(hero.text()).toContain('100% Independent analysis')
     })
+
+    it('hides the "Complete Registry" heading below lg, where the intro already says it, and keeps it for lg and up', async () => {
+      const { wrapper } = await mountExplore()
+      const heading = wrapper.get('.catalog-heading')
+
+      expect(heading.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:block']))
+      expect(heading.get('h3').text()).toBe('All Formulations')
+      expect(heading.text()).toContain('Every product in the catalog, filtered by your selections above.')
+    })
   })
 
   describe('ExploreView (phone filter bar)', () => {
@@ -207,6 +216,27 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(lastRequest()).toEqual(['', 0, 1500])
       expect(slider(wrapper).props('maxPrice')).toBe(1500)
       expect(chips(wrapper)).toHaveLength(0)
+    })
+
+    it('keeps a brand picked on the page when a category is chosen', async () => {
+      const { wrapper, router } = await mountExplore()
+      await wrapper.get('select').setValue('CeraVe')
+
+      wrapper.findComponent({ name: 'ExploreCategoryBar' }).vm.$emit('update:selected-category', 'Serums')
+      await flushPromises()
+
+      expect(router.currentRoute.value.query).toEqual({ category: 'Serums' })
+      expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('CeraVe')
+      expect(chips(wrapper).map((c) => c.text())).toEqual(['CeraVe'])
+    })
+
+    it('still takes the brand from ?brand= in the address, on load and when the address changes', async () => {
+      const { wrapper, router } = await mountExplore('/explore?brand=CeraVe')
+      expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('CeraVe')
+
+      await router.push('/explore?brand=La%20Roche-Posay')
+      await flushPromises()
+      expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('La Roche-Posay')
     })
   })
 
@@ -383,6 +413,21 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
 
       expect(catalogRequests()).toHaveLength(1)
       expect(router.currentRoute.value.query).toEqual({ category: 'Serums' })
+    })
+
+    it('lets the price inputs shrink with the sheet, so nothing scrolls sideways on a 375px screen', async () => {
+      // jsdom has no layout, so the classes that allow shrinking are read.
+      const { wrapper } = await mountExplore()
+      await openSheet(wrapper)
+      const row = wrapper.get('.sheet-price-row')
+
+      expect(row.classes()).toEqual(expect.arrayContaining(['grid', 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]']))
+      for (const input of ['input.sheet-price-min', 'input.sheet-price-max']) {
+        expect(wrapper.get(input).classes()).toEqual(expect.arrayContaining(['w-full', 'min-w-0']))
+        expect(wrapper.get(input).element.closest('label')!.classList.contains('min-w-0')).toBe(true)
+      }
+      expect(wrapper.findAll('[role="dialog"] fieldset').every((f) => f.classes().includes('min-w-0'))).toBe(true)
+      expect(wrapper.get('.bottom-sheet-body').classes()).toEqual(expect.arrayContaining(['overflow-x-hidden', 'min-w-0']))
     })
   })
 

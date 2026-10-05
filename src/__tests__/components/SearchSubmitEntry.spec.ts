@@ -16,7 +16,7 @@ vi.mock('../../api/metaApi', () => ({
 import { searchProducts } from '../../api/products'
 import { getCategories, getConcernTags } from '../../api/metaApi'
 import { SUBMISSION_LIMITS } from '../../api/submissionsApi'
-import { emptyDraft, nameFromQuery, prefillName } from '../../components/Submissions/submissionDraft'
+import { emptyDraft, hasUserInput, nameFromQuery, prefillName } from '../../components/Submissions/submissionDraft'
 import SearchAutocompleteInput from '../../components/Shared/SearchAutocompleteInput.vue'
 import SubmitProductView from '../../views/SubmitProductView.vue'
 
@@ -200,6 +200,19 @@ describe('feat/23 search suggestions and the submit-form name pre-fill', () => {
       prefillName(kept, ['Cica Cream'])
       expect(kept.name).toBe('')
     })
+
+    it('counts a draft holding only the name the link put in as untouched, and anything more as input', () => {
+      const prefilled = emptyDraft()
+      const name = prefillName(prefilled, 'Cica Cream')
+      expect(name).toBe('Cica Cream')
+      expect(hasUserInput(prefilled, name)).toBe(false)
+
+      expect(hasUserInput({ ...prefilled, name: 'Cica Cream Light' }, name)).toBe(true)
+      expect(hasUserInput({ ...prefilled, brand: 'Example Brand' }, name)).toBe(true)
+      // With no name from a link, a typed name is input as before.
+      expect(hasUserInput(prefilled)).toBe(true)
+      expect(prefillName({ ...emptyDraft(), name: 'Typed' }, 'Cica Cream')).toBe('')
+    })
   })
 
   describe('SubmitProductView (name pre-fill)', () => {
@@ -245,6 +258,37 @@ describe('feat/23 search suggestions and the submit-form name pre-fill', () => {
       await router.replace('/submissions/new?name=Third')
       await flushPromises()
       expect(name()).toBe('')
+    })
+
+    it('leaves straight away without asking when the only thing in the form is the name the link put in', async () => {
+      const { w, router } = await openForm('/submissions/new?name=Cica%20Cream')
+      const unload = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(unload)
+      expect(unload.defaultPrevented).toBe(false)
+
+      await router.push('/explore')
+      await flushPromises()
+
+      expect(router.currentRoute.value.path).toBe('/explore')
+      expect(w.find('[role="dialog"]').exists()).toBe(false)
+    })
+
+    it('asks before leaving once the user changes the pre-filled name, or fills in anything else', async () => {
+      const renamed = await openForm('/submissions/new?name=Cica%20Cream')
+      await renamed.w.get('#sub-name').setValue('Cica Cream Light')
+      renamed.router.push('/explore')
+      await flushPromises()
+      expect(renamed.router.currentRoute.value.path).toBe('/submissions/new')
+      expect(renamed.w.find('[role="dialog"]').exists()).toBe(true)
+
+      const branded = await openForm('/submissions/new?name=Cica%20Cream')
+      await branded.w.get('#sub-brand').setValue('Example Brand')
+      const unload = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(unload)
+      expect(unload.defaultPrevented).toBe(true)
+      branded.router.push('/explore')
+      await flushPromises()
+      expect(branded.router.currentRoute.value.path).toBe('/submissions/new')
     })
   })
 })

@@ -66,10 +66,11 @@ const syncFiltersFromURL = () => {
     selectedCategory.value = 'All'
   }
 
-  if (route.query.brand) {
-    selectedBrand.value = route.query.brand as string
-  } else {
-    selectedBrand.value = 'All'
+  // The brand changes from the address only when the address carries one.
+  // Otherwise choosing a category - which rewrites the address - put a brand
+  // picked on the page back to All (owner report, feat/23).
+  if (typeof route.query.brand === 'string' && route.query.brand) {
+    selectedBrand.value = route.query.brand
   }
 }
 
@@ -124,12 +125,12 @@ const fetchCatalog = async () => {
   }
 }
 
-// Returns the navigation, so the phone filters can wait for it (see applyFilters).
-const handleCategoryUpdate = (newCategory: string) =>
+const handleCategoryUpdate = (newCategory: string) => {
   router.push({
     path: route.path,
     query: { ...route.query, category: newCategory === 'All' ? undefined : newCategory }
   })
+}
 
 const handlePriceApply = (range: { min: number; max: number }) => {
   activeMinPrice.value = range.min
@@ -182,7 +183,7 @@ const readBaht = (typed: number | string, fallback: number) => {
   return Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback
 }
 
-const applyFilters = async () => {
+const applyFilters = () => {
   filtersOpen.value = false
   let min = readBaht(filterDraft.min, PRICE_FLOOR)
   let max = readBaht(filterDraft.max, PRICE_CEILING)
@@ -191,13 +192,8 @@ const applyFilters = async () => {
     if (min === PRICE_FLOOR && max === PRICE_CEILING) handlePriceClear()
     else handlePriceApply({ min, max })
   }
-  // The brand is set after the address settles: a category change re-reads
-  // the filters from the address, which has no brand in it.
-  if (filterDraft.category !== selectedCategory.value) {
-    await handleCategoryUpdate(filterDraft.category)
-    await nextTick()
-  }
   selectedBrand.value = filterDraft.brand
+  if (filterDraft.category !== selectedCategory.value) handleCategoryUpdate(filterDraft.category)
 }
 
 const removeBrandFilter = () => {
@@ -565,7 +561,9 @@ watch(
 
       <!-- 2. The full catalogue -->
       <div class="space-y-6">
-        <div>
+        <!-- The heading is for lg and up: on a phone the intro at the top
+             already says it (feat/23). -->
+        <div class="catalog-heading hidden lg:block">
           <span class="text-[11px] font-bold uppercase tracking-widest text-brand-primary">Complete Registry</span>
           <h3 class="text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white mt-1">
             All Formulations
@@ -738,7 +736,7 @@ watch(
       @close="filtersOpen = false"
     >
       <div class="filters-sheet flex flex-col gap-[22px]">
-        <fieldset class="m-0 p-0 border-0 flex flex-col gap-2.5">
+        <fieldset class="sheet-fieldset m-0 p-0 border-0 min-w-0 flex flex-col gap-2.5">
           <legend class="pb-2.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Category</legend>
           <div class="flex flex-wrap gap-2">
             <button
@@ -772,26 +770,29 @@ watch(
           </select>
         </div>
 
-        <fieldset class="m-0 p-0 border-0 flex flex-col gap-2.5">
+        <fieldset class="sheet-fieldset m-0 p-0 border-0 min-w-0 flex flex-col gap-2.5">
           <legend class="pb-2.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Price (baht)</legend>
-          <div class="flex items-center gap-2.5">
-            <label class="flex-1 flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
+          <!-- Two columns that may shrink (min-w-0), so the inputs never push past
+               a 375px screen. The fieldsets carry min-w-0 too: a fieldset is
+               min-content wide by default, which is what let the row overflow. -->
+          <div class="sheet-price-row grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2.5">
+            <label class="min-w-0 w-full flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
               From
               <input
                 v-model="filterDraft.min"
-                class="sheet-price-min min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
+                class="sheet-price-min w-full min-w-0 min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
                 type="number"
                 inputmode="numeric"
                 min="0"
                 step="10"
               />
             </label>
-            <span aria-hidden="true" class="mt-[18px] text-stone-600 dark:text-stone-300">to</span>
-            <label class="flex-1 flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
+            <span aria-hidden="true" class="pb-3 text-stone-600 dark:text-stone-300">to</span>
+            <label class="min-w-0 w-full flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
               Up to
               <input
                 v-model="filterDraft.max"
-                class="sheet-price-max min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
+                class="sheet-price-max w-full min-w-0 min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
                 type="number"
                 inputmode="numeric"
                 min="0"

@@ -37,19 +37,13 @@ const MAIN_LINKS = [
 const onExplore = computed(() => isCurrent('/explore'))
 const currentCategory = computed(() => (onExplore.value && typeof route.query.category === 'string' ? route.query.category : null))
 
-// Explore's categories: open while the page is under /explore, closed
-// elsewhere. A click on the toggle wins until the next page change; a filter
-// change on Explore (only the query) is not one, so it does not undo it.
-const exploreOverride = ref<boolean | null>(null)
-const exploreOpen = computed(() => exploreOverride.value ?? onExplore.value)
-watch(
-  () => route.path,
-  () => {
-    exploreOverride.value = null
-  },
-)
+// Explore's categories: closed by default on every page, opened only with the
+// toggle, and left as the user set them until the page is reloaded. Open by
+// default on /explore, the list pushed Routine, Shelves, SkinBuddy AI and
+// "Products you send" below the fold at 1280x800 (owner check).
+const exploreOpen = ref(false)
 const toggleExplore = () => {
-  exploreOverride.value = !exploreOpen.value
+  exploreOpen.value = !exploreOpen.value
 }
 
 watch(
@@ -168,16 +162,17 @@ const linkClass = (current: boolean) => [
               <svg :class="['w-4 h-4 transition-transform duration-200 motion-reduce:transition-none', exploreOpen ? '' : 'rotate-180']" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
             </button>
           </div>
+          <!-- A compact two-column grid, so the open list stays short. -->
           <ul
             v-show="exploreOpen"
             id="sidebar-explore-categories"
-            class="list-none mt-0.5 mb-1.5 ml-[22px] pl-3 border-l-2 border-brand-surface-border dark:border-stone-600 flex flex-col gap-0.5"
+            class="list-none mt-0.5 mb-1.5 ml-3 pl-2 border-l-2 border-brand-surface-border dark:border-stone-600 grid grid-cols-2 gap-0.5"
           >
             <li v-for="category in CATEGORIES" :key="category">
               <RouterLink
                 :to="{ path: '/explore', query: { category } }"
                 :class="[
-                  'sidebar-category min-h-10 px-2.5 rounded-[10px] flex items-center text-sm transition-colors',
+                  'sidebar-category min-h-10 px-2 rounded-[10px] flex items-center text-[13px] leading-tight break-words transition-colors',
                   currentCategory === category
                     ? 'bg-brand-primary-light/70 dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent font-extrabold'
                     : 'text-stone-700 dark:text-stone-200 font-semibold hover:bg-brand-bg-light dark:hover:bg-stone-700/60',
@@ -187,7 +182,7 @@ const linkClass = (current: boolean) => [
                 {{ category }}
               </RouterLink>
             </li>
-            <li>
+            <li class="col-span-2">
               <RouterLink
                 to="/submissions/new"
                 class="sidebar-category-submit mt-1.5 min-h-11 px-2.5 py-2 rounded-xl flex flex-col justify-center gap-0.5 bg-brand-bg-light dark:bg-stone-700/50 hover:bg-brand-primary-light dark:hover:bg-brand-primary/15 transition-colors"

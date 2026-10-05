@@ -9,7 +9,7 @@ import {
   DRAFT_CONTEXT,
   buildSubmissionBody,
   emptyDraft,
-  isDraftDirty,
+  hasUserInput,
   prefillName,
   readServerErrors,
   validateBasics,
@@ -178,6 +178,7 @@ const send = async () => {
     sent.value = { brand: draft.brand.trim(), name: draft.name.trim() }
     releasePreview(draft.photo?.previewUrl)
     Object.assign(draft, emptyDraft())
+    prefilledName = ''
     replaceErrors({})
   } catch (error: unknown) {
     const problem = readApiProblem(error)
@@ -204,7 +205,10 @@ const startAnother = () => {
 
 // --- Leaving -----------------------------------------------------------------
 // Sending empties the draft, so a sent submission never asks.
-const needsLeaveWarning = () => isDraftDirty(draft)
+// The name a search link put in (?name=) is not the user's own input until they
+// change it; see hasUserInput.
+let prefilledName = ''
+const needsLeaveWarning = () => hasUserInput(draft, prefilledName)
 const leaveDialogOpen = ref(false)
 let settleLeave: ((leave: boolean) => void) | null = null
 
@@ -237,7 +241,7 @@ const onBeforeUnload = (event: BeforeUnloadEvent) => {
 onMounted(() => {
   // A name sent from the search suggestions (?name=...), read once: a later
   // change to the address never replaces what the user has typed.
-  prefillName(draft, route.query.name)
+  prefilledName = prefillName(draft, route.query.name)
   window.addEventListener('beforeunload', onBeforeUnload)
   loadCategories()
   loadConcernTags()
