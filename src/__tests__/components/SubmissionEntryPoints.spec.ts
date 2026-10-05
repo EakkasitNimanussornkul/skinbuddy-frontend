@@ -17,6 +17,7 @@ import { resetAdminState } from '../../composables/useAdmin'
 import { useAuthStore } from '../../stores/auth'
 import ExploreView from '../../views/ExploreView.vue'
 import TopNav from '../../components/Shared/TopNav.vue'
+import AppSidebar from '../../components/Shared/AppSidebar.vue'
 import MobileTopBar from '../../components/Shared/MobileTopBar.vue'
 import App from '../../App.vue'
 
@@ -26,6 +27,11 @@ const makeRouter = async (address = '/') => {
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/explore', component: { template: '<div />' } },
+      // The sidebar's other links (AppSidebar, feat/23).
+      { path: '/routine', component: { template: '<div />' } },
+      { path: '/shelf', component: { template: '<div />' } },
+      { path: '/chat', component: { template: '<div />' } },
+      { path: '/profile', component: { template: '<div />' } },
       { path: '/settings', component: { template: '<div class="settings-page" />' } },
       { path: '/submissions', component: { template: '<div />' } },
       { path: '/submissions/new', component: { template: '<div />' }, meta: { fullScreen: true } },
@@ -120,22 +126,24 @@ describe('product submission entry points', () => {
     })
   })
 
+  // feat/23: the desktop user menu moved out of TopNav into AppSidebar (TopNav
+  // now holds only the search), so these cases check the same promises there.
   describe('TopNav user menu', () => {
     const openMenu = async () => {
       const router = await makeRouter()
-      const w = track(mount(TopNav, { global: { plugins: [router], stubs: { SearchAutocompleteInput: true } }, attachTo: document.body }))
-      const toggle = w.find('button[aria-expanded]')
+      const w = track(mount(AppSidebar, { global: { plugins: [router] }, attachTo: document.body }))
+      const toggle = w.get('button.account-button')
       await toggle.trigger('click')
       await flushPromises()
       return { w, toggle }
     }
 
-    it('lists My submissions for a signed-in user, and reports the menu as open', async () => {
+    it('lists My submissions for a signed-in user in the desktop sidebar that replaced this menu, and reports its account menu as open', async () => {
       signIn('user')
       const { w, toggle } = await openMenu()
 
       expect(toggle.attributes('aria-expanded')).toBe('true')
-      expect(w.get('a.menu-my-submissions').attributes('href')).toBe('/submissions')
+      expect(w.get('a.sidebar-my-submissions').attributes('href')).toBe('/submissions')
     })
 
     it('adds Review submissions for an admin only, after asking for the role', async () => {
@@ -143,14 +151,15 @@ describe('product submission entry points', () => {
       const { w } = await openMenu()
 
       expect(apiClient.get).toHaveBeenCalledWith('/auth/me')
-      expect(w.get('a.menu-review-submissions').attributes('href')).toBe('/admin/submissions')
+      expect(w.get('a.sidebar-review').attributes('href')).toBe('/admin/submissions')
     })
 
     it('does not offer Review submissions to a normal user', async () => {
       signIn('user')
       const { w } = await openMenu()
 
-      expect(w.find('a.menu-review-submissions').exists()).toBe(false)
+      expect(apiClient.get).toHaveBeenCalledWith('/auth/me')
+      expect(w.find('a.sidebar-review').exists()).toBe(false)
     })
   })
 
@@ -218,7 +227,7 @@ describe('product submission entry points', () => {
         mount(App, {
           global: {
             plugins: [router],
-            stubs: { TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
+            stubs: { AppSidebar: true, TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
           },
         }),
       )
@@ -227,6 +236,7 @@ describe('product submission entry points', () => {
     it('hides the site navigation on /submissions/new, which draws its own way out', async () => {
       const w = await mountAppAt('/submissions/new')
 
+      expect(w.findComponent(AppSidebar).exists()).toBe(false)
       expect(w.findComponent(TopNav).exists()).toBe(false)
       expect(w.findComponent(MobileTopBar).exists()).toBe(false)
       expect(w.findComponent({ name: 'BottomNav' }).exists()).toBe(false)
@@ -235,6 +245,7 @@ describe('product submission entry points', () => {
     it('keeps the site navigation on My submissions', async () => {
       const w = await mountAppAt('/submissions')
 
+      expect(w.findComponent(AppSidebar).exists()).toBe(true)
       expect(w.findComponent(TopNav).exists()).toBe(true)
       expect(w.findComponent(MobileTopBar).exists()).toBe(true)
       expect(w.findComponent({ name: 'BottomNav' }).exists()).toBe(true)

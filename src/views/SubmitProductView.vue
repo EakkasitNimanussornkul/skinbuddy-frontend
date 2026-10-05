@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { getCategories, getConcernTags } from '../api/metaApi'
 import { createSubmission } from '../api/submissionsApi'
 import { detailSentence, plainDetail, rateLimitMessage, readApiProblem, type ApiProblem } from '../api/apiProblem'
@@ -10,6 +10,7 @@ import {
   buildSubmissionBody,
   emptyDraft,
   isDraftDirty,
+  prefillName,
   readServerErrors,
   validateBasics,
   validateExtras,
@@ -35,6 +36,7 @@ import LeaveDraftDialog from '../components/Submissions/LeaveDraftDialog.vue'
  */
 
 const router = useRouter()
+const route = useRoute()
 
 const draft = reactive(emptyDraft())
 const errors = reactive<FieldErrors>({})
@@ -233,6 +235,9 @@ const onBeforeUnload = (event: BeforeUnloadEvent) => {
 }
 
 onMounted(() => {
+  // A name sent from the search suggestions (?name=...), read once: a later
+  // change to the address never replaces what the user has typed.
+  prefillName(draft, route.query.name)
   window.addEventListener('beforeunload', onBeforeUnload)
   loadCategories()
   loadConcernTags()

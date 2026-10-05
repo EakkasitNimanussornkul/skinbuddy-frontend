@@ -135,6 +135,28 @@ export const isDraftDirty = (draft: SubmissionDraft): boolean =>
   draft.sources.some((source) => !isBlankSource(source)) ||
   !blank(draft.note)
 
+/**
+ * The product name a link can start the form with (?name=..., sent by the
+ * search suggestions when nothing matched): one string, with hidden characters
+ * taken out, trimmed, and cut to the name limit without splitting a character.
+ * Anything else - a repeated parameter (an array), an empty value - gives ''.
+ */
+export const nameFromQuery = (value: unknown): string => {
+  if (typeof value !== 'string') return ''
+  let name = ''
+  for (const char of clean(value)) {
+    if (name.length + char.length > SUBMISSION_LIMITS.name) break
+    name += char
+  }
+  return name.trim()
+}
+
+/** Starts an empty name from the link; a name already typed is kept. */
+export const prefillName = (draft: SubmissionDraft, value: unknown): void => {
+  const name = nameFromQuery(value)
+  if (name && blank(draft.name)) draft.name = name
+}
+
 // ---------------------------------------------------------------------------
 // Ingredients
 // ---------------------------------------------------------------------------

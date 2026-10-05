@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { searchProducts } from '../../api/products'
 
 const props = defineProps<{
@@ -130,8 +130,26 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
           <span>Matching formulation matrix...</span>
         </div>
 
-        <div v-else-if="results.length === 0" class="p-8 text-center text-xs text-brand-text-muted font-medium">
-          No immediate product formulas match "{{ searchQuery }}".
+        <!-- Nothing matches: say so plainly, and offer to send the product,
+             with the form started from what was typed. -->
+        <div v-else-if="results.length === 0" class="search-no-match flex flex-col gap-3">
+          <div class="px-4 pt-4 pb-1 flex flex-col items-center text-center gap-1.5">
+            <p class="m-0 text-base font-extrabold text-stone-800 dark:text-stone-100">No products match that yet</p>
+            <p class="m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">Check the spelling, or send it to us.</p>
+          </div>
+          <RouterLink
+            :to="{ path: '/submissions/new', query: { name: searchQuery.trim() } }"
+            class="search-submit-named min-h-16 px-3.5 py-2.5 rounded-2xl flex items-center gap-3 bg-brand-primary-light dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent hover:bg-brand-primary-light/70 dark:hover:bg-brand-primary/25 transition-colors"
+            @click="isFocused = false"
+          >
+            <span class="w-10 h-10 rounded-xl bg-brand-surface-light dark:bg-brand-surface-dark flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </span>
+            <span class="flex flex-col gap-0.5 flex-grow min-w-0">
+              <span class="text-[15px] font-extrabold">Couldn't find your product? Submit it</span> <span class="text-[13px] break-words">We'll start the form with "{{ searchQuery.trim() }}" as the name.</span>
+            </span>
+            <svg class="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+          </RouterLink>
         </div>
 
         <!-- 🌟 PROMINENT RESULT CARDS 🌟 -->
@@ -185,6 +203,17 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
   </div>
 </div>
       </div>
+
+      <!-- Some matches: a quiet way to send a product that is not among them. -->
+      <RouterLink
+        v-if="!isLoading && results.length > 0"
+        :to="{ path: '/submissions/new' }"
+        class="search-submit-other min-h-[52px] px-5 flex items-center gap-2.5 text-sm font-bold text-brand-primary-strong dark:text-brand-primary hover:bg-brand-bg-light dark:hover:bg-stone-800/80 transition-colors"
+        @click="isFocused = false"
+      >
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Not the one you're looking for? Submit your product
+      </RouterLink>
     </div>
 
   </div>

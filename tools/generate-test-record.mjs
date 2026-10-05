@@ -695,7 +695,7 @@ const SPEC_MAP = [
     module: 'views/ExploreView, components/Shared/TopNav, components/Shared/MobileTopBar, App',
     prerequisite:
       'Each component mounted with @vue/test-utils on a memory history with its children stubbed; searchProducts and the shared apiClient (for GET /auth/me) mocked; a fresh Pinia and the role state reset per case. No network access.',
-    note: 'Where a user finds the submit flow: the Explore no-results state and the card under the results, My submissions in both account menus, and the admin-only Review submissions item. The App cases pin that the site navigation is hidden on /submissions/new only (their memory router marks that route meta.fullScreen, as the real one does).',
+    note: 'Where a user finds the submit flow: the Explore no-results state and the card under the results, My submissions in both account menus, and the admin-only Review submissions item. The App cases pin that the site navigation is hidden on /submissions/new only (their memory router marks that route meta.fullScreen, as the real one does). Since feat/23 the desktop user menu lives in the sidebar (components/Shared/AppSidebar) and TopNav holds only the search, so the TopNav user menu cases mount the sidebar, and the App cases check the sidebar is hidden and shown with the rest of the navigation.',
   },
   {
     file: 'src/__tests__/api/adminSubmissionsApi.spec.ts',
@@ -807,6 +807,22 @@ const SPEC_MAP = [
     prerequisite:
       'Each view rendered through a real RouterView on a memory history, attached to the document, with a fresh Pinia and Teleport stubbed. The submission and product admin calls, the product read, the meta lists and the ingredient search and match are mocked; URL.createObjectURL and URL.revokeObjectURL are spied on and VITE_SUPABASE_URL stubbed where a case needs them. Each view is unmounted after its case. No network access.',
     note: "The hardening as an admin and a user meet it: a sent link's host shown first and marked nofollow ugc, no tick to publish a link that is not a web address, hidden characters shown as markers everywhere on the review and the edit form (and removed only when the admin asks), photos only from an upload path or the picked file and released when replaced or the page closes, and the 429, photo and link refusals shown on the field or at the top of the form. The later groups use the backend's confirmed answers word for word (fix/submission-hardening 7863dd1): the pending-cap and upload 429s, the 413, 415 and 422 photo texts, a local-host link refused at each loc (sources.i.url, ingredients.i.details.source_url, publish_source_urls.i) landing on its field or row with \"Value error,\" taken off, and a name cleaned to nothing (string_too_short) on the name field; then the full invisible-character set, and refusals named in words rather than request paths.",
+  },
+  {
+    file: 'src/__tests__/components/SiteNavigation.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/AppSidebar, components/Shared/TopNav, App, components/Shared/MobileTopBar',
+    prerequisite:
+      'Each component mounted with @vue/test-utils on a memory history, attached to the document, with a fresh Pinia and the role state reset per case. The shared apiClient is mocked (GET /auth/me, read by fetchMyRole); the search input is stubbed in TopNav and MobileTopBar, and App has its navigation components stubbed. No network access.',
+    note: 'The desktop layout (feat/23, layout B): a sidebar replaces the top-bar links and user menu, and TopNav keeps only the search at its 80px height. Explore\'s categories open by default under /explore and a click on the toggle wins until the next page (a query change on Explore is not one). Review is offered to an admin only, the role being asked for as soon as someone is signed in. The account menu opens for a signed-in user only; a guest is asked to sign in. The cases in UTC-FE-325 (TopNav user menu) were moved in place onto the sidebar, where that menu now lives.',
+  },
+  {
+    file: 'src/__tests__/components/SearchSubmitEntry.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/SearchAutocompleteInput, components/Submissions/submissionDraft (nameFromQuery, prefillName), views/SubmitProductView',
+    prerequisite:
+      'SearchAutocompleteInput mounted on a memory history with searchProducts mocked and Vitest fake timers driving its 250ms debounce. SubmitProductView rendered through a real RouterView with getCategories and getConcernTags mocked and Teleport stubbed. The draft helpers are called directly. No network access.',
+    note: 'The search suggestions as a way in to submitting a product: with no match, a plain message and a row that starts the form with the typed name (a location object, so & # = ? survive); with matches, a quiet last row. The form reads ?name= once on mount, as one string only, with hidden characters taken out, trimmed and cut to the 200-character name limit without splitting a character, and never over a name already typed.',
   },
 ]
 

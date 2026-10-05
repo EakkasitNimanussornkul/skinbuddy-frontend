@@ -437,7 +437,7 @@ describe('src/views/ProductEditView.vue', () => {
       const wrapper = mount(App, {
         global: {
           plugins: [pinia, router],
-          stubs: { TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
+          stubs: { AppSidebar: true, TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
         },
       })
       mounted.push(wrapper)
@@ -447,6 +447,7 @@ describe('src/views/ProductEditView.vue', () => {
     it('hides the site navigation on a full-screen route such as the product edit page, which has its own Cancel and save bar', async () => {
       const w = await mountAppAt('/products/cerave/edit')
 
+      expect(w.findComponent({ name: 'AppSidebar' }).exists()).toBe(false)
       expect(w.findComponent({ name: 'TopNav' }).exists()).toBe(false)
       expect(w.findComponent({ name: 'BottomNav' }).exists()).toBe(false)
     })
@@ -454,6 +455,7 @@ describe('src/views/ProductEditView.vue', () => {
     it('keeps the site navigation on the product page itself', async () => {
       const w = await mountAppAt('/product/cerave')
 
+      expect(w.findComponent({ name: 'AppSidebar' }).exists()).toBe(true)
       expect(w.findComponent({ name: 'TopNav' }).exists()).toBe(true)
       expect(w.findComponent({ name: 'BottomNav' }).exists()).toBe(true)
     })

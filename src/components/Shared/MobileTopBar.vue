@@ -15,8 +15,8 @@ const handleProfileClick = () => {
   router.push('/profile')
 }
 
-// The cog opens a small account menu for a signed-in user: Settings, My
-// submissions, and Review submissions for an admin. A guest still goes
+// The cog opens a small account menu for a signed-in user: Submit a product,
+// My submissions, Review submissions for an admin, and Settings. A guest still goes
 // straight to /settings, which asks them to sign in, as before.
 const { isAdmin, ensureRole } = useAdmin()
 const isMenuOpen = ref(false)
@@ -87,8 +87,8 @@ onUnmounted(() => window.removeEventListener('click', onClickOutside))
         <SearchAutocompleteInput placeholder="Search..." />
       </div>
 
-      <!-- Right Side: the account menu (Settings, My submissions, and Review
-           submissions for an admin). -->
+      <!-- Right Side: the account menu (Submit a product, My submissions,
+           Review submissions for an admin, and Settings). -->
       <div ref="menuRoot" class="relative shrink-0" @keydown="onMenuKeydown">
         <button
           ref="menuButton"
@@ -111,6 +111,11 @@ onUnmounted(() => window.removeEventListener('click', onClickOutside))
           aria-label="Account"
           class="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-brand-surface-border dark:border-stone-700 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl p-1.5 z-50"
         >
+          <!-- First, and tinted: the way in to sending a product. -->
+          <RouterLink to="/submissions/new" class="mobile-submit-product min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-extrabold bg-brand-primary-light dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent hover:bg-brand-primary-light/70 dark:hover:bg-brand-primary/25" @click="closeMenu()">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            Submit a product
+          </RouterLink>
           <RouterLink to="/submissions" class="mobile-my-submissions min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
             <svg class="w-5 h-5 text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H5.2L4 17.2z" /><path d="M8 9h8M8 12h5" /></svg>
             My submissions

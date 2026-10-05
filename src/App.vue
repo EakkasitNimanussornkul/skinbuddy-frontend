@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import BottomNav from './components/Shared/BottomNav.vue'
 import TopNav from './components/Shared/TopNav.vue'
+import AppSidebar from './components/Shared/AppSidebar.vue'
 import MobileTopBar from './components/Shared/MobileTopBar.vue'
 import ToastProvider from './components/Shared/ToastProvider.vue'
 import LoginPopup from './components/Auth/LoginPopup.vue'
@@ -34,15 +35,26 @@ onMounted(() => {
     <LoginPopup />
     <LogoutModal />
 
-    <!-- Desktop Top Navigation (Hidden on Mobile) -->
-    <TopNav v-if="showChrome" />
+    <!-- On lg and up, the sidebar and the content column side by side; the
+         column holds the slim search bar and the page. min-w-0 lets a wide
+         page shrink beside the sidebar instead of pushing past the window.
+         Below lg the sidebar and TopNav are hidden, and the column is the
+         page as before, under MobileTopBar and over BottomNav. -->
+    <div class="lg:flex">
+      <AppSidebar v-if="showChrome" />
 
-    <!-- Mobile Header Top Bar (Hidden on Desktop) -->
-    <MobileTopBar v-if="showChrome" />
+      <div class="app-content flex-1 min-w-0">
+        <!-- Desktop search bar (hidden below lg) -->
+        <TopNav v-if="showChrome" />
 
-    <!-- Main View Canvas -->
-    <RouterView />
-      <ScrollToTopButton />
+        <!-- Mobile Header Top Bar (Hidden on Desktop) -->
+        <MobileTopBar v-if="showChrome" />
+
+        <!-- Main View Canvas -->
+        <RouterView />
+      </div>
+    </div>
+    <ScrollToTopButton />
     <!-- Mobile Bottom Navigation (5-Tab Layout) -->
     <BottomNav v-if="showChrome" />
 

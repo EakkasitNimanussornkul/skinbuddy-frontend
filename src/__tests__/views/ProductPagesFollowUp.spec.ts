@@ -197,19 +197,20 @@ describe('feat/22 follow-ups (product pages and site chrome)', () => {
       const wrapper = mount(App, {
         global: {
           plugins: [pinia, router],
-          stubs: { RouterView: true, TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
+          stubs: { RouterView: true, AppSidebar: true, TopNav: true, MobileTopBar: true, BottomNav: true, LoginPopup: true, LogoutModal: true, ToastProvider: true, ScrollToTopButton: true },
         },
       })
       mounted.push(wrapper)
       return wrapper
     }
     const chromeShown = (w: VueWrapper) => ({
+      side: w.findComponent({ name: 'AppSidebar' }).exists(),
       top: w.findComponent({ name: 'TopNav' }).exists(),
       mobile: w.findComponent({ name: 'MobileTopBar' }).exists(),
       bottom: w.findComponent({ name: 'BottomNav' }).exists(),
     })
-    const hidden = { top: false, mobile: false, bottom: false }
-    const shown = { top: true, mobile: true, bottom: true }
+    const hidden = { side: false, top: false, mobile: false, bottom: false }
+    const shown = { side: true, top: true, mobile: true, bottom: true }
 
     it('marks the submit route full screen in the router itself, so a trailing slash matches it too', async () => {
       const real = await loadRouter()
