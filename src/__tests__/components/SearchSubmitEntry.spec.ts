@@ -12,10 +12,20 @@ vi.mock('../../api/metaApi', () => ({
   getCategories: vi.fn(),
   getConcernTags: vi.fn(),
 }))
+vi.mock('../../api/submissionsApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/submissionsApi')>()),
+  createSubmission: vi.fn(),
+}))
+vi.mock('../../api/ingredientsApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/ingredientsApi')>()),
+  searchIngredients: vi.fn(),
+  matchIngredients: vi.fn(),
+}))
 
 import { searchProducts } from '../../api/products'
 import { getCategories, getConcernTags } from '../../api/metaApi'
-import { SUBMISSION_LIMITS } from '../../api/submissionsApi'
+import { SUBMISSION_LIMITS, createSubmission } from '../../api/submissionsApi'
+import { matchIngredients, searchIngredients } from '../../api/ingredientsApi'
 import { emptyDraft, hasUserInput, nameFromQuery, prefillName } from '../../components/Submissions/submissionDraft'
 import SearchAutocompleteInput from '../../components/Shared/SearchAutocompleteInput.vue'
 import SubmitProductView from '../../views/SubmitProductView.vue'
@@ -289,6 +299,36 @@ describe('feat/23 search suggestions and the submit-form name pre-fill', () => {
       branded.router.push('/explore')
       await flushPromises()
       expect(branded.router.currentRoute.value.path).toBe('/submissions/new')
+    })
+
+    it('forgets the name from the link once the product is sent, so the same name typed into the next one counts as input', async () => {
+      vi.mocked(searchIngredients).mockResolvedValue([])
+      vi.mocked(matchIngredients).mockResolvedValue([{ input: 'Water', id: 'i-water', name: 'Water', matched_alias: null, ambiguous: false }])
+      vi.mocked(createSubmission).mockResolvedValue({ id: 's-1', status: 'pending', created_at: null } as never)
+      const { w, router } = await openForm('/submissions/new?name=Cica%20Cream')
+      const press = (text: string) => w.findAll('button').find((b) => b.text().trim() === text)!.trigger('click')
+      await w.get('#sub-brand').setValue('Example Brand')
+      await press('Toners')
+      await w.get('button.continue').trigger('click')
+      await flushPromises()
+      await w.get('button.paste-toggle').trigger('click')
+      await w.get('textarea').setValue('Water')
+      await w.get('button.paste-match').trigger('click')
+      await flushPromises()
+      await w.get('button.continue').trigger('click')
+      await flushPromises()
+      await w.get('button.send').trigger('click')
+      await flushPromises()
+      expect(createSubmission).toHaveBeenCalledTimes(1)
+
+      await w.get('button.submit-another').trigger('click')
+      await flushPromises()
+      await w.get('#sub-name').setValue('Cica Cream')
+      router.push('/explore')
+      await flushPromises()
+
+      expect(router.currentRoute.value.path).toBe('/submissions/new')
+      expect(w.find('[role="dialog"]').exists()).toBe(true)
     })
   })
 })
