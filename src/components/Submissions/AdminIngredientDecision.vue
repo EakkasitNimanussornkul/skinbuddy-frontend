@@ -34,6 +34,8 @@ const props = defineProps<{
   functionalGroups: string[]
   groupsFailed: boolean
   busy: boolean
+  /** Why the backend refused this ingredient's own link, when it did. */
+  linkError?: string
 }>()
 const emit = defineEmits<{ update: [patch: Partial<DecisionDraft>]; resolve: [replacement: SubmissionIngredient] }>()
 
@@ -80,6 +82,7 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
           </template>
         </ExternalLink>
         <span v-else class="block text-[13px] text-stone-500 dark:text-stone-400">No link given</span>
+        <FieldError :id="`${uid}-link-error`" :message="linkError" />
       </template>
       <span v-else class="block mt-1 text-sm text-stone-500 dark:text-stone-400">No details given</span>
     </div>
@@ -160,6 +163,8 @@ const pickNew = (typed: string) => emit('resolve', { new_name: typed })
           <input
             type="checkbox"
             :checked="draft.publishSource"
+            :aria-invalid="linkError ? 'true' : undefined"
+            :aria-describedby="linkError ? `${uid}-link-error` : undefined"
             class="publish-ingredient-source w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary"
             @change="emit('update', { publishSource: ($event.target as HTMLInputElement).checked })"
           />

@@ -51,6 +51,10 @@ import { useToast } from '../../composables/useToast'
 import AdminSubmissionsView from '../../views/AdminSubmissionsView.vue'
 import ProductEditView from '../../views/ProductEditView.vue'
 import SubmitProductView from '../../views/SubmitProductView.vue'
+import { readApiProblem } from '../../api/apiProblem'
+import { fieldWords, readReviewPayload, readReviewProblem, sentIngredientPositions } from '../../components/Submissions/adminReview'
+import { buildSubmissionBody, emptyDraft } from '../../components/Submissions/submissionDraft'
+import { hasHiddenChars, revealHiddenChars, stripHiddenChars } from '../../utils/hiddenChars'
 
 // The submission hardening on screen (backend fix/submission-hardening): sent
 // links shown host first and marked nofollow ugc, hidden characters shown as
@@ -590,6 +594,221 @@ describe('submission hardening (screens)', () => {
       expect(Object.keys(sources).length).toBeGreaterThan(100)
       expect(Object.keys(sources)).toContain('../../utils/hiddenChars.ts')
       expect(Object.entries(sources).filter(([, text]) => raw.test(text)).map(([name]) => name)).toEqual([])
+    })
+  })
+
+  // The backend's answers as confirmed for fix/submission-hardening 7863dd1,
+  // word for word, landing where the user can act on them.
+  describe('confirmed backend answers (exact texts, on screen)', () => {
+    const LOCAL_HOST = 'Value error, must not point at a local or internal host'
+    const LOCAL_HOST_SHOWN = 'Must not point at a local or internal host'
+
+    it('shows the pending-cap 429 on send in the backend\'s exact words', async () => {
+      const text = 'You already have 10 submissions waiting for review. You can send another once an admin has reviewed one.'
+      vi.mocked(createSubmission).mockRejectedValue(httpError(429, { detail: text }))
+      const { wrapper } = await mountSubmit()
+      await toExtras(wrapper)
+      await send(wrapper)
+      expect(wrapper.get('.submit-banner').text()).toBe(text)
+    })
+
+    it.each([
+      [429, 'Too many image uploads: at most 20 an hour. Try again later.'],
+      [413, 'The image is larger than 5 MB.'],
+      [413, 'The image has too many pixels: at most 40 megapixels.'],
+      [415, 'The image must be a JPEG, PNG or WebP file.'],
+      [415, 'The image could not be read. It may be damaged, or not really a JPEG, PNG or WebP file.'],
+      [422, 'No photo was received. Please choose a photo and try again.'],
+      [422, "Send exactly one file, in a field named 'file'."],
+    ])('shows the upload\'s %i "%s" under the photo field, word for word', async (status, text) => {
+      vi.mocked(uploadSubmissionImage).mockRejectedValue(httpError(status, { detail: text }))
+      const { wrapper } = await mountSubmit()
+      await chooseFile(wrapper, photo())
+      expect(wrapper.get('#photo-err').text()).toBe(text)
+      expect(wrapper.find('.photo-preview').exists()).toBe(false)
+    })
+
+    it('shows the product photo\'s 415 "could not be read" under its photo field', async () => {
+      const text = 'The image could not be read. It may be damaged, or not really a JPEG, PNG or WebP file.'
+      vi.mocked(uploadProductPhoto).mockRejectedValue(httpError(415, { detail: text }))
+      const { wrapper } = await mountEdit()
+      await chooseFile(wrapper, photo())
+      expect(wrapper.get('#e-photo-error').text()).toBe(text)
+    })
+
+    it('puts a link refused at sources.i.url on the submit form\'s link card, with "Value error," taken off', async () => {
+      vi.mocked(createSubmission).mockRejectedValue(fieldError(['sources', 0, 'url'], LOCAL_HOST))
+      const { wrapper } = await mountSubmit()
+      await toExtras(wrapper)
+      await fillLink(wrapper, 'http://intranet.example/p')
+      await send(wrapper)
+      expect(wrapper.get('.source-card .field-error').text()).toBe(LOCAL_HOST_SHOWN)
+    })
+
+    it('puts a link refused at ingredients.i.details.source_url on that new ingredient\'s link field, back on the ingredients step', async () => {
+      vi.mocked(createSubmission).mockRejectedValue(fieldError(['ingredients', 1, 'details', 'source_url'], LOCAL_HOST))
+      const { wrapper } = await mountSubmit()
+      await wrapper.get('#sub-name').setValue('Hydrating Gel Toner')
+      await wrapper.get('#sub-brand').setValue('Example Brand')
+      await button(wrapper, 'Toners').trigger('click')
+      await wrapper.get('button.continue').trigger('click')
+      await flushPromises()
+      vi.mocked(matchIngredients).mockResolvedValue([
+        { input: 'Water', id: 'i-water', name: 'Water', matched_alias: null, ambiguous: false },
+        { input: 'Phytosphingosine', id: null, name: null, matched_alias: null, ambiguous: false },
+      ])
+      await wrapper.get('button.paste-toggle').trigger('click')
+      await wrapper.get('textarea').setValue('Water, Phytosphingosine')
+      await wrapper.get('button.paste-match').trigger('click')
+      await flushPromises()
+      await wrapper.get('section.new-details button.details-toggle').trigger('click')
+      await wrapper.get('section.new-details input[type="url"]').setValue('http://localhost/phyto')
+      await wrapper.get('button.continue').trigger('click')
+      await flushPromises()
+
+      await send(wrapper)
+
+      expect(wrapper.get('h1.step-title').text()).toBe("What's in it? *")
+      expect(wrapper.get('section.new-details input[type="url"]').attributes('aria-invalid')).toBe('true')
+      expect(wrapper.get('section.new-details').text()).toContain(LOCAL_HOST_SHOWN)
+    })
+
+    it('shows a name the server cleaned to nothing (string_too_short) on the name field', async () => {
+      vi.mocked(createSubmission).mockRejectedValue(
+        httpError(422, { detail: [{ loc: ['body', 'name'], msg: 'String should have at least 1 character', type: 'string_too_short' }] }),
+      )
+      const { wrapper } = await mountSubmit()
+      await toExtras(wrapper)
+      await send(wrapper)
+      expect(wrapper.get('h1.step-title').text()).toBe("What's the product?")
+      expect(wrapper.get('#name-err').text()).toBe('String should have at least 1 character')
+    })
+
+    it('puts a link refused at publish_source_urls.i on that source\'s row beside its tick, with a plain line at the top', async () => {
+      const { approveSubmission } = await import('../../api/submissionsApi')
+      vi.mocked(approveSubmission).mockRejectedValue(fieldError(['publish_source_urls', 0], LOCAL_HOST))
+      const { wrapper } = await mountReview()
+      await wrapper.get('input.tick-source').setValue(true)
+      await wrapper.findAll('input.decision-option')[1]!.setValue(true)
+
+      await wrapper.get('button.publish-button').trigger('click')
+      await wrapper.get('button.confirm-ok').trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(approveSubmission).mock.lastCall![1].publish_source_urls).toEqual(['https://brand.example/toner'])
+      const row = wrapper.get('.source-row')
+      expect(row.get('.field-error').text()).toBe(LOCAL_HOST_SHOWN)
+      expect(row.get('input.tick-source').attributes('aria-describedby')).toBe(row.get('.field-error').attributes('id'))
+      expect(wrapper.get('.action-problem').text()).toBe("A link wasn't accepted, so nothing was published.")
+      expect(wrapper.get('.action-problem').text()).not.toContain('publish_source_urls')
+    })
+
+    it('puts a link refused at publish_source_urls.i on the new ingredient whose own link it was', async () => {
+      const { approveSubmission } = await import('../../api/submissionsApi')
+      vi.mocked(approveSubmission).mockRejectedValue(fieldError(['publish_source_urls', 0], LOCAL_HOST))
+      vi.mocked(getAdminSubmission).mockResolvedValue(review({}, { sources: [] }))
+      const { wrapper } = await mountReview()
+      await wrapper.findAll('input.decision-option')[0]!.setValue(true)
+      await wrapper.get('select.functional-group').setValue('Humectant')
+      await wrapper.get('input.publish-ingredient-source').setValue(true)
+
+      await wrapper.get('button.publish-button').trigger('click')
+      await wrapper.get('button.confirm-ok').trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(approveSubmission).mock.lastCall![1].publish_source_urls).toEqual(['https://ingredient.example/phyto'])
+      expect(wrapper.get('.ingredient-decision .field-error').text()).toBe(LOCAL_HOST_SHOWN)
+    })
+
+    it('puts a link refused at ingredients.i.details.source_url, when picking a match sent the list, on that ingredient\'s card', async () => {
+      const several = { ...newIngredient('http://10.0.0.5/phyto'), existing_matches: [{ id: 'i-a', name: 'Ceramide NP' }, { id: 'i-b', name: 'Ceramide AP' }] }
+      vi.mocked(getAdminSubmission).mockResolvedValue(
+        review({ ingredients: [review().ingredients[0]!, several] }, { ingredients: [{ ingredient_id: 'i-0' }, { new_name: 'Phytosphingosine', details: { source_url: 'http://10.0.0.5/phyto' } }] }),
+      )
+      vi.mocked(editAdminSubmission).mockRejectedValue(fieldError(['ingredients', 1, 'details', 'source_url'], LOCAL_HOST))
+      const { wrapper } = await mountReview()
+
+      await wrapper.findAll('button.use-match')[0]!.trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(editAdminSubmission).mock.lastCall![1].ingredients).toEqual([{ ingredient_id: 'i-0' }, { ingredient_id: 'i-a' }])
+      expect(wrapper.get('.ingredient-decision .field-error').text()).toBe(LOCAL_HOST_SHOWN)
+      expect(wrapper.get('.action-problem').text()).toBe("A link wasn't accepted, so your corrections weren't saved.")
+    })
+
+    it('puts a link refused at sources.i.url on the product edit\'s fact row', async () => {
+      vi.mocked(updateProduct).mockRejectedValue(fieldError(['sources', 0, 'url'], LOCAL_HOST))
+      const { wrapper } = await mountEdit()
+      await wrapper.findAll('button.claim-toggle')[0]!.trigger('click')
+      await wrapper.get('#claim-listing-url').setValue('http://localhost/p')
+      await wrapper.get('#claim-listing-title').setValue('Shop page')
+      await wrapper.get('button.claim-save').trigger('click')
+      await save(wrapper)
+      expect(wrapper.get('#claim-listing-error').text()).toBe(LOCAL_HOST_SHOWN)
+    })
+  })
+
+  describe('confirmed backend rules (hidden-character set, plain field words)', () => {
+    const ch = (cp: number) => String.fromCodePoint(cp)
+    // The backend's extra set, each end of each range, built from code points.
+    const EXTRA = [0xad, 0x61c, 0x180e, 0x2060, 0x2064, 0x206a, 0x206f, 0xfff9, 0xfffb, 0xe0000, 0xe0041, 0xe007f]
+
+    it('finds, marks and strips every character the backend removes, including the tag characters', () => {
+      for (const cp of EXTRA) {
+        const text = `Cera${ch(cp)}Ve`
+        expect(hasHiddenChars(text)).toBe(true)
+        expect(stripHiddenChars(text)).toBe('CeraVe')
+        expect(revealHiddenChars(text)).toBe(`Cera[U+${cp.toString(16).toUpperCase().padStart(4, '0')}]Ve`)
+      }
+    })
+
+    it('finds a lone surrogate, and leaves a whole emoji alone', () => {
+      const lone = String.fromCharCode(0xd800)
+      expect(hasHiddenChars(`a${lone}b`)).toBe(true)
+      expect(revealHiddenChars(`a${lone}b`)).toBe('a[U+D800]b')
+      expect(hasHiddenChars(`Glow ${ch(0x1f600)}`)).toBe(false)
+    })
+
+    it('leaves characters just outside the backend\'s ranges alone', () => {
+      for (const cp of [0xac, 0x61b, 0x2065, 0x2070, 0xfffc, 0xe0080]) expect(hasHiddenChars(`a${ch(cp)}b`)).toBe(false)
+    })
+
+    it('sends no tag character or soft hyphen from the submit form', () => {
+      const body = buildSubmissionBody({ ...emptyDraft(), name: `Gel${ch(0xe0041)}${ch(0xad)} Toner`, brand: 'Example', category: 'Toners', ingredients: [], sources: [] })
+      expect(body.name).toBe('Gel Toner')
+    })
+
+    it('names a refused field in words, never by its request path', () => {
+      expect(fieldWords('publish_source_urls.0')).toBe('a link')
+      expect(fieldWords('ingredients.2.details.source_url')).toBe("an ingredient's link")
+      expect(fieldWords('ingredients.2.new_name')).toBe('an ingredient')
+      expect(fieldWords('name')).toBe('the name')
+      expect(fieldWords('updated_at')).toBeNull()
+    })
+
+    it('words a review 422 with no link and no form field in plain words, with no dotted path', () => {
+      const ticked = readReviewProblem(readApiProblem(fieldError(['publish_benefits', 0], 'Value error, not in the submission')), 'approve')
+      expect(ticked.message).toBe("Something wasn't accepted (a ticked benefit: Not in the submission), so nothing was published.")
+      const unnamed = readReviewProblem(readApiProblem(fieldError(['updated_at'], 'Field required')), 'save')
+      expect(unnamed.message).toBe("Something wasn't accepted (Field required), so your corrections weren't saved.")
+      for (const read of [ticked, unnamed]) expect(read.message).not.toMatch(/[a-z_]+\.\d|_/)
+    })
+
+    it('counts which review positions a corrections PATCH sent, skipping stored items that are no ingredient', () => {
+      const stored = [{ ingredient_id: 'i-0' }, null, { new_name: 'Phytosphingosine' }]
+      expect(sentIngredientPositions(stored)).toEqual([0, 2])
+      expect(sentIngredientPositions(stored, 1)).toEqual([0, 1, 2])
+    })
+
+    it('puts the i-th refused link of the approve body on its row, and still says a link was refused when the index is unknown', () => {
+      const detail = review()
+      const payload = readReviewPayload(detail.submission)
+      const refused = readApiProblem(fieldError(['publish_source_urls', 1], 'Value error, must not contain a user name or password'))
+      const read = readReviewProblem(refused, 'approve', null, { payload, detail, sent: { publishUrls: ['https://brand.example/toner', 'https://ingredient.example/phyto'] } })
+      expect(read.links).toEqual({ sources: {}, ingredients: { 1: 'Must not contain a user name or password' } })
+      const unknown = readReviewProblem(refused, 'approve', null, { payload, detail, sent: { publishUrls: [] } })
+      expect(unknown.links).toEqual({ sources: {}, ingredients: {} })
+      expect(unknown.message).toBe("A link wasn't accepted, so nothing was published.")
     })
   })
 })

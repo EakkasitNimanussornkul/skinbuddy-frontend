@@ -439,6 +439,57 @@ export interface ReviewProblem {
   ambiguous: ExistingMatch[]
   /** From a validation 422: per-field messages, keyed as the corrections form names them. */
   fields: FieldErrors
+  /**
+   * A link the backend refused, on the row it belongs to: a sent source by its
+   * URL, a new ingredient's own link by the ingredient's position.
+   */
+  links: { sources: Record<string, string>; ingredients: Record<number, string> }
+}
+
+/**
+ * What a review request sent, so a refusal naming an index can be put on the
+ * row it is about: the approve body's publish_source_urls, in order, and for
+ * a PATCH that sent the ingredient list, the review position of each item
+ * sent (sentIngredientPositions).
+ */
+export interface ReviewSent {
+  publishUrls?: string[]
+  ingredientPositions?: number[]
+}
+
+/**
+ * The review position of each ingredient a corrections PATCH sends, in order.
+ * replaceIngredientAt and convertIngredients leave out stored items that are
+ * no ingredient at all, so the Nth item sent is not always position N.
+ */
+export const sentIngredientPositions = (stored: unknown[], replaced: number | null = null): number[] =>
+  stored.flatMap((item, index) => (index === replaced || toPostIngredient(item) ? [index] : []))
+
+// What a field is, in words, for a refusal the corrections form has no field
+// for. A dotted request path ("publish_source_urls.0") never reaches the admin.
+const FIELD_WORDS: Record<string, string> = {
+  name: 'the name',
+  brand: 'the brand',
+  category: 'the category',
+  price_thb: 'the price in baht',
+  price_usd: 'the price in dollars',
+  pao_months: 'the use-within period',
+  image_path: 'the photo',
+  review_notes: 'the note',
+  benefits: 'a benefit',
+  good_for: 'a concern',
+  sources: 'a link',
+  publish_source_urls: 'a link',
+  publish_benefits: 'a ticked benefit',
+  publish_good_for: 'a ticked concern',
+  new_ingredients: 'a new ingredient decision',
+}
+
+/** "the name", "a link", "an ingredient's link"; null for a field with no plain name. */
+export const fieldWords = (field: string): string | null => {
+  const [top = '', , sub, leaf] = field.split('.')
+  if (top === 'ingredients') return sub === 'details' && leaf === 'source_url' ? "an ingredient's link" : 'an ingredient'
+  return FIELD_WORDS[top] ?? null
 }
 
 const CORRECTION_FIELD: Record<string, string> = {
@@ -462,10 +513,60 @@ const NOTHING_DONE: Record<ReviewAction, string> = {
 const names = (rows: { brand?: string; name: string }[]) =>
   rows.map((r) => (r.brand ? `${r.brand} ${r.name}` : r.name)).join(', ')
 
+/**
+ * The link refusals in a 422, put on their rows. The backend refuses a link
+ * field by field (fix/submission-hardening): "publish_source_urls.i" on
+ * approve, the i-th URL the approve body sent; "ingredients.i.details.
+ * source_url" on a corrections PATCH that sent the ingredient list. The
+ * review's PATCH never sends sources, so "sources.i.url" cannot come back
+ * from it. Null when no field is a link.
+ */
+const readLinkRefusals = (
+  problem: ApiProblem,
+  payload: ReviewPayload | null,
+  detail: AdminSubmission | null,
+  sent: ReviewSent,
+): ReviewProblem['links'] | null => {
+  const links: ReviewProblem['links'] = { sources: {}, ingredients: {} }
+  let found = false
+  for (const { field, message } of problem.fields) {
+    const [top = '', index = '', sub, leaf] = field.split('.')
+    if (!/^\d+$/.test(index)) continue
+    if (top === 'publish_source_urls') {
+      found = true
+      const url = sent.publishUrls?.[Number(index)]
+      if (!url) continue
+      if (payload?.sources.some((s) => s.url === url)) links.sources[url] ??= message
+      for (const ingredient of detail?.ingredients ?? []) {
+        if (ingredient.details?.source_url === url) links.ingredients[ingredient.position] ??= message
+      }
+    } else if (top === 'ingredients' && sub === 'details' && leaf === 'source_url') {
+      found = true
+      const position = sent.ingredientPositions?.[Number(index)]
+      if (position !== undefined) links.ingredients[position] ??= message
+    }
+  }
+  return found ? links : null
+}
+
 /** Every refusal the review routes give, as one line for the admin and what to offer next. */
-export const readReviewProblem = (problem: ApiProblem, action: ReviewAction, candidates: unknown = null): ReviewProblem => {
-  const out: ReviewProblem = { message: '', reloadQueue: false, forbidden: false, candidates: [], ambiguous: [], fields: {} }
+export const readReviewProblem = (
+  problem: ApiProblem,
+  action: ReviewAction,
+  candidates: unknown = null,
+  context: { payload?: ReviewPayload | null; detail?: AdminSubmission | null; sent?: ReviewSent } = {},
+): ReviewProblem => {
+  const out: ReviewProblem = {
+    message: '',
+    reloadQueue: false,
+    forbidden: false,
+    candidates: [],
+    ambiguous: [],
+    fields: {},
+    links: { sources: {}, ingredients: {} },
+  }
   const { status, code, detail } = problem
+  const links = status === 422 ? readLinkRefusals(problem, context.payload ?? null, context.detail ?? null, context.sent ?? {}) : null
 
   if (status === null) {
     out.message = `We couldn't reach SkinBuddy, ${NOTHING_DONE[action]}. Check your connection and try again.`
@@ -508,13 +609,21 @@ export const readReviewProblem = (problem: ApiProblem, action: ReviewAction, can
       : "Something in this submission wasn't accepted. Check the details and the ticked extras, then try again."
   } else if (code === '23514') {
     out.message = "One of the values isn't one the catalogue allows, such as a link's type or what it shows. Check the extras and try again."
+  } else if (links) {
+    // The reason is shown on the link's own row, beside its tick.
+    out.links = links
+    out.message = `A link wasn't accepted, ${NOTHING_DONE[action]}.`
   } else if (status === 422 && problem.fields.length > 0) {
     for (const { field, message } of problem.fields) {
       const key = CORRECTION_FIELD[field.split('.')[0] ?? '']
       if (key) out.fields[key] ??= message
     }
+    // In plain words: what the field is, never its request path.
     const first = problem.fields[0]!
-    out.message = `Something wasn't accepted (${first.field || 'the request'}: ${first.message}), ${NOTHING_DONE[action]}.`
+    const what = fieldWords(first.field)
+    out.message = what
+      ? `Something wasn't accepted (${what}: ${detailClause(first.message)}), ${NOTHING_DONE[action]}.`
+      : `Something wasn't accepted (${detailClause(first.message)}), ${NOTHING_DONE[action]}.`
   } else if (status === 422 && plainDetail(problem)) {
     // A refusal in the backend's own words, such as a link it does not accept.
     out.message = `Something wasn't accepted: ${detailClause(plainDetail(problem)!)}, ${NOTHING_DONE[action]}.`

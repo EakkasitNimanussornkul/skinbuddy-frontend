@@ -777,7 +777,7 @@ const SPEC_MAP = [
     feature: '#4 Search and compare',
     module: 'utils/hiddenChars',
     prerequisite: 'Pure functions over strings built in the test. No mocks, no network.',
-    note: 'Zero-width and bidi control characters (U+200B-U+200F, U+202A-U+202E, U+2066-U+2069, U+FEFF) are found, shown as visible markers such as [U+202E], or taken out; characters just outside those ranges, Thai and accented letters are left alone.',
+    note: 'Invisible characters - the set the backend removes from submitted text: U+00AD, U+061C, U+180E, U+200B-U+200F, U+202A-U+202E, U+2060-U+2064, U+2066-U+206F, U+FEFF, U+FFF9-U+FFFB, the tag characters U+E0000-U+E007F and lone surrogates - are found, shown as visible markers such as [U+202E], or taken out; characters just outside those ranges, Thai and accented letters are left alone. The extra ranges, the tag characters and lone surrogates are pinned in UTC-FE-392 (SubmissionHardening.spec).',
   },
   {
     file: 'src/__tests__/components/submissionHardeningRules.spec.ts',
@@ -806,7 +806,7 @@ const SPEC_MAP = [
     module: 'views/AdminSubmissionsView (AdminQueuePanel, AdminReviewPanel, AdminIngredientDecision), views/ProductEditView, views/SubmitProductView (SubmitBasicsStep)',
     prerequisite:
       'Each view rendered through a real RouterView on a memory history, attached to the document, with a fresh Pinia and Teleport stubbed. The submission and product admin calls, the product read, the meta lists and the ingredient search and match are mocked; URL.createObjectURL and URL.revokeObjectURL are spied on and VITE_SUPABASE_URL stubbed where a case needs them. Each view is unmounted after its case. No network access.',
-    note: "The hardening as an admin and a user meet it: a sent link's host shown first and marked nofollow ugc, no tick to publish a link that is not a web address, hidden characters shown as markers everywhere on the review and the edit form (and removed only when the admin asks), photos only from an upload path or the picked file and released when replaced or the page closes, and the 429, photo and link refusals shown on the field or at the top of the form.",
+    note: "The hardening as an admin and a user meet it: a sent link's host shown first and marked nofollow ugc, no tick to publish a link that is not a web address, hidden characters shown as markers everywhere on the review and the edit form (and removed only when the admin asks), photos only from an upload path or the picked file and released when replaced or the page closes, and the 429, photo and link refusals shown on the field or at the top of the form. The later groups use the backend's confirmed answers word for word (fix/submission-hardening 7863dd1): the pending-cap and upload 429s, the 413, 415 and 422 photo texts, a local-host link refused at each loc (sources.i.url, ingredients.i.details.source_url, publish_source_urls.i) landing on its field or row with \"Value error,\" taken off, and a name cleaned to nothing (string_too_short) on the name field; then the full invisible-character set, and refusals named in words rather than request paths.",
   },
 ]
 

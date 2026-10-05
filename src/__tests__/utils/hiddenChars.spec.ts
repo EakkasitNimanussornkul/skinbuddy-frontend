@@ -12,7 +12,7 @@ describe('src/utils/hiddenChars.ts', () => {
     })
 
     it('finds none in plain text, in Thai or accented letters, or in characters just outside the ranges', () => {
-      for (const text of ['CeraVe', 'เซราวี', 'Crème', ' ', '‐', ' ', '⁥', '⁪', '', null, undefined]) {
+      for (const text of ['CeraVe', 'เซราวี', 'Crème', '\u200A', '\u2010', '\u2029', '\u2065', '\u2070', '', null, undefined]) {
         expect(hasHiddenChars(text)).toBe(false)
       }
     })

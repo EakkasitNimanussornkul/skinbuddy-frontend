@@ -37,6 +37,7 @@ import {
   readReviewPayload,
   readReviewProblem,
   replaceIngredientAt,
+  sentIngredientPositions,
   uploadedImageUrl,
   validateCorrections,
   type Corrections,
@@ -45,6 +46,7 @@ import {
   type ReviewAction,
   type ReviewPayload,
   type ReviewProblem,
+  type ReviewSent,
 } from './adminReview'
 import { checkPhotoFile, type FieldErrors } from './submissionDraft'
 import { formatDay, statusChip } from './submissionStatus'
@@ -229,22 +231,26 @@ const toggle = (list: string[], item: string, on: boolean) => {
 }
 
 // --- Actions ---------------------------------------------------------------
-const fail = (error: unknown, action: ReviewAction) => {
-  const read = readReviewProblem(readApiProblem(error), action, readErrorCandidates(error))
+const fail = (error: unknown, action: ReviewAction, sent: ReviewSent = {}) => {
+  const read = readReviewProblem(readApiProblem(error), action, readErrorCandidates(error), {
+    payload: payload.value,
+    detail: detail.value,
+    sent,
+  })
   if (read.forbidden) emit('forbidden')
   if (read.candidates.length) refusedCandidates.value = read.candidates
   if (Object.keys(read.fields).length) Object.assign(correctionErrors, read.fields)
   problem.value = read
 }
 
-const patch = async (edit: SubmissionEdit, action: 'save' | 'resolve') => {
+const patch = async (edit: SubmissionEdit, action: 'save' | 'resolve', sent: ReviewSent = {}) => {
   busy.value = action
   problem.value = null
   try {
     apply(await editAdminSubmission(props.id, edit), false)
     addToast(action === 'save' ? 'Corrections saved' : 'Ingredient updated', 'success')
   } catch (error: unknown) {
-    fail(error, 'save')
+    fail(error, 'save', sent)
   } finally {
     busy.value = null
   }
@@ -267,12 +273,16 @@ const undoCorrections = () => {
 
 const resolveIngredient = (position: number, replacement: SubmissionIngredient) => {
   if (!payload.value) return
-  patch({ ingredients: replaceIngredientAt(payload.value.ingredients, position, replacement) }, 'resolve')
+  const stored = payload.value.ingredients
+  patch({ ingredients: replaceIngredientAt(stored, position, replacement) }, 'resolve', {
+    ingredientPositions: sentIngredientPositions(stored, position),
+  })
 }
 
 const convertLegacy = () => {
   if (!payload.value) return
-  patch({ ingredients: convertIngredients(payload.value.ingredients) }, 'resolve')
+  const stored = payload.value.ingredients
+  patch({ ingredients: convertIngredients(stored) }, 'resolve', { ingredientPositions: sentIngredientPositions(stored) })
 }
 
 const photoInput = ref<HTMLInputElement | null>(null)
@@ -324,15 +334,17 @@ const publish = async () => {
   busy.value = 'approve'
   problem.value = null
   let refused = false
+  // Kept, so a refused link ("publish_source_urls.i") can be put on its row.
+  const body = buildApproveBody(reviewState.value)
   try {
-    const done = await approveSubmission(props.id, buildApproveBody(reviewState.value))
+    const done = await approveSubmission(props.id, body)
     dialog.value = null
     addToast(`Published. ${titleText.value} is now in Explore.`, 'success', 5000)
     emit('reviewed')
     router.push(`/product/${encodeURIComponent(done.slug)}`)
   } catch (error: unknown) {
     dialog.value = null
-    fail(error, 'approve')
+    fail(error, 'approve', { publishUrls: body.publish_source_urls })
     refused = true
   } finally {
     busy.value = null
@@ -552,6 +564,8 @@ const fieldBorder = (key: string) =>
                 <span class="flex-grow flex flex-col min-w-0">
                   <span class="text-sm font-bold text-stone-800 dark:text-white break-words"><RevealedText :text="ingredient.name ?? 'Unnamed ingredient'" /></span>
                   <span class="ingredient-note text-xs text-stone-500 dark:text-stone-400">{{ ingredientNote(ingredient.position) }}</span>
+                  <!-- An old-format row has no decision card, so a refused link of its own shows here. -->
+                  <FieldError v-if="legacy" :id="`r-ing-${ingredient.position}-link-error`" :message="problem?.links.ingredients[ingredient.position]" />
                 </span>
                 <span
                   :class="[
@@ -575,6 +589,7 @@ const fieldBorder = (key: string) =>
                 :functional-groups="functionalGroups"
                 :groups-failed="groupsFailed"
                 :busy="busy !== null"
+                :link-error="problem?.links.ingredients[ingredient.position]"
                 @update="Object.assign(decisions[ingredient.position]!, $event)"
                 @resolve="resolveIngredient(ingredient.position, $event)"
               />
@@ -601,7 +616,7 @@ const fieldBorder = (key: string) =>
                 <span><RevealedText :text="g" /></span>
               </label>
             </fieldset>
-            <div v-for="s in payload.sources" :key="s.url" class="mt-2 px-3 py-2.5 rounded-xl bg-brand-bg-light dark:bg-stone-800 flex flex-col gap-1">
+            <div v-for="(s, si) in payload.sources" :key="s.url" class="source-row mt-2 px-3 py-2.5 rounded-xl bg-brand-bg-light dark:bg-stone-800 flex flex-col gap-1">
               <span class="text-[13px] font-extrabold text-stone-800 dark:text-white">Source link</span>
               <!-- A link only for a web address: what the sender typed is not trusted to be one.
                    The host comes first, so a lookalike domain stands out. -->
@@ -614,9 +629,18 @@ const fieldBorder = (key: string) =>
               <span class="source-title text-xs text-stone-500 dark:text-stone-400"><RevealedText :text="s.title || 'No title'" /><template v-if="s.claims.length"> · shows the {{ s.claims.map((c) => SOURCE_CLAIM_LABEL[c].toLowerCase()).join(', ') }}</template></span>
               <!-- Only a web link can be opened and checked, so only one can be published. -->
               <label v-if="isHttpUrl(s.url)" class="flex items-center gap-2.5 min-h-11 text-sm text-brand-text dark:text-stone-200 cursor-pointer">
-                <input type="checkbox" class="tick-source w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary" :checked="ticks.sourceUrls.includes(s.url)" @change="toggle(ticks.sourceUrls, s.url, ($event.target as HTMLInputElement).checked)" />
+                <input
+                  type="checkbox"
+                  class="tick-source w-5 h-5 accent-brand-primary-strong dark:accent-brand-primary"
+                  :checked="ticks.sourceUrls.includes(s.url)"
+                  :aria-invalid="problem?.links.sources[s.url] ? 'true' : undefined"
+                  :aria-describedby="problem?.links.sources[s.url] ? `r-source-${si}-error` : undefined"
+                  @change="toggle(ticks.sourceUrls, s.url, ($event.target as HTMLInputElement).checked)"
+                />
                 I opened it and it matches
               </label>
+              <!-- Why the backend refused this link when it was sent to publish. -->
+              <FieldError :id="`r-source-${si}-error`" :message="problem?.links.sources[s.url]" />
             </div>
           </template>
           <p v-else class="mt-1 mb-0 text-[13px] text-stone-500 dark:text-stone-400">No benefits, concerns or links were sent.</p>
