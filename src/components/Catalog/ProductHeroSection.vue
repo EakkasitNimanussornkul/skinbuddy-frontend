@@ -64,7 +64,6 @@ const editPath = computed(() =>
   props.mode === 'detail' && isAdmin.value && props.product?.slug ? `/products/${encodeURIComponent(props.product.slug)}/edit` : null,
 )
 
-// 🌟 Smart description with ingredient fallback
 // The product's own entry on the public database it was checked against, when
 // one is recorded (products.source_url, backend feat/data-sources). Named by
 // that database, and worded as a place to check the product - not as the
@@ -80,6 +79,7 @@ const productSourceLabel = computed(() =>
 // source linked yet", so an unsourced product reads as unsourced.
 const productSources = computed(() => readProductSources(props.product))
 
+// The product's description, or a line built from its first ingredients when it has none
 const productDescription = computed(() => {
   if (props.product?.description && props.product.description.trim().length > 0) {
     return props.product.description

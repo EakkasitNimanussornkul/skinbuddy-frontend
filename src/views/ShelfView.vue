@@ -95,7 +95,8 @@ const fetchShelf = async () => {
   }
 }
 
-// 🌟 SAFE REFRESH: Re-syncs viewingItem to match the fresh DB object to prevent VNode crashes
+// Reloads the shelf and points viewingItem at the fresh copy of the same item,
+// so the open modal never holds a stale object, which could crash the render
 const handleModalRefresh = async () => {
   try {
     const freshData = await getMyShelf()

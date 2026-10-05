@@ -10,7 +10,7 @@ const authStore = useAuthStore()
 
 const userName = computed(() => authStore.user?.name?.split(' ')[0] || 'User')
 
-// 🌟 Routes directly to /profile when clicking user section
+// Tapping the user section opens /profile
 const handleProfileClick = () => {
   router.push('/profile')
 }

@@ -47,7 +47,7 @@ watch(() => route.params.slug, (newSlug) => {
   if (newSlug) loadPage(newSlug as string)
 })
 
-// 🌟 Event Handler for opening Compare Modal
+// Opens the compare modal
 const handleOpenCompare = (targetProduct: any) => {
   baseProductForCompare.value = targetProduct || product.value
 }

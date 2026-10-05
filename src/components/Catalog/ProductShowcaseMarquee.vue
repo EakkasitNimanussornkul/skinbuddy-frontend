@@ -20,7 +20,7 @@ const displayProducts = computed(() => {
     <div class="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-brand-bg-light dark:from-brand-bg-dark to-transparent z-10 pointer-events-none"></div>
     <div class="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-brand-bg-light dark:from-brand-bg-dark to-transparent z-10 pointer-events-none"></div>
 
-    <!-- 🌟 Skeleton Loading State (Shown while catalog API fetches) 🌟 -->
+    <!-- Skeleton cards while the catalog loads -->
     <div v-if="isLoading || displayProducts.length === 0" class="flex gap-3 w-max animate-pulse">
       <div
         v-for="n in 5"
@@ -29,7 +29,7 @@ const displayProducts = computed(() => {
       />
     </div>
 
-    <!-- 🌟 Infinite Scrolling Track (Rendered ONLY after products are fully loaded) 🌟 -->
+    <!-- Endless scrolling track, shown only once the products have loaded -->
     <div v-else class="flex gap-3 w-max animate-marquee hover:[animation-play-state:paused]">
       <div
         v-for="(item, idx) in [...displayProducts, ...displayProducts]"

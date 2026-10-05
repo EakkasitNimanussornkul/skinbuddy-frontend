@@ -104,7 +104,7 @@ const SIMILARITY_STYLES: Record<string, string> = {
   unavailable: 'bg-stone-100 dark:bg-stone-800 text-brand-text-muted border-brand-surface-border dark:border-stone-700',
 }
 
-// 🌟 Added missing helper to prevent ReferenceError
+// The product's description, or a line built from its first ingredients when it has none
 const getProductDescription = (product: any) => {
   if (!product) return 'No description available.'
   if (product.description && product.description.trim().length > 0) {

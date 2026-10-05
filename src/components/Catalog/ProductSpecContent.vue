@@ -20,7 +20,7 @@ const emit = defineEmits(['open-compare-selector', 'shelf-updated', 'close'])
 const authStore = useAuthStore()
 
 
-// 🌟 Dynamically compute flags from product payload
+// Safety checks built from the product's safety_flags
 const safetyChecks = computed(() => {
   const flags = props.product?.safety_flags || {}
   return [
@@ -338,7 +338,7 @@ const handleGuestTrigger = () => {
 
       </div>
 
-      <!-- 🌟 Overlay Banner for Unregistered Guests (Overlaying Lower Section Only) -->
+      <!-- Overlay for signed-out guests, covering the lower section only -->
       <div
         v-if="!authStore.isAuthenticated"
         @click="handleGuestTrigger"

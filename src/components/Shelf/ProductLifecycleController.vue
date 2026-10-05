@@ -71,7 +71,7 @@ const handleHorizontalWheel = (event: WheelEvent) => {
   optionsScrollFrame.value.scrollLeft += event.deltaY
 }
 
-// 🌟 PERSIST PAO TO BACKEND
+// Save the new expiry date and PAO to the backend
 const handleUpdateExpiration = async () => {
   // The edit button only renders once the item has been opened, so this is a
   // guard for the type rather than a reachable branch.
@@ -90,7 +90,7 @@ const handleUpdateExpiration = async () => {
 
     isEditingExpiration.value = false
 
-    // 🌟 Create a fresh updated clone rather than mutating props.item directly
+    // Build an updated copy rather than mutating props.item directly
     const updatedItem = {
       ...props.item,
       expiration_date: editExpirationDate.value,
@@ -132,7 +132,7 @@ const handleStartPAO = async () => {
     // screen still showed the unopened panel. Pressing "Start Product Life"
     // again then reset the opened date to today, discarding the real one.
 
-    // 🌟 Emit clone without direct prop mutation
+    // Emit an updated copy without mutating the prop
     const updatedItem = {
       ...props.item,
       opened_date: openedDateStr,

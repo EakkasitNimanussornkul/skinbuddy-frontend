@@ -31,7 +31,7 @@ const scanStatus = ref<SafetyStatus | null>(null)
 
 const localItem = ref({ ...props.item })
 
-// 🌟 Auto-fetch safety analysis on mount
+// Fetch the safety analysis on mount
 const runAutomaticSafetyCheck = async () => {
   const productId = localItem.value.product_id || localItem.value.products?.id
   if (!productId) return
@@ -202,7 +202,7 @@ const handleExecuteDelete = async () => {
           <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
             <div class="space-y-6">
 
-              <!-- 🌟 1. Safety Inspection Box (With Scanner HUD animation) -->
+              <!-- 1. Safety inspection box (with the scanner animation) -->
               <!-- A product in use: checked on open, shown, and foldable. -->
               <SafetyInspectionCard
                 v-if="!isArchived"
@@ -250,7 +250,7 @@ const handleExecuteDelete = async () => {
                 </CollapseTransition>
               </div>
 
-              <!-- 🌟 2. Description -->
+              <!-- 2. Description -->
               <div v-if="description">
                 <h4 class="text-xs font-bold uppercase tracking-widest text-brand-text-muted mb-1.5">Description</h4>
                 <p class="text-xs sm:text-sm font-medium text-brand-text-muted dark:text-stone-400 leading-relaxed">{{ description }}</p>
@@ -259,11 +259,11 @@ const handleExecuteDelete = async () => {
               <!-- 3. Best Suited For: what the ingredients support (positioned under Description) -->
               <TargetedConcernsSection :item="localItem" />
 
-              <!-- 🌟 4. Lifecycle Controller -->
+              <!-- 4. Lifecycle controller -->
               <ArchiveLogSummary v-if="localItem.usage_state === 'archived'" :item="localItem" :usage-lifespan="usageLifespan" />
               <ProductLifecycleController v-else :item="localItem" @updated="handleChildUpdate" />
 
-              <!-- 🌟 5. Key Active Ingredients Grid -->
+              <!-- 5. Key active ingredients grid -->
               <div class="pt-2 border-t border-brand-surface-border dark:border-stone-800/60">
                 <KeyActivesGrid :ingredients="localItem.products?.product_ingredients" collapsible />
               </div>

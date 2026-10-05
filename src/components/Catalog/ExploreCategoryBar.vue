@@ -42,7 +42,7 @@ const handleHorizontalScrollWheel = (event: WheelEvent) => {
 </script>
 
 <template>
-  <!-- 🌟 Added an intentional custom scrollbar class and bound the mousewheel interceptor hook 🌟 -->
+  <!-- Thin custom scrollbar; the mouse wheel scrolls the row sideways -->
   <div
     ref="categoryScrollContainer"
     @wheel="handleHorizontalScrollWheel"
@@ -68,7 +68,7 @@ const handleHorizontalScrollWheel = (event: WheelEvent) => {
 </template>
 
 <style scoped>
-/* 🌟 Custom high-end thin scrollbar indicator for clean desktop hints 🌟 */
+/* A thin scrollbar, so desktop users can see the row scrolls */
 .custom-category-scroll::-webkit-scrollbar {
   height: 4px;
 }

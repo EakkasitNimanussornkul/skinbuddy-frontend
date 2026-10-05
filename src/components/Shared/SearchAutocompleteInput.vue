@@ -73,7 +73,6 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 <template>
   <div ref="dropdownRef" class="relative w-full">
 
-    <!-- 🌟 ENLARGED INPUT BAR 🌟 -->
     <div class="relative flex items-center">
       <svg class="absolute left-4 w-5 h-5 text-brand-text-muted stroke-[2.5] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -95,12 +94,11 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
       </button>
     </div>
 
-    <!-- 🌟 EXPANDED INSTANT POPOVER DROPDOWN CARDS 🌟 -->
     <div
       v-if="isFocused && searchQuery.trim().length >= 2"
       class="absolute left-0 right-0 top-full mt-2.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 rounded-[2rem] shadow-2xl z-50 overflow-hidden max-h-[82vh] flex flex-col animate-fade-in divide-y divide-brand-surface-border dark:divide-stone-800/80"
     >
-<!-- 🌟 ENLARGED SECTION A: Quick Search Suggestion Banner 🌟 -->
+<!-- Section A: quick search suggestion -->
 <div class="p-3 bg-brand-bg-light dark:bg-brand-bg-dark/70">
   <button
     @click="handleFullSearch()"
@@ -152,8 +150,6 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
           </RouterLink>
         </div>
 
-        <!-- 🌟 PROMINENT RESULT CARDS 🌟 -->
-<!-- 🌟 ENLARGED PROMINENT RESULT CARDS 🌟 -->
 <div
   v-for="product in results"
   :key="product.id"

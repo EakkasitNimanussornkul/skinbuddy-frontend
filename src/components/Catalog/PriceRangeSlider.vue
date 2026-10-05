@@ -57,7 +57,7 @@ const handleClear = () => {
 </script>
 
 <template>
-  <!-- 🌟 Container stripped down to a zero-padded, transparent block wrapper 🌟 -->
+  <!-- Plain wrapper with no padding or background of its own -->
   <div class="w-full space-y-4">
 
     <!-- Header & Editable Ceiling -->
