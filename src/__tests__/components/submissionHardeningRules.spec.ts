@@ -94,7 +94,7 @@ describe('submission hardening rules', () => {
     })
 
     it('takes control and hidden characters out of the text', () => {
-      expect(plainDetail({ detail: 'Too\nmany‮ uploads\u0007' })).toBe('Too many uploads')
+      expect(plainDetail({ detail: 'Too\nmany\u202E uploads\u0007' })).toBe('Too many uploads')
     })
 
     it('gives nothing for a missing, empty or overlong detail, or a Pydantic list, so the caller uses its own words', () => {
@@ -245,14 +245,14 @@ describe('submission hardening rules', () => {
 
   describe('buildSubmissionBody() and the checks (hidden characters)', () => {
     it('takes every zero-width and bidi control character out of what is sent, field by field', () => {
-      const phyto = { ...newIngredient('Phyto​sphingosine'), knownFor: 'Barrier‮ support', sourceUrl: 'https://ingredient.example/‍phyto' }
+      const phyto = { ...newIngredient('Phyto\u200Bsphingosine'), knownFor: 'Barrier\u202E support', sourceUrl: 'https://ingredient.example/\u200Dphyto' }
       const draft = draftWith({
-        name: 'Gel‮ Toner',
-        brand: '⁦Example⁩ Brand',
+        name: 'Gel\u202E Toner',
+        brand: '\u2066Example\u2069 Brand',
         ingredients: [phyto],
-        benefits: ['Hydr﻿ates'],
-        sources: [{ ...emptySource(), url: 'https://brand.example/​toner', title: 'Brand‏ page', claims: ['listing'] }],
-        note: 'New‌ formula',
+        benefits: ['Hydr\uFEFFates'],
+        sources: [{ ...emptySource(), url: 'https://brand.example/\u200Btoner', title: 'Brand\u200F page', claims: ['listing'] }],
+        note: 'New\u200C formula',
       })
 
       const body = buildSubmissionBody(draft)
@@ -263,24 +263,24 @@ describe('submission hardening rules', () => {
       expect(body.benefits).toEqual(['Hydrates'])
       expect(body.sources).toEqual([{ url: 'https://brand.example/toner', title: 'Brand page', claims: ['listing'] }])
       expect(body.note).toBe('New formula')
-      expect(JSON.stringify(body)).not.toMatch(/[​-‏‪-‮⁦-⁩﻿]/)
+      expect(JSON.stringify(body)).not.toMatch(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/)
     })
 
     it('leaves what the user typed in the draft as typed', () => {
-      const draft = draftWith({ name: 'Gel‮ Toner' })
+      const draft = draftWith({ name: 'Gel\u202E Toner' })
       buildSubmissionBody(draft)
-      expect(draft.name).toBe('Gel‮ Toner')
+      expect(draft.name).toBe('Gel\u202E Toner')
     })
 
     it('treats a name, brand or benefit made only of hidden characters as empty', () => {
-      const errors = validateBasics(draftWith({ name: '​​', brand: '‮' }), ['Toners'])
+      const errors = validateBasics(draftWith({ name: '\u200B\u200B', brand: '\u202E' }), ['Toners'])
       expect(errors).toMatchObject({ name: 'Add the product name', brand: 'Add the brand name' })
-      expect(checkBenefit([], '﻿')).toBe('Type a benefit first')
-      expect(checkBenefit(['Hydrates'], 'Hydr​ates')).toBe("That one's already added")
+      expect(checkBenefit([], '\uFEFF')).toBe('Type a benefit first')
+      expect(checkBenefit(['Hydrates'], 'Hydr\u200Bates')).toBe("That one's already added")
     })
 
     it('checks a link with its hidden characters taken out, as it will be sent', () => {
-      const source = { ...emptySource(), url: '​https://brand.example/toner', title: 'Brand page', claims: ['listing' as const] }
+      const source = { ...emptySource(), url: '\u200Bhttps://brand.example/toner', title: 'Brand page', claims: ['listing' as const] }
       expect(validateExtras(draftWith({ sources: [source] }), [])).toEqual({})
     })
   })

@@ -50,12 +50,12 @@ describe('safe display components', () => {
 
   describe('RevealedText', () => {
     it('shows each hidden character as a marked [U+...] and adds the warning', () => {
-      const wrapper = mount(RevealedText, { props: { text: 'Cera‮eV' } })
+      const wrapper = mount(RevealedText, { props: { text: 'Cera\u202EeV' } })
 
       expect(wrapper.get('mark.hidden-char').text()).toBe('[U+202E]')
       expect(wrapper.text()).toContain('Cera[U+202E]eV')
       expect(wrapper.get('.hidden-chars-warning').text()).toBe('This text contains hidden characters')
-      expect(wrapper.html()).not.toContain('‮')
+      expect(wrapper.html()).not.toContain('\u202E')
     })
 
     it('shows plain text exactly as it is, with no marker and no warning', () => {
@@ -72,7 +72,7 @@ describe('safe display components', () => {
     })
 
     it('leaves the warning out when asked to, keeping the markers', () => {
-      const wrapper = mount(RevealedText, { props: { text: 'A​B', warn: false } })
+      const wrapper = mount(RevealedText, { props: { text: 'A\u200BB', warn: false } })
       expect(wrapper.find('mark').exists()).toBe(true)
       expect(wrapper.find('.hidden-chars-warning').exists()).toBe(false)
     })
@@ -80,7 +80,7 @@ describe('safe display components', () => {
 
   describe('HiddenCharsNotice', () => {
     it('says a value holds hidden characters, shows them as markers, and offers to remove them', async () => {
-      const wrapper = mount(HiddenCharsNotice, { props: { value: 'Cera​Ve', label: 'brand' } })
+      const wrapper = mount(HiddenCharsNotice, { props: { value: 'Cera\u200BVe', label: 'brand' } })
 
       expect(wrapper.text()).toContain('This text contains hidden characters')
       expect(wrapper.get('mark').text()).toBe('[U+200B]')

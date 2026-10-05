@@ -11,8 +11,8 @@
  * only an admin's own edit changes it.
  */
 
-const HIDDEN_ONE = /[​-‏‪-‮⁦-⁩﻿]/
-const HIDDEN_ALL = /[​-‏‪-‮⁦-⁩﻿]/g
+const HIDDEN_ONE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/
+const HIDDEN_ALL = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g
 
 export const HIDDEN_CHARS_WARNING = 'This text contains hidden characters'
 

@@ -59,7 +59,7 @@ import SubmitProductView from '../../views/SubmitProductView.vue'
 
 const UUID = '0b8f3a2e-1c4d-4e5f-9a6b-7c8d9e0f1a2b'
 const RATE = "You've sent a lot in a short time. Please wait a bit and try again."
-const HIDDEN = /[​-‏‪-‮⁦-⁩﻿]/
+const HIDDEN = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/
 
 const httpError = (status: number, data: unknown = {}) => Object.assign(new Error(`HTTP ${status}`), { response: { status, data } })
 const fieldError = (loc: (string | number)[], msg: string) => httpError(422, { detail: [{ loc: ['body', ...loc], msg, type: 'value_error' }] })
@@ -254,16 +254,16 @@ describe('submission hardening (screens)', () => {
             id: 'sub-1',
             status: 'pending',
             created_at: '2026-10-01T08:00:00Z',
-            submitter_name: 'No‮k',
-            summary: { name: 'Gel‮ Toner', brand: 'Exa​mple', category: 'Toners', ingredient_count: 2 },
+            submitter_name: 'No\u202Ek',
+            summary: { name: 'Gel\u202E Toner', brand: 'Exa\u200Bmple', category: 'Toners', ingredient_count: 2 },
             flags: { possible_duplicate: false, new_ingredient_count: 1, has_source: true, has_photo: false },
           },
         ],
       })
       vi.mocked(getAdminSubmission).mockResolvedValue(
         review(
-          { submitter_name: 'No‮k', ingredients: [review().ingredients[0]!, newIngredient('https://ingredient.example/phyto', 'Phyto​sphingosine', 'Barrier‮ support')] },
-          { name: 'Gel‮ Toner', benefits: ['Hydr​ates'], sources: [{ url: 'https://brand.example/toner', title: 'Brand⁦ page', claims: ['listing'] }] },
+          { submitter_name: 'No\u202Ek', ingredients: [review().ingredients[0]!, newIngredient('https://ingredient.example/phyto', 'Phyto\u200Bsphingosine', 'Barrier\u202E support')] },
+          { name: 'Gel\u202E Toner', benefits: ['Hydr\u200Bates'], sources: [{ url: 'https://brand.example/toner', title: 'Brand\u2066 page', claims: ['listing'] }] },
         ),
       )
       const { wrapper } = await mountReview()
@@ -280,7 +280,7 @@ describe('submission hardening (screens)', () => {
     })
 
     it('publishes a ticked benefit with its characters exactly as sent, since only the display changed', async () => {
-      vi.mocked(getAdminSubmission).mockResolvedValue(review({ ingredients: [review().ingredients[0]!] }, { benefits: ['Hydr​ates'], sources: [] }))
+      vi.mocked(getAdminSubmission).mockResolvedValue(review({ ingredients: [review().ingredients[0]!] }, { benefits: ['Hydr\u200Bates'], sources: [] }))
       const { approveSubmission } = await import('../../api/submissionsApi')
       vi.mocked(approveSubmission).mockResolvedValue({ product_id: 'p-9', slug: 'example-brand-hydrating-gel-toner' })
       const { wrapper } = await mountReview()
@@ -289,11 +289,11 @@ describe('submission hardening (screens)', () => {
       await wrapper.get('button.confirm-ok').trigger('click')
       await flushPromises()
 
-      expect(vi.mocked(approveSubmission).mock.lastCall![1].publish_benefits).toEqual(['Hydr​ates'])
+      expect(vi.mocked(approveSubmission).mock.lastCall![1].publish_benefits).toEqual(['Hydr\u200Bates'])
     })
 
     it('offers to take hidden characters out of the product name, saved only with the corrections', async () => {
-      vi.mocked(getAdminSubmission).mockResolvedValue(review({}, { name: 'Gel‮ Toner' }))
+      vi.mocked(getAdminSubmission).mockResolvedValue(review({}, { name: 'Gel\u202E Toner' }))
       vi.mocked(editAdminSubmission).mockResolvedValue(review({}, { name: 'Gel Toner' }))
       const { wrapper } = await mountReview()
 
@@ -350,9 +350,9 @@ describe('submission hardening (screens)', () => {
     it('shows hidden characters in the name, ingredients and benefits as markers, and the save sends the name cleaned only once asked', async () => {
       vi.mocked(getProductBySlug).mockResolvedValue(
         product({
-          name: 'Hydrating‮ Cleanser',
-          benefits: ['Cle​anses'],
-          product_ingredients: [{ ingredients: { id: 'i-water', name: 'Wa​ter', functional_group: 'Solvent' } }],
+          name: 'Hydrating\u202E Cleanser',
+          benefits: ['Cle\u200Banses'],
+          product_ingredients: [{ ingredients: { id: 'i-water', name: 'Wa\u200Bter', functional_group: 'Solvent' } }],
         }),
       )
       const { wrapper } = await mountEdit()
@@ -496,7 +496,7 @@ describe('submission hardening (screens)', () => {
     it('sends the name with its hidden characters taken out', async () => {
       vi.mocked(createSubmission).mockResolvedValue({ id: 's-1', status: 'pending', created_at: null })
       const { wrapper } = await mountSubmit()
-      await toExtras(wrapper, 'Gel‮ Toner​')
+      await toExtras(wrapper, 'Gel\u202E Toner\u200B')
       await send(wrapper)
       expect(vi.mocked(createSubmission).mock.lastCall![0].name).toBe('Gel Toner')
     })
@@ -536,6 +536,60 @@ describe('submission hardening (screens)', () => {
 
       mounted.pop()!.unmount()
       expect(revoke).toHaveBeenCalledWith('blob:submit-photo-2')
+    })
+  })
+
+  // Cases the mutation checks found missing: each rule could be broken with
+  // every earlier case still passing.
+  describe('mutation follow-ups (link schemes, photo previews, readable source)', () => {
+    it('shows a sent link with another scheme that names a host, such as ftp://, as text, never as a link', async () => {
+      vi.mocked(getAdminSubmission).mockResolvedValue(review({}, { sources: [{ url: 'ftp://files.example/toner', title: 'File', claims: ['listing'] }] }))
+      const { wrapper } = await mountReview()
+
+      expect(wrapper.find('a.source-link').exists()).toBe(false)
+      expect(wrapper.get('.source-text').text()).toBe('ftp://files.example/toner (not a web link)')
+      expect(wrapper.find('input.tick-source').exists()).toBe(false)
+    })
+
+    it('lets the first photo preview go when another photo replaces it on the submit form', async () => {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:first').mockReturnValueOnce('blob:second')
+      const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+      vi.mocked(uploadSubmissionImage).mockResolvedValue({ image_path: `submissions/${UUID}.jpg`, public_url: null })
+      const { wrapper } = await mountSubmit()
+
+      await chooseFile(wrapper, photo())
+      await chooseFile(wrapper, photo())
+
+      expect(revoke).toHaveBeenCalledWith('blob:first')
+      expect(revoke).not.toHaveBeenCalledWith('blob:second')
+      expect(wrapper.get('.photo-preview img').attributes('src')).toBe('blob:second')
+    })
+
+    it('lets the photo preview go once the submission is sent', async () => {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:sent-photo')
+      const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+      vi.mocked(uploadSubmissionImage).mockResolvedValue({ image_path: `submissions/${UUID}.jpg`, public_url: null })
+      vi.mocked(createSubmission).mockResolvedValue({ id: 's-1', status: 'pending', created_at: null })
+      const { wrapper } = await mountSubmit()
+      await chooseFile(wrapper, photo())
+      await toExtras(wrapper)
+      expect(revoke).not.toHaveBeenCalled()
+
+      await send(wrapper)
+
+      expect(wrapper.find('.submit-done').exists()).toBe(true)
+      expect(revoke).toHaveBeenCalledWith('blob:sent-photo')
+    })
+
+    it('keeps every hidden character in the source code written as an escape, so a reviewer can see each one', () => {
+      const sources = import.meta.glob('../../**/*.{ts,vue}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
+      // Built from code points, so this file holds none of them either.
+      const ranges: [number, number][] = [[0x200b, 0x200f], [0x202a, 0x202e], [0x2066, 0x2069], [0xfeff, 0xfeff]]
+      const raw = new RegExp(`[${ranges.map(([a, b]) => `${String.fromCodePoint(a)}-${String.fromCodePoint(b)}`).join('')}]`)
+
+      expect(Object.keys(sources).length).toBeGreaterThan(100)
+      expect(Object.keys(sources)).toContain('../../utils/hiddenChars.ts')
+      expect(Object.entries(sources).filter(([, text]) => raw.test(text)).map(([name]) => name)).toEqual([])
     })
   })
 })
