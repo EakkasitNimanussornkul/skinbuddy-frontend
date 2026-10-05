@@ -840,6 +840,14 @@ const SPEC_MAP = [
       'Each component mounted with @vue/test-utils with a fresh Pinia and a signed-in viewer; ProductHeroSection on a memory history with analyzeProduct and addToShelf mocked, Teleport and SafetyCheckModal stubbed; CompareIdentityHeader with RouterLink stubbed. No network access.',
     note: 'The long % Match explanations folded by default behind "What is % Match?" on the product page and Compare (all sizes) while the score stays in view, with the words, the disclaimer and the methodology link unchanged once opened. The Explore card badge is tighter below sm and leaves its fraction to the product page there; from sm up it is as before.',
   },
+  {
+    file: 'src/__tests__/views/SettingsView.spec.ts',
+    feature: '#2 Take skinquiz',
+    module: 'views/SettingsView',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a memory history at /settings, with a fresh Pinia, cleared localStorage and a user signed in through the real auth store (setAuth). updateUserSkinType is mocked; the theme store and the toast composable are the real ones, read back per case. ExpressSkinSelectorModal is real, its Teleport stubbed, and its confirm event emitted directly. No network access.',
+    note: 'The Settings page (feat/24): one responsive layout of cards, two columns of 380px or more that wrap, so it is one column beside the sidebar at 1024. The skin type card keeps the existing save flow (updateUserSkinType, then the store, then a toast; a refused save keeps the selector open) and says the type is a guide, not a diagnosis. Dark mode is a real switch; Notifications is plain text, since the old toggle saved nothing; the Language row and the Privacy, Terms and Help Center links, which went nowhere, are gone. Log out sits in the account card on lg and at the foot of the page below it, and the "Products you send" card shows below lg only, where there is no sidebar. Layout by breakpoint is read from the classes, since jsdom applies no CSS.',
+  },
 ]
 
 function runSuite() {

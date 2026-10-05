@@ -1,24 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/themeStore'
 import { useToast } from '../composables/useToast'
 import { updateUserSkinType } from '../api/authApi'
-import SettingsRow from '../components/Auth/SettingsRow.vue'
 import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
+
+/**
+ * Settings (feat/24, owner-approved layout): one responsive page of cards in
+ * place of the old desktop tabs and the separate phone markup. Two columns
+ * where there is room (each 380px or more), so beside the sidebar at 1024 it
+ * is one. Links that went nowhere (Help Center, Privacy, Terms) and the
+ * Language row are gone; Notifications says plainly that it is not available.
+ */
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const router = useRouter()
 const { addToast } = useToast()
 
-const notificationsEnabled = ref(true)
+const APP_VERSION = '0.1.2'
+
 const showSelector = ref(false)
 const isSaving = ref(false)
 
-// Desktop Layout State
-const activeTab = ref<'profile' | 'preferences' | 'support'>('profile')
+const skinType = computed(() => authStore.user?.skin_type || null)
 
 const handleLogout = () => {
   authStore.logout()
@@ -43,267 +50,135 @@ const handleExpressConfirm = async (selectedType: string) => {
   }
 }
 
-const icons = {
-  moon: "M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z",
-  bell: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
-  globe: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9",
-  clipboard: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
-  history: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-  help: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  shield: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
-  doc: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  info: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  user: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-}
-
-const menuGroups = [
-  {
-    title: 'Account',
-    items: [
-      { id: 'profile', label: 'Skin Profile & Auth' }
-    ]
-  },
-  {
-    title: 'Application',
-    items: [
-      { id: 'preferences', label: 'Preferences' }
-    ]
-  },
-  {
-    title: 'Legal & Support',
-    items: [
-      { id: 'support', label: 'Support & Docs' }
-    ]
-  }
-]
+const cardClass = 'bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 rounded-[22px] lg:rounded-3xl'
+const headingClass = 'm-0 text-xs lg:text-[13px] font-extrabold uppercase tracking-[0.1em] text-stone-600 dark:text-stone-300'
+const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold text-stone-800 dark:text-stone-100 hover:text-brand-primary-strong dark:hover:text-brand-primary-accent transition-colors'
 </script>
 
 <template>
-  <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text font-sans pb-28 pt-6 lg:pt-10 transition-colors duration-300">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col">
+  <div class="settings-page min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-200 pb-32 lg:pb-12 transition-colors duration-300">
+    <main class="w-full max-w-[1040px] px-4 pt-5 sm:px-7 lg:pt-8 flex flex-col gap-4 lg:gap-[22px]">
+      <h1 class="m-0 font-serif text-[30px] lg:text-4xl font-bold text-stone-800 dark:text-white">Settings</h1>
 
-      <!-- Global Header -->
-      <div class="flex justify-between items-center mb-6 lg:mb-8">
-        <h1 class="text-3xl lg:text-4xl font-serif font-bold dark:text-white tracking-tight">Settings</h1>
-        <button class="lg:hidden w-10 h-10 flex items-center justify-center text-brand-text-muted hover:text-brand-primary transition-colors">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="icons.help"></path></svg>
-        </button>
-      </div>
+      <!-- Each column grows from 380px and wraps, so two sit side by side only
+           where both fit. -->
+      <div class="flex flex-wrap items-start gap-4 lg:gap-[22px]">
+        <div class="flex-[1_1_380px] min-w-0 flex flex-col gap-4 lg:gap-[22px]">
 
-      <!-- ========================================== -->
-      <!-- 📱 MOBILE & TABLET LAYOUT                  -->
-      <!-- ========================================== -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start lg:hidden">
-
-        <div class="flex flex-col gap-6">
-          <!-- Profile Badge -->
-          <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-3xl p-5 border border-brand-surface-border dark:border-stone-700 flex items-center gap-4 relative hover:scale-[1.015] hover:shadow-md transition-all duration-200">
-            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 flex-shrink-0 flex items-center justify-center">
-              <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
-              <svg v-else class="w-8 h-8 text-brand-text-muted dark:text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="icons.user"></path></svg>
+          <section aria-labelledby="settings-account" :class="['settings-account p-[18px] lg:p-[22px] flex flex-col gap-3 lg:gap-4', cardClass]">
+            <h2 id="settings-account" :class="headingClass">Account</h2>
+            <div class="flex items-center gap-3.5 lg:gap-4">
+              <span class="w-14 h-14 lg:w-16 lg:h-16 rounded-full overflow-hidden shrink-0 bg-brand-surface-border dark:bg-stone-600 flex items-center justify-center">
+                <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="" class="w-full h-full object-cover" />
+                <svg v-else class="w-7 h-7 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 21a7 7 0 0114 0" /></svg>
+              </span>
+              <span class="flex flex-col gap-1.5 min-w-0">
+                <span class="account-name font-serif text-xl lg:text-[22px] font-bold text-stone-800 dark:text-stone-100 break-words">{{ authStore.user?.name || 'Guest User' }}</span>
+                <!-- LINE's own green is too light for text on its tint; these
+                     greens keep the badge above 4.5:1 in both themes. -->
+                <span class="line-badge inline-flex items-center gap-1.5 w-max px-2.5 py-0.5 rounded-lg bg-[#E6F7EC] text-[#0B7A3B] dark:bg-[#1C3A27] dark:text-[#7EE2A8] text-xs font-extrabold">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.298.077.763.036 1.066l-.167 1.011c-.053.33-.243 1.189 1.042.646 1.284-.543 6.924-4.053 9.422-6.953A9.123 9.123 0 0024 10.304z" /></svg>
+                  Signed in with LINE
+                </span>
+              </span>
             </div>
-            <div class="flex-grow">
-              <h2 class="text-xl font-serif font-bold leading-tight text-brand-text dark:text-white">
-                {{ authStore.user?.name || 'Guest User' }}
-              </h2>
-              <div class="flex items-start gap-1.5 mt-1 text-brand-text-muted text-sm flex-col">
-                <div class="flex items-center gap-1 bg-[#06C755]/10 text-[#06C755] px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">
-                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.298.077.763.036 1.066l-.167 1.011c-.053.33-.243 1.189 1.042.646 1.284-.543 6.924-4.053 9.422-6.953A9.123 9.123 0 0024 10.304z"/>
-                  </svg>
-                  <span>LINE Connected</span>
-                </div>
-                <div class="flex items-start gap-1.5 font-medium">
-                  <svg class="w-3.5 h-3.5 text-brand-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"></path></svg>
-                  <span class="leading-tight dark:text-stone-200">Skin Type:<br>{{ authStore.user?.skin_type || 'Discover Type' }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Diagnostic Hub Card (Mobile) -->
-          <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-3xl p-5 border border-brand-primary/30 flex flex-col gap-4 hover:scale-[1.015] hover:shadow-md transition-all duration-200">
-            <button @click="router.push('/profile')" class="flex items-center gap-3 w-full text-left group hover:opacity-80 transition-all">
-              <div class="w-10 h-10 rounded-full bg-brand-primary-light dark:bg-brand-primary/10 flex items-center justify-center text-brand-primary flex-shrink-0 group-hover:scale-105 transition-transform border border-brand-primary/20">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="icons.clipboard"></path></svg>
-              </div>
-              <div class="flex-1">
-                <h4 class="text-sm font-bold text-brand-text dark:text-white group-hover:text-brand-primary transition-colors">Your Skin Profile</h4>
-                <p class="text-[13px] text-brand-text-muted mt-0.5 leading-snug font-medium">View your Baumann diagnostic report.</p>
-              </div>
-              <svg class="w-5 h-5 text-brand-primary/60 group-hover:text-brand-primary flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            <!-- On a phone Log out sits at the foot of the page instead. -->
+            <button type="button" class="logout-desktop hidden lg:flex min-h-[46px] items-center justify-center rounded-[14px] border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-[15px] font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" @click="handleLogout">
+              Log out
             </button>
+          </section>
 
-            <div class="flex flex-col gap-2 mt-1">
-              <button @click="showSelector = true" class="w-full py-3 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 text-brand-text dark:text-stone-200 rounded-xl font-bold text-sm hover:border-brand-primary dark:hover:border-brand-primary hover:bg-brand-primary-light/50 dark:hover:bg-brand-primary/10 active:scale-[0.98] transition-all shadow-sm">
-                Update Skin type
-              </button>
-              <button @click="router.push('/quiz')" class="w-full py-3 bg-gradient-to-r from-brand-primary to-brand-primary-hover text-brand-text rounded-xl font-bold text-sm hover:from-brand-primary-hover hover:to-brand-primary-accent hover:shadow-md active:scale-[0.98] transition-all shadow-sm">
-                Retake Skin Quiz
-              </button>
+          <section aria-labelledby="settings-skin" :class="['settings-skin p-[18px] lg:p-[22px] flex flex-col gap-3 lg:gap-3.5', cardClass]">
+            <h2 id="settings-skin" :class="headingClass">Your skin type</h2>
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <span v-if="skinType" class="skin-type font-serif text-[30px] lg:text-[34px] font-bold text-stone-800 dark:text-white">{{ skinType }}</span>
+              <span v-else class="skin-type font-serif text-2xl font-bold text-stone-800 dark:text-white">Not set yet</span>
+              <RouterLink to="/profile" class="skin-profile-link min-h-11 inline-flex items-center gap-1 text-sm font-extrabold text-brand-primary-strong dark:text-brand-primary hover:underline">
+                See your skin profile
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+              </RouterLink>
             </div>
-          </div>
-
-          <div class="hover:scale-[1.015] hover:shadow-md transition-all duration-200 rounded-3xl">
-            <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest mb-2.5 px-1">Skin Health</h3>
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl shadow-sm border border-brand-surface-border dark:border-stone-800 overflow-hidden flex flex-col">
-              <SettingsRow :iconPath="icons.history" label="Routine History" type="link" @click="router.push('/routine')" :isLast="true" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
+            <p class="skin-note m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+              {{ skinType ? "From your skin quiz. It's a guide to what may suit you, not a diagnosis." : 'Take the skin quiz to find your type.' }}
+            </p>
+            <div class="flex flex-wrap gap-2.5">
+              <button type="button" class="choose-type flex-[1_1_160px] min-h-12 rounded-[14px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100 text-[15px] font-extrabold hover:border-brand-primary-strong dark:hover:border-brand-primary transition-colors" @click="showSelector = true">
+                Choose my type
+              </button>
+              <RouterLink to="/quiz" class="take-quiz flex-[1_1_160px] min-h-12 rounded-[14px] flex items-center justify-center bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white dark:bg-brand-primary dark:hover:bg-brand-primary-hover dark:text-stone-900 text-[15px] font-extrabold transition-colors">
+                {{ skinType ? 'Retake the quiz' : 'Take the quiz' }}
+              </RouterLink>
             </div>
-          </div>
+            <RouterLink to="/routine" :class="['routine-link mt-0.5 px-1 border-t border-brand-surface-border dark:border-stone-700', rowLinkClass]">
+              <svg class="w-5 h-5 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>
+              Routine history
+              <svg class="ml-auto w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+            </RouterLink>
+          </section>
         </div>
 
-        <!-- Right Mobile Column -->
-        <div class="flex flex-col gap-6">
-          <div class="hover:scale-[1.015] hover:shadow-md transition-all duration-200 rounded-3xl">
-            <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest mb-2.5 px-1">App Preferences</h3>
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl shadow-sm border border-brand-surface-border dark:border-stone-800 overflow-hidden flex flex-col">
-              <SettingsRow :iconPath="icons.moon" label="Dark Mode" type="toggle" :toggleState="themeStore.isDark" @toggle="themeStore.toggleTheme" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
-              <SettingsRow :iconPath="icons.bell" label="Notifications" type="toggle" :toggleState="notificationsEnabled" @toggle="notificationsEnabled = !notificationsEnabled" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
-              <SettingsRow :iconPath="icons.globe" label="Language" type="link" rightText="English" :isLast="true" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
+        <div class="flex-[1_1_380px] min-w-0 flex flex-col gap-4 lg:gap-[22px]">
+          <section aria-labelledby="settings-prefs" :class="['settings-prefs px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
+            <h2 id="settings-prefs" :class="[headingClass, 'mt-3 mb-1 lg:mt-3.5 lg:mb-1.5']">Preferences</h2>
+            <div class="min-h-[60px] flex items-center gap-3 border-b border-brand-surface-border dark:border-stone-700">
+              <svg class="w-5 h-5 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>
+              <span id="settings-dark-label" class="flex-grow text-[15px] font-bold text-stone-800 dark:text-stone-100">Dark mode</span>
+              <!-- A 44px target around the 32px track. -->
+              <button
+                type="button"
+                role="switch"
+                class="dark-switch h-11 w-[60px] shrink-0 flex items-center justify-center rounded-full"
+                :aria-checked="themeStore.isDark ? 'true' : 'false'"
+                aria-labelledby="settings-dark-label"
+                @click="themeStore.toggleTheme"
+              >
+                <span :class="['w-[52px] h-8 rounded-full p-[3px] flex transition-colors motion-reduce:transition-none', themeStore.isDark ? 'bg-brand-primary-strong' : 'bg-stone-500']">
+                  <span :class="['w-[26px] h-[26px] rounded-full bg-white shadow transition-transform duration-200 motion-reduce:transition-none', themeStore.isDark ? 'translate-x-5' : 'translate-x-0']"></span>
+                </span>
+              </button>
             </div>
-          </div>
-
-          <div class="hover:scale-[1.015] hover:shadow-md transition-all duration-200 rounded-3xl">
-            <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest mb-2.5 px-1">Support</h3>
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl shadow-sm border border-brand-surface-border dark:border-stone-800 overflow-hidden flex flex-col">
-              <SettingsRow :iconPath="icons.help" label="Help Center" type="link" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
-              <SettingsRow :iconPath="icons.shield" label="Privacy Policy" type="link" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
-              <SettingsRow :iconPath="icons.doc" label="Terms of Service" type="link" class="hover:bg-brand-bg-light dark:hover:bg-stone-800/30 transition-colors" />
-              <SettingsRow :iconPath="icons.info" label="About SkinBuddy" type="text" rightText="v0.1.2" :isLast="true" />
+            <!-- Plain text: the old toggle here saved nothing. -->
+            <div class="notifications-row min-h-[60px] flex items-center gap-3">
+              <svg class="w-5 h-5 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" /></svg>
+              <span class="flex-grow flex flex-col">
+                <span class="text-[15px] font-bold text-stone-800 dark:text-stone-100">Notifications</span>
+                <span class="text-[13px] text-stone-600 dark:text-stone-300">Not available yet</span>
+              </span>
             </div>
-          </div>
+          </section>
 
-          <div class="pt-2">
-            <button @click="handleLogout" class="w-full py-3.5 bg-transparent text-semantic-error font-bold text-sm transition-all rounded-2xl border border-semantic-error/30 hover:bg-semantic-error/10 active:scale-[0.99] shadow-sm">
-              Log Out
-            </button>
-          </div>
+          <!-- Phones only: on lg the sidebar carries these two links. -->
+          <section aria-labelledby="settings-send" :class="['settings-send lg:hidden px-[18px] py-1.5 flex flex-col', cardClass]">
+            <h2 id="settings-send" :class="[headingClass, 'mt-3 mb-1']">Products you send</h2>
+            <RouterLink to="/submissions" :class="['my-submissions-link border-b border-brand-surface-border dark:border-stone-700', rowLinkClass]">
+              My submissions
+              <svg class="ml-auto w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+            </RouterLink>
+            <RouterLink to="/submissions/new" class="submit-product-link min-h-14 flex items-center gap-3 text-[15px] font-extrabold text-brand-primary-strong dark:text-brand-primary hover:underline">
+              Submit a product
+              <svg class="ml-auto w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </RouterLink>
+          </section>
+
+          <!-- "Help and legal" once the privacy and terms pages exist. -->
+          <section aria-labelledby="settings-help" :class="['settings-help px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
+            <h2 id="settings-help" :class="[headingClass, 'mt-3 mb-1 lg:mt-3.5 lg:mb-1.5']">Help</h2>
+            <RouterLink to="/how-match-works" :class="['match-link border-b border-brand-surface-border dark:border-stone-700', rowLinkClass]">
+              How % Match works
+              <svg class="ml-auto w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+            </RouterLink>
+            <div class="app-version min-h-14 flex items-center text-[15px] font-bold text-stone-800 dark:text-stone-100">
+              SkinBuddy version
+              <span class="ml-auto text-sm text-stone-600 dark:text-stone-300">{{ APP_VERSION }}</span>
+            </div>
+          </section>
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- 💻 DESKTOP LAYOUT (Sidebar + Content)      -->
-      <!-- ========================================== -->
-      <div class="hidden lg:grid grid-cols-12 gap-12 items-start">
-
-        <!-- LEFT DESKTOP SIDEBAR -->
-        <div class="col-span-3 flex flex-col gap-8 sticky top-24">
-          <div v-for="group in menuGroups" :key="group.title" class="space-y-3">
-            <h3 class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest px-3">{{ group.title }}</h3>
-            <div class="flex flex-col gap-1">
-              <button
-                @click="activeTab = item.id as any"
-                v-for="item in group.items"
-                :key="item.id"
-                class="text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all w-full"
-                :class="activeTab === item.id ? 'bg-brand-primary-light dark:bg-brand-primary/10 text-brand-primary' : 'text-brand-text dark:text-stone-300 hover:bg-brand-surface-border/40 dark:hover:bg-stone-800'"
-              >
-                {{ item.label }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Desktop Destructive Sign Out Container -->
-          <div class="pt-6 border-t border-brand-surface-border dark:border-stone-800 space-y-3">
-            <div class="p-4 rounded-2xl border border-semantic-error/20 dark:border-semantic-error/10 bg-semantic-error/[0.02] dark:bg-semantic-error/[0.01]">
-              <p class="text-[10px] font-bold text-brand-text-muted uppercase tracking-wider mb-2">Session Control</p>
-              <button
-                @click="handleLogout"
-                class="w-full px-4 py-3 text-center bg-transparent border border-semantic-error text-semantic-error font-bold text-xs rounded-xl transition-all duration-200 hover:bg-semantic-error hover:text-white dark:hover:bg-semantic-error dark:hover:text-white shadow-sm hover:shadow-md active:scale-[0.98]"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT DESKTOP CONTENT AREA -->
-        <div class="col-span-9 flex flex-col gap-6">
-
-          <!-- TAB 1: Profile & Account -->
-          <div v-if="activeTab === 'profile'" class="space-y-6 animate-fade-in">
-
-            <!-- Identity Showcase with Added Native Micro-Gradient -->
-            <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 overflow-hidden shadow-sm">
-              <div class="p-8 flex items-center gap-6">
-                <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-brand-bg-light dark:border-stone-900 bg-stone-100 dark:bg-stone-800 flex-shrink-0 flex items-center justify-center shadow-inner">
-                  <img v-if="authStore.user?.picture" :src="authStore.user.picture" alt="Profile" class="w-full h-full object-cover" />
-                  <svg v-else class="w-10 h-10 text-brand-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="icons.user"></path></svg>
-                </div>
-                <div class="flex-1">
-                  <h2 class="text-2xl font-serif font-bold text-brand-text dark:text-white">{{ authStore.user?.name || 'Guest User' }}</h2>
-                  <div class="mt-2 flex items-center gap-2 bg-[#06C755]/10 text-[#06C755] px-3 py-1.5 rounded-lg w-fit">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.298.077.763.036 1.066l-.167 1.011c-.053.33-.243 1.189 1.042.646 1.284-.543 6.924-4.053 9.422-6.953A9.123 9.123 0 0024 10.304z"/>
-                    </svg>
-                    <span class="text-xs font-bold">Authenticated via LINE</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Active Skin Diagnosis Card with Multi-Stop Native Gradient Sweeps -->
-            <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-3xl border border-brand-surface-border dark:border-stone-800 shadow-sm p-8">
-              <h3 class="text-lg font-serif font-bold text-brand-text dark:text-white mb-6 border-b border-brand-surface-border dark:border-stone-700/60 pb-4">Baumann Skin Profile</h3>
-
-              <div class="flex items-center justify-between gap-6 mb-6">
-                <div class="flex items-center gap-4">
-                  <div class="w-14 h-14 rounded-full bg-gradient-to-r from-brand-primary to-brand-primary-hover flex items-center justify-center text-brand-text shadow-sm flex-shrink-0">
-                    <svg class="w-6 h-6 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" :d="icons.clipboard"></path></svg>
-                  </div>
-                  <div>
-                    <p class="text-[11px] font-bold text-brand-text-muted uppercase tracking-widest">Active Diagnosis</p>
-                    <p class="text-3xl font-serif font-bold text-brand-text dark:text-white tracking-tight">{{ authStore.user?.skin_type || 'Unknown' }}</p>
-                  </div>
-                </div>
-                <button @click="router.push('/profile')" class="text-sm font-bold text-brand-primary hover:underline">
-                  View Full Report &rarr;
-                </button>
-              </div>
-
-              <!-- Fixed Desktop Button Implementations using Native CSS Gradients & Hover states -->
-              <div class="flex gap-4 pt-2">
-                <button @click="showSelector = true" class="flex-1 py-3.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 hover:border-brand-primary dark:hover:border-brand-primary text-brand-text dark:text-stone-200 rounded-xl font-bold text-sm hover:bg-brand-primary-light/50 dark:hover:bg-brand-primary/10 active:scale-[0.98] transition-all shadow-sm">
-                  Quick Update Type
-                </button>
-                <button @click="router.push('/quiz')" class="flex-1 py-3.5 bg-gradient-to-r from-brand-primary to-brand-primary-hover text-brand-text font-bold text-sm rounded-xl hover:from-brand-primary-hover hover:to-brand-primary-accent hover:shadow-md active:scale-[0.98] transition-all shadow-sm">
-                  Retake Baumann Skin Quiz
-                </button>
-              </div>
-            </div>
-
-            <!-- Links block -->
-            <div class="bg-gradient-to-br from-brand-surface-light to-brand-bg-light dark:from-brand-surface-dark dark:to-brand-bg-dark rounded-3xl shadow-sm border border-brand-surface-border dark:border-stone-800 overflow-hidden">
-              <SettingsRow :iconPath="icons.history" label="View Routine History" type="link" @click="router.push('/routine')" :isLast="true" />
-            </div>
-
-          </div>
-
-          <!-- TAB 2: App Preferences -->
-          <div v-else-if="activeTab === 'preferences'" class="space-y-6 animate-fade-in">
-            <h2 class="text-xl font-serif font-bold dark:text-white border-b border-brand-surface-border dark:border-stone-800 pb-4">Application Preferences</h2>
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl shadow-sm border border-brand-surface-border dark:border-stone-800 overflow-hidden flex flex-col">
-              <SettingsRow :iconPath="icons.moon" label="Dark Mode" type="toggle" :toggleState="themeStore.isDark" @toggle="themeStore.toggleTheme" />
-              <SettingsRow :iconPath="icons.bell" label="Push Notifications" type="toggle" :toggleState="notificationsEnabled" @toggle="notificationsEnabled = !notificationsEnabled" />
-              <SettingsRow :iconPath="icons.globe" label="System Language" type="link" rightText="English" :isLast="true" />
-            </div>
-          </div>
-
-          <!-- TAB 3: Legal & Support -->
-          <div v-else-if="activeTab === 'support'" class="space-y-6 animate-fade-in">
-            <h2 class="text-xl font-serif font-bold dark:text-white border-b border-brand-surface-border dark:border-stone-800 pb-4">Legal & Support</h2>
-            <div class="bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl shadow-sm border border-brand-surface-border dark:border-stone-800 overflow-hidden flex flex-col">
-              <SettingsRow :iconPath="icons.help" label="Help Center & FAQ" type="link" />
-              <SettingsRow :iconPath="icons.shield" label="Privacy Policy" type="link" />
-              <SettingsRow :iconPath="icons.doc" label="Terms of Service" type="link" />
-              <SettingsRow :iconPath="icons.info" label="About SkinBuddy Application" type="text" rightText="Version 0.1.2" :isLast="true" />
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-    </div>
+      <button type="button" class="logout-phone lg:hidden min-h-[52px] rounded-2xl border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-[15px] font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" @click="handleLogout">
+        Log out
+      </button>
+    </main>
 
     <ExpressSkinSelectorModal
       :is-open="showSelector"
@@ -313,10 +188,3 @@ const menuGroups = [
     />
   </div>
 </template>
-
-<style scoped>
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-</style>
