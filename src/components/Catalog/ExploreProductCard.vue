@@ -46,22 +46,23 @@ const ingredientsSummary = computed(() => {
       <!-- Skin match badge, top right of the card. It was a 10px pill in the
            card's footer, easy to miss (owner feedback); it is the one figure on
            the card that is about the viewer rather than the product. On narrow
-           screens it sits over the image's corner. -->
+           screens it sits over the image's corner, so there it is tighter and
+           its fraction is left to the product page (feat/23). -->
       <div class="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
         <span
           :title="badgeTitle"
           :class="[
-            'match-badge inline-flex items-center gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
+            'match-badge inline-flex items-center gap-1 sm:gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
             // A score nobody computed (a guest, or no skin type) stays small: it
             // is a note, not a result to draw the eye to.
-            matchInfo.kind === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-3 py-1.5',
+            matchInfo.kind === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5',
             matchInfo.class,
           ]"
         >
-          <svg v-if="matchInfo.kind === 'scored'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg v-if="matchInfo.kind === 'scored'" class="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <svg v-else-if="matchInfo.kind === 'limited'" class="w-3.5 h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg v-else-if="matchInfo.kind === 'limited'" class="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           {{ matchInfo.label }}
@@ -69,7 +70,7 @@ const ingredientsSummary = computed(() => {
         <!-- What the percentage is built on, beside it (owner request). -->
         <span
           v-if="matchInfo.kind === 'scored' && matchInfo.fraction"
-          class="match-fraction text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm backdrop-blur-sm"
+          class="match-fraction hidden sm:inline text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm backdrop-blur-sm"
         >
           {{ matchInfo.fraction }}
         </span>

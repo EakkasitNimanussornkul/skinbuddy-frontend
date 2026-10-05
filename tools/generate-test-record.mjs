@@ -824,6 +824,22 @@ const SPEC_MAP = [
       'SearchAutocompleteInput mounted on a memory history with searchProducts mocked and Vitest fake timers driving its 250ms debounce. SubmitProductView rendered through a real RouterView with getCategories and getConcernTags mocked and Teleport stubbed. The draft helpers are called directly. No network access.',
     note: 'The search suggestions as a way in to submitting a product: with no match, a plain message and a row that starts the form with the typed name (a location object, so & # = ? survive); with matches, a quiet last row. The form reads ?name= once on mount, as one string only, with hidden characters taken out, trimmed and cut to the 200-character name limit without splitting a character, and never over a name already typed.',
   },
+  {
+    file: 'src/__tests__/views/ExplorePhone.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/ExploreView, components/Shared/BottomSheet, components/Shared/MatchInfoDisclosure',
+    prerequisite:
+      'The view mounted with @vue/test-utils on a memory history, attached to the document, with a fresh Pinia, Teleport stubbed so the sheets render in the wrapper, and its child components stubbed (the category bar and the price slider included, whose events are emitted directly). searchProducts is mocked; a guest unless a case signs in. No network access.',
+    note: 'Explore below lg (feat/23): a short title in place of the banner, a Filters button counting a brand other than All and a price away from 0 to 1,500 (the category is shown by its chips, not counted), the active filters as removable chips, and a bottom sheet that works on a copy: "Show products" applies it through the page\'s own handlers, any other close drops it. The sheet is a modal dialog: focus moves in, Tab stays inside, Escape closes, focus returns to the button that opened it, and the page does not scroll behind it. The % Match note is folded behind a disclosure on lg and opens as a sheet on a phone, its wording unchanged. Layout by breakpoint is read from the classes, since jsdom applies no CSS.',
+  },
+  {
+    file: 'src/__tests__/components/MatchInfoFolded.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Shared/MatchInfoDisclosure, components/Catalog/ProductHeroSection, components/Compare/CompareIdentityHeader, components/Catalog/ExploreProductCard',
+    prerequisite:
+      'Each component mounted with @vue/test-utils with a fresh Pinia and a signed-in viewer; ProductHeroSection on a memory history with analyzeProduct and addToShelf mocked, Teleport and SafetyCheckModal stubbed; CompareIdentityHeader with RouterLink stubbed. No network access.',
+    note: 'The long % Match explanations folded by default behind "What is % Match?" on the product page and Compare (all sizes) while the score stays in view, with the words, the disclaimer and the methodology link unchanged once opened. The Explore card badge is tighter below sm and leaves its fraction to the product page there; from sm up it is as before.',
+  },
 ]
 
 function runSuite() {

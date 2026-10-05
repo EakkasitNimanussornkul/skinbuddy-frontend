@@ -37,6 +37,7 @@ import ExternalLink from '../Shared/ExternalLink.vue'
 import ProductPackClaims from './ProductPackClaims.vue'
 import { useAdmin } from '../../composables/useAdmin'
 import SafetyWarningModal from '../Shelf/SafetyWarningModal.vue'
+import MatchInfoDisclosure from '../Shared/MatchInfoDisclosure.vue'
 
 const props = defineProps<{
   product: any
@@ -547,12 +548,6 @@ const handleCommitToShelf = async () => {
             <p v-if="matchWhole" :class="['match-whole text-sm font-bold leading-snug', matchBand.heading]">
               {{ matchWhole.long }}
             </p>
-            <p :class="['match-basis flex items-start gap-2 text-xs leading-relaxed', matchBand.body]">
-              <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{{ MATCH_SCORE_BASIS }}</span>
-            </p>
             <p v-if="matchBreakdown" :class="['match-working text-xs font-semibold leading-relaxed', matchBand.heading]">
               {{ describeMatchWorking(matchBreakdown) }}
             </p>
@@ -570,16 +565,28 @@ const handleCommitToShelf = async () => {
               </svg>
               <span>{{ describeLimitedMatch(matchBreakdown) }}</span>
             </p>
-            <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
-              <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
-            </p>
-            <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
-              How % Match is calculated, and our sources
-              <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-            </router-link>
+            <!-- What % Match is, folded by default (feat/23): the score and what
+                 it is made of stay in view. Wording unchanged. -->
+            <MatchInfoDisclosure>
+              <div class="space-y-2">
+                <p :class="['match-basis flex items-start gap-2 text-xs leading-relaxed', matchBand.body]">
+                  <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{{ MATCH_SCORE_BASIS }}</span>
+                </p>
+                <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+                  <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
+                </p>
+                <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
+                  How % Match is calculated, and our sources
+                  <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </router-link>
+              </div>
+            </MatchInfoDisclosure>
             <button
               v-if="isLimitedScore"
               type="button"
@@ -607,16 +614,20 @@ const handleCommitToShelf = async () => {
           <p :class="['match-withheld-reason text-xs leading-relaxed', matchBand.body]">
             {{ describeNotEnoughToScore(matchBreakdown!) }}
           </p>
-          <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
-            <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
-          </p>
-          <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
-            How % Match is calculated, and our sources
-            <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-          </router-link>
+          <MatchInfoDisclosure>
+            <div class="space-y-2">
+              <p class="match-disclaimer flex items-start gap-2 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400">
+                <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <span>{{ MATCH_SCORE_DISCLAIMER }}</span>
+              </p>
+              <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
+                How % Match is calculated, and our sources
+                <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </router-link>
+            </div>
+          </MatchInfoDisclosure>
           <button
             type="button"
             class="match-reveal text-xs font-bold text-brand-primary hover:underline cursor-pointer"

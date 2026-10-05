@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   searchProducts,
@@ -12,7 +12,6 @@ import {
 } from '../api/products.ts'
 import { useAuthStore } from '../stores/auth.ts'
 import { useToast } from '../composables/useToast.ts'
-import SearchAutocompleteInput from '../components/Shared/SearchAutocompleteInput.vue'
 import SkinTypeRecommendationsWidget from '../components/Shared/SkinTypeRecommendationsWidget.vue'
 import ExploreProductCard from '../components/Catalog/ExploreProductCard.vue'
 import ExploreCategoryBar from '../components/Catalog/ExploreCategoryBar.vue'
@@ -21,6 +20,8 @@ import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue
 import PriceRangeSlider from '../components/Catalog/PriceRangeSlider.vue'
 import EmptyState from '../components/Shared/EmptyState.vue'
 import ProductShowcaseMarquee from '../components/Catalog/ProductShowcaseMarquee.vue'
+import BottomSheet from '../components/Shared/BottomSheet.vue'
+import MatchInfoDisclosure from '../components/Shared/MatchInfoDisclosure.vue'
 import { cardFlowDelay, pinLeavingCard } from '../components/Shared/cardFlow'
 
 const route = useRoute()
@@ -37,8 +38,11 @@ const searchQuery = ref('')
 const selectedCategory = ref('All')
 const selectedBrand = ref('All')
 
-const activeMinPrice = ref(0)
-const activeMaxPrice = ref(1500)
+// The price bounds when no price filter is set.
+const PRICE_FLOOR = 0
+const PRICE_CEILING = 1500
+const activeMinPrice = ref(PRICE_FLOOR)
+const activeMaxPrice = ref(PRICE_CEILING)
 
 const selectedForInspection = ref<any>(null)
 const baseProductForCompare = ref<any | null>(null)
@@ -120,12 +124,12 @@ const fetchCatalog = async () => {
   }
 }
 
-const handleCategoryUpdate = (newCategory: string) => {
+// Returns the navigation, so the phone filters can wait for it (see applyFilters).
+const handleCategoryUpdate = (newCategory: string) =>
   router.push({
     path: route.path,
     query: { ...route.query, category: newCategory === 'All' ? undefined : newCategory }
   })
-}
 
 const handlePriceApply = (range: { min: number; max: number }) => {
   activeMinPrice.value = range.min
@@ -134,10 +138,75 @@ const handlePriceApply = (range: { min: number; max: number }) => {
 }
 
 const handlePriceClear = () => {
-  activeMinPrice.value = 0
-  activeMaxPrice.value = 1500
+  activeMinPrice.value = PRICE_FLOOR
+  activeMaxPrice.value = PRICE_CEILING
   fetchCatalog()
 }
+
+// --- Phone filters (below lg) ------------------------------------------------
+// A Filters button with a count, the category chips, the active filters as
+// removable chips, and a sheet with every filter. The sheet works on a copy:
+// "Show products" applies it through the handlers above, and closing it any
+// other way drops it. The big filter panel is for lg and up only.
+const priceFiltered = computed(() => activeMinPrice.value !== PRICE_FLOOR || activeMaxPrice.value !== PRICE_CEILING)
+const activeFilterCount = computed(() => (selectedBrand.value !== 'All' ? 1 : 0) + (priceFiltered.value ? 1 : 0))
+
+const baht = (amount: number) => `฿${amount.toLocaleString('en-US')}`
+const priceChipLabel = computed(() =>
+  activeMinPrice.value === PRICE_FLOOR
+    ? `Up to ${baht(activeMaxPrice.value)}`
+    : `${baht(activeMinPrice.value)} to ${baht(activeMaxPrice.value)}`,
+)
+
+const filtersOpen = ref(false)
+const filtersButton = ref<HTMLButtonElement | null>(null)
+const filterDraft = reactive({ category: 'All', brand: 'All', min: PRICE_FLOOR as number | string, max: PRICE_CEILING as number | string })
+
+const openFilters = () => {
+  Object.assign(filterDraft, {
+    category: selectedCategory.value,
+    brand: selectedBrand.value,
+    min: activeMinPrice.value,
+    max: activeMaxPrice.value,
+  })
+  filtersOpen.value = true
+}
+
+const clearFilterDraft = () => {
+  Object.assign(filterDraft, { category: 'All', brand: 'All', min: PRICE_FLOOR, max: PRICE_CEILING })
+}
+
+// A typed price as a whole number of baht; blank or not a number keeps the default.
+const readBaht = (typed: number | string, fallback: number) => {
+  const value = typeof typed === 'number' ? typed : Number.parseFloat(typed)
+  return Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback
+}
+
+const applyFilters = async () => {
+  filtersOpen.value = false
+  let min = readBaht(filterDraft.min, PRICE_FLOOR)
+  let max = readBaht(filterDraft.max, PRICE_CEILING)
+  if (min > max) [min, max] = [max, min]
+  if (min !== activeMinPrice.value || max !== activeMaxPrice.value) {
+    if (min === PRICE_FLOOR && max === PRICE_CEILING) handlePriceClear()
+    else handlePriceApply({ min, max })
+  }
+  // The brand is set after the address settles: a category change re-reads
+  // the filters from the address, which has no brand in it.
+  if (filterDraft.category !== selectedCategory.value) {
+    await handleCategoryUpdate(filterDraft.category)
+    await nextTick()
+  }
+  selectedBrand.value = filterDraft.brand
+}
+
+const removeBrandFilter = () => {
+  selectedBrand.value = 'All'
+}
+
+// --- What % Match is, on a phone: a sheet --------------------------------------
+const matchSheetOpen = ref(false)
+const matchInfoButton = ref<HTMLButtonElement | null>(null)
 
 // --- Recommended products for you ---
 //
@@ -268,8 +337,16 @@ watch(
   <div class="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-100 font-sans pb-36 pt-6 transition-colors duration-300">
     <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
 
+      <!-- Phone and tablet (below lg): a short title. The banner below, with
+           its product carousel and four ticks, is for lg and up, and the
+           search is in the top bar. -->
+      <div class="explore-phone-intro lg:hidden flex flex-col gap-0.5">
+        <h1 class="m-0 font-serif text-[28px] font-bold text-stone-800 dark:text-stone-100">Explore</h1>
+        <p class="m-0 text-sm text-stone-600 dark:text-stone-300">Every product in our catalogue.</p>
+      </div>
+
  <!-- Header Dashboard Banner (Full-Width / Borderless Desktop Variant) -->
-<div class="w-full py-4 sm:py-6 border-b border-brand-surface-border dark:border-stone-800/80 transition-colors duration-300 space-y-6">
+<div class="explore-hero hidden lg:block w-full py-4 sm:py-6 border-b border-brand-surface-border dark:border-stone-800/80 transition-colors duration-300 space-y-6">
 
   <!-- 2-Column Responsive Layout: Content Left, Marquee Right -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
@@ -370,27 +447,78 @@ watch(
         />
       </div>
 
-      <!-- Mobile/Tablet Search Input.
-           No `@search-submit` binding, and that is the fix rather than an
-           omission. Despite its name, the child emits that event from a watcher
-           on every keystroke - not on submit - so binding it to `searchQuery`
-           made each character re-run `filteredCatalog` over the products already
-           in memory. Those are the previous term's at-most-100 results, so a
-           half-typed search could report "No Formulation Matches" about a
-           product the catalogue holds: the third occurrence of FE-DEF-30, whose
-           first two were fixed in the mount order and the address watcher.
-           Submitting (Enter, or the "Search catalog for" row in the child's own
-           dropdown) pushes /explore?q=..., which the watcher at the bottom of
-           this file turns into a real request - the same single path the desktop
-           TopNav search uses, which binds nothing. Live feedback while typing
-           still exists and is server-backed: the child's dropdown runs its own
-           debounced searchProducts, unbounded by what this page has loaded. -->
-      <div class="w-full block lg:hidden">
-        <SearchAutocompleteInput :initial-query="searchQuery" />
+      <!-- No search box of its own (feat/23): the phone top bar and TopNav
+           both have one. Neither binds to this page: submitting pushes
+           /explore?q=..., which the watcher at the bottom of this file turns
+           into a real request. (A keystroke binding here was the third
+           occurrence of FE-DEF-30: it filtered the products already in memory.) -->
+
+      <!-- Phone filter bar (below lg): Filters, with a count of the active
+           brand and price filters, then the category chips. -->
+      <div class="explore-phone-filters lg:hidden flex flex-col gap-2.5">
+        <div class="flex items-center gap-2">
+          <button
+            ref="filtersButton"
+            type="button"
+            class="filters-button min-h-11 px-3.5 rounded-full shrink-0 inline-flex items-center gap-2 text-sm font-extrabold bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white dark:bg-brand-primary dark:hover:bg-brand-primary-hover dark:text-stone-900 transition-colors"
+            aria-haspopup="dialog"
+            :aria-expanded="filtersOpen ? 'true' : 'false'"
+            @click="openFilters"
+          >
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+            Filters
+            <template v-if="activeFilterCount">
+              <span class="filters-count min-w-5 h-5 px-1 rounded-full inline-flex items-center justify-center text-xs font-black bg-white text-brand-primary-strong dark:bg-stone-900 dark:text-brand-primary" aria-hidden="true">{{ activeFilterCount }}</span>
+              <span class="sr-only">, {{ activeFilterCount }} active</span>
+            </template>
+          </button>
+          <div class="min-w-0 flex-1">
+            <ExploreCategoryBar
+              :categories="uniqueCategories"
+              :selected-category="selectedCategory"
+              @update:selected-category="handleCategoryUpdate"
+            />
+          </div>
+        </div>
+
+        <!-- The active filters, each removable, and what % Match means. -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button
+            v-if="selectedBrand !== 'All'"
+            type="button"
+            class="active-filter-chip min-h-9 pl-3 pr-1.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100"
+            :aria-label="`Remove filter: ${selectedBrand}`"
+            @click="removeBrandFilter"
+          >
+            {{ selectedBrand }}
+            <span class="w-6 h-6 inline-flex items-center justify-center text-stone-600 dark:text-stone-300"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
+          </button>
+          <button
+            v-if="priceFiltered"
+            type="button"
+            class="active-filter-chip min-h-9 pl-3 pr-1.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100"
+            :aria-label="`Remove filter: ${priceChipLabel}`"
+            @click="handlePriceClear"
+          >
+            {{ priceChipLabel }}
+            <span class="w-6 h-6 inline-flex items-center justify-center text-stone-600 dark:text-stone-300"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
+          </button>
+          <button
+            ref="matchInfoButton"
+            type="button"
+            class="match-info-button ml-auto min-h-11 px-1 inline-flex items-center gap-1.5 text-[13px] font-extrabold text-brand-primary-strong dark:text-brand-primary"
+            aria-haspopup="dialog"
+            :aria-expanded="matchSheetOpen ? 'true' : 'false'"
+            @click="matchSheetOpen = true"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+            What's % Match?
+          </button>
+        </div>
       </div>
 
-      <!-- Control Deck Container -->
-      <div class="bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <!-- Control Deck Container (lg and up) -->
+      <div class="explore-filter-panel bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm hidden lg:grid lg:grid-cols-12 gap-8 items-center">
 
         <!-- LEFT PANEL: Formulation Filters -->
         <div class="lg:col-span-7 flex flex-col gap-4">
@@ -445,19 +573,21 @@ watch(
           <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
             Every product in the catalog, filtered by your selections above.
           </p>
-          <p class="match-explainer mt-3 flex items-start gap-2 text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/15 rounded-xl px-3 py-2">
-            <svg class="w-4 h-4 text-brand-primary shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>
-              <span class="font-bold text-brand-text dark:text-stone-200">What is % Match?</span> {{ matchExplainer }}
-              <span class="match-disclaimer block mt-1">{{ MATCH_SCORE_DISCLAIMER }}</span>
-              <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
-                How % Match is calculated, and our sources
-                <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-              </router-link>
-            </span>
-          </p>
+          <!-- What % Match is (lg and up), folded by default (feat/23). On a
+               phone the same words open in a sheet from "What's % Match?" in
+               the filter bar. Wording unchanged. -->
+          <div class="match-explainer hidden lg:block mt-3">
+            <MatchInfoDisclosure>
+              <p class="m-0 text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/15 rounded-xl px-3 py-2">
+                {{ matchExplainer }}
+                <span class="match-disclaimer block mt-1">{{ MATCH_SCORE_DISCLAIMER }}</span>
+                <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
+                  How % Match is calculated, and our sources
+                  <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </router-link>
+              </p>
+            </MatchInfoDisclosure>
+          </div>
         </div>
 
       <div ref="resultsRegion" class="catalog-results" :style="heldHeight ? { minHeight: `${heldHeight}px` } : undefined">
@@ -598,5 +728,116 @@ watch(
         @close="baseProductForCompare = null"
       />
     </Teleport>
+
+    <!-- Phone: every filter in one sheet, applied on "Show products". -->
+    <BottomSheet
+      v-if="filtersOpen"
+      title="Filters"
+      close-label="Close filters"
+      :return-focus-to="filtersButton"
+      @close="filtersOpen = false"
+    >
+      <div class="filters-sheet flex flex-col gap-[22px]">
+        <fieldset class="m-0 p-0 border-0 flex flex-col gap-2.5">
+          <legend class="pb-2.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Category</legend>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="category in uniqueCategories"
+              :key="category"
+              type="button"
+              :class="[
+                'sheet-category min-h-11 px-3.5 rounded-full border text-sm font-bold transition-colors',
+                filterDraft.category === category
+                  ? 'bg-brand-primary-strong border-brand-primary-strong text-white dark:bg-brand-primary dark:border-brand-primary dark:text-stone-900'
+                  : 'bg-brand-surface-light dark:bg-brand-surface-dark border-brand-surface-border dark:border-stone-600 text-stone-800 dark:text-stone-100',
+              ]"
+              :aria-pressed="filterDraft.category === category ? 'true' : 'false'"
+              @click="filterDraft.category = category"
+            >
+              {{ category }}
+            </button>
+          </div>
+        </fieldset>
+
+        <div class="flex flex-col gap-2">
+          <label for="sheet-brand" class="text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Brand</label>
+          <select
+            id="sheet-brand"
+            v-model="filterDraft.brand"
+            class="min-h-12 rounded-[14px] border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
+          >
+            <option v-for="brand in uniqueBrands" :key="brand" :value="brand">
+              {{ brand === 'All' ? 'All brands' : brand }}
+            </option>
+          </select>
+        </div>
+
+        <fieldset class="m-0 p-0 border-0 flex flex-col gap-2.5">
+          <legend class="pb-2.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Price (baht)</legend>
+          <div class="flex items-center gap-2.5">
+            <label class="flex-1 flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
+              From
+              <input
+                v-model="filterDraft.min"
+                class="sheet-price-min min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="10"
+              />
+            </label>
+            <span aria-hidden="true" class="mt-[18px] text-stone-600 dark:text-stone-300">to</span>
+            <label class="flex-1 flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
+              Up to
+              <input
+                v-model="filterDraft.max"
+                class="sheet-price-max min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="10"
+              />
+            </label>
+          </div>
+        </fieldset>
+      </div>
+
+      <template #footer>
+        <button
+          type="button"
+          class="sheet-clear flex-1 min-h-[50px] rounded-[14px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100 text-[15px] font-extrabold"
+          @click="clearFilterDraft"
+        >
+          Clear all
+        </button>
+        <button
+          type="button"
+          class="sheet-apply flex-[2] min-h-[50px] rounded-[14px] bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white dark:bg-brand-primary dark:hover:bg-brand-primary-hover dark:text-stone-900 text-[15px] font-extrabold transition-colors"
+          @click="applyFilters"
+        >
+          Show products
+        </button>
+      </template>
+    </BottomSheet>
+
+    <!-- Phone: what % Match is, in the same words as the lg note. -->
+    <BottomSheet
+      v-if="matchSheetOpen"
+      title="What is % Match?"
+      :return-focus-to="matchInfoButton"
+      @close="matchSheetOpen = false"
+    >
+      <div class="match-sheet flex flex-col gap-3 text-[15px] leading-relaxed text-stone-700 dark:text-stone-200">
+        <p class="m-0">{{ matchExplainer }}</p>
+        <p class="match-disclaimer m-0">{{ MATCH_SCORE_DISCLAIMER }}</p>
+        <router-link
+          :to="MATCH_METHOD_PATH"
+          class="match-how-link min-h-12 rounded-[14px] border border-brand-surface-border dark:border-stone-600 flex items-center justify-center gap-1.5 text-[15px] font-extrabold text-brand-primary-strong dark:text-brand-primary"
+        >
+          How % Match is calculated, and our sources
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+        </router-link>
+      </div>
+    </BottomSheet>
   </div>
 </template>

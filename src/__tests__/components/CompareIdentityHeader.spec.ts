@@ -55,9 +55,19 @@ const mountHeader = (
 const badges = (wrapper: VueWrapper) =>
   wrapper.findAll('span.font-mono').map((s) => s.text())
 
-/** The single explanation line beneath the pair. */
-const explanation = (wrapper: VueWrapper) =>
-  wrapper.findAll('p').map((p) => p.text()).find((t) => t.startsWith('Skin Match')) ?? ''
+/**
+ * Opens "What is % Match?" beneath the pair, which is folded by default since
+ * feat/23 (MatchInfoDisclosure), so the words inside can be read.
+ */
+const openMatchInfo = async (wrapper: VueWrapper) => {
+  const toggle = wrapper.get('.match-info-toggle')
+  if (toggle.attributes('aria-expanded') !== 'true') await toggle.trigger('click')
+  return wrapper
+}
+
+/** The single explanation line beneath the pair, read with the disclosure open. */
+const explanation = async (wrapper: VueWrapper) =>
+  (await openMatchInfo(wrapper)).findAll('p').map((p) => p.text()).find((t) => t.startsWith('Skin Match')) ?? ''
 
 describe('src/components/Compare/CompareIdentityHeader.vue', () => {
   beforeEach(() => {
@@ -65,14 +75,14 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
   })
 
   describe('matchExplanation', () => {
-    it('explains what the number means when both products are scored', () => {
+    it('explains what the number means when both products are scored', async () => {
       const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
 
-      expect(explanation(wrapper)).toContain(MATCH_SCORE_BASIS)
-      expect(explanation(wrapper)).not.toContain('could not be scored')
+      expect(await explanation(wrapper)).toContain(MATCH_SCORE_BASIS)
+      expect(await explanation(wrapper)).not.toContain('could not be scored')
     })
 
-    it('accounts for the unscored product when only one of the pair is scored', () => {
+    it('accounts for the unscored product when only one of the pair is scored', async () => {
       // The reported defect. The line read product_a alone, on the argument that
       // a missing score is a property of the viewer's profile and therefore the
       // same for both columns - true for signed-out and no-profile, and one case
@@ -83,13 +93,13 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
 
       expect(badges(wrapper)[0]).toBe('82% Match')
       expect(badges(wrapper)[1]).toBe('Not scored')
-      expect(explanation(wrapper)).toContain(MATCH_SCORE_BASIS)
-      expect(explanation(wrapper)).toContain(
+      expect(await explanation(wrapper)).toContain(MATCH_SCORE_BASIS)
+      expect(await explanation(wrapper)).toContain(
         'One of these formulas could not be scored against your profile.',
       )
     })
 
-    it('accounts for it in the same words when the unscored product is the first one', () => {
+    it('accounts for it in the same words when the unscored product is the first one', async () => {
       // The worse half of the same bug, and the reason reading either column
       // alone is not a fix: with A unscored the line announced a scoring
       // failure directly above B's own percentage.
@@ -97,23 +107,23 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
 
       expect(badges(wrapper)[0]).toBe('Not scored')
       expect(badges(wrapper)[1]).toBe('60% Match')
-      expect(explanation(wrapper)).toContain(MATCH_SCORE_BASIS)
-      expect(explanation(wrapper)).toContain('One of these formulas could not be scored')
+      expect(await explanation(wrapper)).toContain(MATCH_SCORE_BASIS)
+      expect(await explanation(wrapper)).toContain('One of these formulas could not be scored')
     })
 
-    it('says neither could be scored, once, when both came back empty', () => {
+    it('says neither could be scored, once, when both came back empty', async () => {
       const wrapper = mountHeader(
         compareData({ skin_match_score: null }, { skin_match_score: null }),
       )
 
-      expect(explanation(wrapper)).toContain('This formula could not be scored against your profile.')
+      expect(await explanation(wrapper)).toContain('This formula could not be scored against your profile.')
       // Not the pair sentence: nothing here is scored, so there is no "one of
       // these" to distinguish, and no basis to explain.
-      expect(explanation(wrapper)).not.toContain('One of these formulas')
-      expect(explanation(wrapper)).not.toContain(MATCH_SCORE_BASIS)
+      expect(await explanation(wrapper)).not.toContain('One of these formulas')
+      expect(await explanation(wrapper)).not.toContain(MATCH_SCORE_BASIS)
     })
 
-    it('asks a signed-out visitor to sign in rather than reporting two failures', () => {
+    it('asks a signed-out visitor to sign in rather than reporting two failures', async () => {
       // FE-DEF-31 itself. Both columns are necessarily in this state, because
       // the reason is the session rather than either product - which is what
       // makes one sentence correct for both here.
@@ -124,19 +134,19 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
 
       expect(badges(wrapper)[0]).toBe('Sign in to score')
       expect(badges(wrapper)[1]).toBe('Sign in to score')
-      expect(explanation(wrapper)).toContain('Sign in to see how this suits your skin.')
-      expect(explanation(wrapper)).not.toContain('could not be scored')
+      expect(await explanation(wrapper)).toContain('Sign in to see how this suits your skin.')
+      expect(await explanation(wrapper)).not.toContain('could not be scored')
     })
 
-    it('points a signed-in visitor with no profile at the quiz', () => {
+    it('points a signed-in visitor with no profile at the quiz', async () => {
       const wrapper = mountHeader(
         compareData({ skin_match_score: null }, { skin_match_score: null }),
         { skinType: null },
       )
 
       expect(badges(wrapper)[0]).toBe('Take the skin quiz')
-      expect(explanation(wrapper)).toContain('Take the skin quiz to see how this suits your skin.')
-      expect(explanation(wrapper)).not.toContain('could not be scored')
+      expect(await explanation(wrapper)).toContain('Take the skin quiz to see how this suits your skin.')
+      expect(await explanation(wrapper)).not.toContain('could not be scored')
     })
   })
 
@@ -197,8 +207,8 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
 
   // Appended last, so adding it moves no group ID already cited in this file.
   describe('match disclaimer', () => {
-    it('says under the pair that the score is a guide and to see a dermatologist', () => {
-      const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
+    it('says under the pair that the score is a guide and to see a dermatologist', async () => {
+      const wrapper = await openMatchInfo(mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 })))
 
       expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
@@ -208,8 +218,8 @@ describe('src/components/Compare/CompareIdentityHeader.vue', () => {
   describe('match sources link', () => {
     const target = (el: { attributes: (name: string) => string | undefined }) => el.attributes('href') ?? el.attributes('to')
 
-    it('links from under the pair to how the score is calculated and our sources', () => {
-      const wrapper = mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 }))
+    it('links from under the pair to how the score is calculated and our sources', async () => {
+      const wrapper = await openMatchInfo(mountHeader(compareData({ skin_match_score: 82 }, { skin_match_score: 60 })))
 
       expect(target(wrapper.get('.match-how-link'))).toBe('/how-match-works')
     })

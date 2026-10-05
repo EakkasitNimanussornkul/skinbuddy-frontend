@@ -77,6 +77,12 @@ const warningModal = (wrapper: VueWrapper) => wrapper.findComponent(SafetyWarnin
 
 const lastToast = () => toasts.value[toasts.value.length - 1]
 
+/** Opens "What is % Match?" on the match card, folded by default since feat/23. */
+const openMatchInfo = async (wrapper: VueWrapper) => {
+  await wrapper.get('.match-info-toggle').trigger('click')
+  return wrapper
+}
+
 describe('src/components/Catalog/ProductHeroSection.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -443,6 +449,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
 
     it('explains what the score is based on, in plain words', async () => {
       const { wrapper } = await mountHero()
+      await openMatchInfo(wrapper)
 
       expect(wrapper.get('.match-basis').text()).toBe(MATCH_SCORE_BASIS)
       expect(wrapper.text()).not.toContain('Baumann')
@@ -599,6 +606,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
     it('says beside a score that it is a guide and to see a dermatologist', async () => {
       // Owner request: the score is not certain, and should not read as advice.
       const { wrapper } = await mountHero()
+      await openMatchInfo(wrapper)
 
       expect(wrapper.get('.match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
       expect(MATCH_SCORE_DISCLAIMER).toContain('dermatologist')
@@ -611,6 +619,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
           match_breakdown: { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true },
         },
       })
+      await openMatchInfo(wrapper)
 
       expect(wrapper.find('.match-withheld .match-disclaimer').exists()).toBe(true)
     })
@@ -623,6 +632,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
     it('links from the score to how it is calculated and where the data comes from', async () => {
       // Owner request: say what the score is based on, with sources.
       const { wrapper } = await mountHero()
+      await openMatchInfo(wrapper)
 
       expect(target(wrapper.get('.match-how-link'))).toBe('/how-match-works')
     })
@@ -634,6 +644,7 @@ describe('src/components/Catalog/ProductHeroSection.vue', () => {
           match_breakdown: { helpful: 1, concerns: 0, concern_weight: 0, considered: 1, total_ingredients: 6, limited: true },
         },
       })
+      await openMatchInfo(wrapper)
 
       expect(target(wrapper.get('.match-withheld .match-how-link'))).toBe('/how-match-works')
     })

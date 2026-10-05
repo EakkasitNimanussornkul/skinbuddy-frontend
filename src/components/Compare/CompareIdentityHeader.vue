@@ -12,6 +12,7 @@ import {
 } from '../../api/products'
 import { describeMatchDisplay } from '../Catalog/matchBadge'
 import { useAuthStore } from '../../stores/auth'
+import MatchInfoDisclosure from '../Shared/MatchInfoDisclosure.vue'
 
 const props = defineProps<{ data: CompareResponse }>()
 
@@ -200,20 +201,24 @@ const getProductDescription = (product: any) => {
         <!-- What the two badges above are a score of. Spans the pair rather than
              sitting in either column: the figure is personal to the viewer, so
              the sentence is the same on both sides. -->
+        <!-- Folded by default behind "What is % Match?" (feat/23), so the two
+             scores lead; the wording inside is unchanged. -->
         <div class="px-5 sm:px-8 pb-5 -mt-1">
-          <p class="text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 font-medium max-w-xl mx-auto">
-            <span class="font-bold uppercase tracking-widest text-brand-text dark:text-stone-300">Skin Match</span>
-            &mdash; {{ matchExplanation }}
-          </p>
-          <p class="match-disclaimer mt-1 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 max-w-xl mx-auto">
-            {{ MATCH_SCORE_DISCLAIMER }}
-          </p>
-          <p class="mt-1 max-w-xl mx-auto">
-            <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
-              How % Match is calculated, and our sources
-              <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-            </router-link>
-          </p>
+          <MatchInfoDisclosure>
+            <p class="text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 font-medium max-w-xl mx-auto">
+              <span class="font-bold uppercase tracking-widest text-brand-text dark:text-stone-300">Skin Match</span>
+              &mdash; {{ matchExplanation }}
+            </p>
+            <p class="match-disclaimer mt-1 text-[11px] leading-relaxed text-brand-text-muted dark:text-stone-400 max-w-xl mx-auto">
+              {{ MATCH_SCORE_DISCLAIMER }}
+            </p>
+            <p class="mt-1 max-w-xl mx-auto">
+              <router-link :to="MATCH_METHOD_PATH" class="match-how-link inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary hover:underline">
+                How % Match is calculated, and our sources
+                <svg class="w-3 h-3 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </router-link>
+            </p>
+          </MatchInfoDisclosure>
         </div>
       </div>
 

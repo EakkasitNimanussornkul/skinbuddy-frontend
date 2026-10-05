@@ -92,8 +92,11 @@ const catalogRequests = () =>
 
 const cards = (wrapper: VueWrapper) => wrapper.findAllComponents(ExploreProductCard)
 
-const searchInput = (wrapper: VueWrapper) =>
-  wrapper.findAllComponents(SearchAutocompleteInput)[0]!
+/** Opens "What is % Match?" over the catalogue, folded by default since feat/23. */
+const openMatchNote = async (wrapper: VueWrapper) => {
+  await wrapper.get('.match-explainer .match-info-toggle').trigger('click')
+  return wrapper
+}
 
 describe('src/views/ExploreView.vue', () => {
   beforeEach(() => {
@@ -148,17 +151,20 @@ describe('src/views/ExploreView.vue', () => {
   })
 
   describe('search (address term versus in-memory filtering)', () => {
-    it('ignores the search input keystroke event rather than filtering the loaded page', async () => {
+    it('has no search box of its own whose keystrokes could filter the loaded page; searches arrive through the address', async () => {
       // The reported defect, and the third occurrence of FE-DEF-30. Despite its
       // name the child emits `search-submit` from a watcher on every keystroke,
       // so binding it to this page's searchQuery re-ran filteredCatalog over
       // whatever was already in memory - the previous term's at-most-100
       // results. A half-typed search could then report "No Formulation Matches"
       // about a product the catalogue holds.
+      // Since feat/23 the page has no search box at all (the phone top bar and
+      // TopNav have one each, bound to nothing here), so no keystroke reaches
+      // filteredCatalog.
       const { wrapper } = await mountExplore()
       expect(cards(wrapper)).toHaveLength(1)
 
-      searchInput(wrapper).vm.$emit('search-submit', 'niacinamide')
+      expect(wrapper.findAllComponents(SearchAutocompleteInput)).toHaveLength(0)
       await flushPromises()
 
       // No request, because nothing submitted - and, the half that was the bug,
@@ -498,6 +504,7 @@ describe('src/views/ExploreView.vue', () => {
       // Owner request: be open about how the score works.
       vi.mocked(searchProducts).mockResolvedValue([catalogProduct()])
       const { wrapper } = await mountExplore('/explore', { authenticated: true })
+      await openMatchNote(wrapper)
 
       const note = wrapper.get('.match-explainer').text()
       expect(note).toContain('What is % Match?')
@@ -508,9 +515,11 @@ describe('src/views/ExploreView.vue', () => {
     it('tells a guest how to get a score, and a user with no skin type too', async () => {
       vi.mocked(searchProducts).mockResolvedValue([catalogProduct({ skin_match_score: null })])
       const { wrapper: guest } = await mountExplore()
+      await openMatchNote(guest)
       expect(guest.get('.match-explainer').text()).toContain('Sign in and take the skin quiz to see yours.')
 
       const { wrapper: noType } = await mountExplore('/explore', { authenticated: true, skinType: null })
+      await openMatchNote(noType)
       expect(noType.get('.match-explainer').text()).toContain('Take the skin quiz to see yours.')
       expect(noType.get('.match-explainer').text()).not.toContain('Sign in')
     })
@@ -541,6 +550,7 @@ describe('src/views/ExploreView.vue', () => {
   describe('match disclaimer', () => {
     it('adds to the % Match note that it is a guide and to see a dermatologist', async () => {
       const { wrapper } = await mountExplore('/explore', { authenticated: true })
+      await openMatchNote(wrapper)
 
       expect(wrapper.get('.match-explainer .match-disclaimer').text()).toBe(MATCH_SCORE_DISCLAIMER)
     })
@@ -552,6 +562,7 @@ describe('src/views/ExploreView.vue', () => {
 
     it('links from the % Match note to how it is calculated and our sources', async () => {
       const { wrapper } = await mountExplore()
+      await openMatchNote(wrapper)
 
       expect(target(wrapper.get('.match-explainer .match-how-link'))).toBe('/how-match-works')
     })
