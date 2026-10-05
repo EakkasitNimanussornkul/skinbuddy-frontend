@@ -147,6 +147,18 @@ describe('feat/23 search suggestions and the submit-form name pre-fill', () => {
       expect(w.find('a.search-submit-other').exists()).toBe(false)
       expect(w.find('a.search-submit-named').exists()).toBe(false)
     })
+
+    it('hides the "Not the one" row while a new search runs over the last one\'s matches', async () => {
+      const { w } = await typeIntoSearch('gel cleanser', [PRODUCT])
+      expect(w.find('a.search-submit-other').exists()).toBe(true)
+
+      vi.mocked(searchProducts).mockReturnValue(new Promise(() => {}))
+      await w.get('input').setValue('gel cleanser foam')
+      await vi.advanceTimersByTimeAsync(300)
+
+      expect(w.text()).toContain('Matching formulation matrix...')
+      expect(w.find('a.search-submit-other').exists()).toBe(false)
+    })
   })
 
   describe('nameFromQuery() and prefillName()', () => {

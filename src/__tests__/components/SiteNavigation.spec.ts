@@ -153,6 +153,13 @@ describe('feat/23 desktop sidebar, search bar and entry points', () => {
       expect(list(w).isVisible()).toBe(false)
     })
 
+    it('marks no category away from Explore, even with a category in the address', async () => {
+      const { w } = await mountSidebar('/shelf?category=Toners')
+      await toggle(w).trigger('click')
+
+      expect(w.findAll('a.sidebar-category[aria-current]')).toHaveLength(0)
+    })
+
     it('lets a click on the toggle override the default until the next page change', async () => {
       const { w, router } = await mountSidebar('/')
 
@@ -291,6 +298,19 @@ describe('feat/23 desktop sidebar, search bar and entry points', () => {
       document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await flushPromises()
       expect(w.find('#sidebar-account-menu').exists()).toBe(false)
+    })
+
+    it('closes the account menu when the session ends elsewhere', async () => {
+      signIn('user')
+      const { w } = await mountSidebar()
+      await accountButton(w).trigger('click')
+      expect(w.find('#sidebar-account-menu').exists()).toBe(true)
+
+      useAuthStore().clearSession()
+      await flushPromises()
+
+      expect(w.find('#sidebar-account-menu').exists()).toBe(false)
+      expect(accountButton(w).attributes('aria-expanded')).toBeUndefined()
     })
   })
 
