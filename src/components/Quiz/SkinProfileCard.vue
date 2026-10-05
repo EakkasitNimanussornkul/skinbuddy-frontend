@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const props = defineProps<{
+defineProps<{
   typeCode: string
   profile: {
     subtitle: string
@@ -12,10 +12,6 @@ const props = defineProps<{
     focusTitle: string
     focusDesc: string
   }
-}>()
-
-const emit = defineEmits<{
-  (e: 'verify-incorrect'): void
 }>()
 </script>
 

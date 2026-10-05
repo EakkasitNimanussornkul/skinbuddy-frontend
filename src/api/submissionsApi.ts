@@ -164,8 +164,6 @@ export const getMySubmissions = async (): Promise<MySubmission[]> => {
 // review screens show that as their own state.
 // ---------------------------------------------------------------------------
 
-export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = ['pending', 'approved', 'rejected']
-
 /** The longest review note the backend keeps. */
 export const REVIEW_NOTE_LIMIT = 1000
 

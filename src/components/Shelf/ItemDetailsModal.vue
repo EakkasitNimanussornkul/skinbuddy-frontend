@@ -144,7 +144,7 @@ const handleExecuteDelete = async () => {
     emit('refresh')
     handleClose()
     addToast('Product removed from active routine check.', 'info')
-  } catch (error) {
+  } catch {
     addToast('Failed to delete shelf item.', 'error')
   }
 }

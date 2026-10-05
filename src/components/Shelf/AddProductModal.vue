@@ -99,7 +99,7 @@ const handleSave = async (configPayload: any, forceSave = false) => {
     addToast('Successfully added to your shelf!', 'success')
     emit('refresh')
     emit('close')
-  } catch (error) {
+  } catch {
     addToast('Failed to save product. Please try again.', 'error')
   }
 }

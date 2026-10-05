@@ -697,8 +697,6 @@ export const SELF_CHOICE_QUESTIONS: Record<QuizAxis, SelfChoiceQuestion> = {
 
 // --- Helpers ----------------------------------------------------------------
 
-export const isSkip = (option: QuizOption): option is SkipOption => 'kind' in option
-
 export const appliesTo = (question: QuizQuestion, sex: Sex): boolean =>
   !question.onlyFor || question.onlyFor.includes(sex)
 

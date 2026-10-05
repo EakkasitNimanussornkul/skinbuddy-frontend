@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { skinProfiles } from '../../data/skinprofiles.ts'
 import SkinProfileCard from './SkinProfileCard.vue'
 
-const props = defineProps<{
+defineProps<{
   isOpen: boolean
   isSaving: boolean
 }>()

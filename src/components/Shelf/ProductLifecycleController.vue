@@ -101,7 +101,7 @@ const handleUpdateExpiration = async () => {
     // Emit updated clone
     emit('updated', updatedItem)
     addToast('Expiration date & PAO updated!', 'success')
-  } catch (error) {
+  } catch {
     addToast('Could not update date', 'error')
   }
 }
@@ -143,7 +143,7 @@ const handleStartPAO = async () => {
 
     emit('updated', updatedItem)
     addToast('Product opened! Clock started.', 'success')
-  } catch (error) {
+  } catch {
     addToast('Could not update product status', 'error')
   }
 }

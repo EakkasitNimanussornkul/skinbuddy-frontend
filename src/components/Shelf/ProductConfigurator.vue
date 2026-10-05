@@ -4,7 +4,7 @@ import KeyActivesGrid from './KeyActivesGrid.vue'
 import CustomDatePicker from '../Shared/CustomDatePicker.vue'
 import { addMonthsAsDateString, toLocalDateString } from '../../api/dates'
 
-const props = defineProps<{
+defineProps<{
   product: any
   isAnalyzing: boolean
 }>()
