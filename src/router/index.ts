@@ -28,6 +28,8 @@ import ConsentWelcomeView from '../views/ConsentWelcomeView.vue'
 import HealthConsentView from '../views/HealthConsentView.vue'
 import AccountDeleteCallbackView from '../views/AccountDeleteCallbackView.vue'
 import AccountDeletedView from '../views/AccountDeletedView.vue'
+import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
+import TermsView from '../views/TermsView.vue'
 import { useConsent } from '../composables/useConsent'
 
 const router = createRouter({
@@ -199,6 +201,18 @@ const router = createRouter({
       name: 'account-deleted',
       component: AccountDeletedView,
       meta: { fullScreen: true },
+    },
+    {
+      // The Privacy Policy and the Terms. Public, readable signed out (LINE
+      // User Data Policy 2.4), and open to a user who has not agreed yet.
+      path: '/privacy',
+      name: 'privacy',
+      component: PrivacyPolicyView,
+    },
+    {
+      path: '/terms',
+      name: 'terms',
+      component: TermsView,
     },
 
     {

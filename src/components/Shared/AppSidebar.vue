@@ -283,6 +283,14 @@ const linkClass = (current: boolean) => [
           <svg class="w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5" /></svg>
         </button>
       </div>
+
+      <!-- The policies, readable by anyone (feat/25). Small text, full-height
+           targets. -->
+      <div class="sidebar-legal -mb-2 px-1.5 flex items-center gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
+        <RouterLink to="/privacy" class="sidebar-privacy min-h-11 px-1.5 inline-flex items-center rounded-lg hover:text-brand-primary-strong dark:hover:text-brand-primary-accent hover:underline">Privacy Policy</RouterLink>
+        <span aria-hidden="true">·</span>
+        <RouterLink to="/terms" class="sidebar-terms min-h-11 px-1.5 inline-flex items-center rounded-lg hover:text-brand-primary-strong dark:hover:text-brand-primary-accent hover:underline">Terms</RouterLink>
+      </div>
     </div>
   </div>
 </template>

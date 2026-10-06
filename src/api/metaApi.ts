@@ -50,3 +50,29 @@ export const getFunctionalGroups = (): Promise<string[]> => load('functional_gro
 
 /** Forget every cached list. For tests, and for a screen that must re-read. */
 export const clearMetaCache = () => cache.clear()
+
+export interface PolicyVersions {
+  terms_version: string | null
+  health_version: string | null
+}
+
+/**
+ * The version the Privacy Policy and Terms pages show when the backend cannot
+ * say. It must match TERMS_VERSION in the backend's app/core/consent.py; bump
+ * both together.
+ */
+export const POLICY_VERSION_FALLBACK = '2026-10-06'
+
+const versionText = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null)
+
+/**
+ * GET /meta/policy-versions: the current terms and health consent versions,
+ * for the policy pages to show. Public, so a plain request like the lists
+ * above; not cached, and a failure is thrown for the page to fall back on.
+ * Only for showing: the consent screens post the versions from GET /auth/me.
+ */
+export const getPolicyVersions = async (): Promise<PolicyVersions> => {
+  const response = await axios.get(`${import.meta.env.VITE_API_URL}/meta/policy-versions`)
+  const data = response.data as Record<string, unknown> | null | undefined
+  return { terms_version: versionText(data?.terms_version), health_version: versionText(data?.health_version) }
+}

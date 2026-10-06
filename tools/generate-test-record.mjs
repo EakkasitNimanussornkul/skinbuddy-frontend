@@ -904,6 +904,14 @@ const SPEC_MAP = [
       'SettingsView mounted with @vue/test-utils on a memory history, attached to the document with the real Teleport so the dialogs render into the body. The shared apiClient mocked (GET /auth/me answers the role and the consent; DELETE /consent/health); the real startAccountDeletion runs with its page change caught by a spy; the LINE env values stubbed per case. Consent, role and toast state reset per case. No network access.',
     note: 'The Privacy card (owner-approved ConsentSettings design): "Given on 6 Oct 2026" with Withdraw while the consent stands, "Not given" with a Give consent link otherwise (none, withdrawn, or an older backend), and links to the Privacy Policy and the Terms. Withdrawing asks first, in the design\'s words, then sends DELETE /consent/health. Delete account (AccountDelete design): the dialog lists what is deleted and what stays, and its red button is off until "I understand this can\'t be undone" is ticked; confirming stores the state and goes to LINE, or says deletion is not available yet when it is not configured. An admin\'s button is off, with a note. The dialog moves focus in, keeps Tab inside, closes on Escape and gives focus back.',
   },
+  {
+    file: 'src/__tests__/views/LegalPages.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'views/PrivacyPolicyView, views/TermsView, components/Legal/LegalPage, api/metaApi (getPolicyVersions), components/Shared/AppSidebar (policy links)',
+    prerequisite:
+      'Each page mounted with @vue/test-utils on a memory history. Bare axios mocked for GET /meta/policy-versions and the shared apiClient mocked to show it is not used; console spied on for the fallback case. The route cases load the real router (by a path held in a variable, as profileRoute.spec does) as a signed-out visitor. No network access.',
+    note: 'The Privacy Policy and Terms of Service, readable signed out (LINE User Data Policy 2.4): the user-facing text of the owner\'s reviewed draft, Parts B and C, with none of its notes to the owner, corrected to the confirmed backend contract (only the weekly check-in needs the health consent, withdrawing deletes nothing, deleting an account removes every product the user sent while added products stay). The team names, contact email and date show as "[to be added]". The version shown is terms_version from GET /meta/policy-versions on both pages, and 2026-10-06 (the backend\'s app/core/consent.py) whenever that call fails, as it does with 404 until the backend route is merged, quietly.',
+  },
 ]
 
 function runSuite() {

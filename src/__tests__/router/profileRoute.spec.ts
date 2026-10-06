@@ -74,6 +74,9 @@ describe('src/router/index.ts', () => {
         // Account deletion: LINE's callback (signed in) and the public result.
         '/account/delete/callback': { requiresAuth: true, fullScreen: true },
         '/account/deleted': { fullScreen: true },
+        // The policy pages: public, with the site navigation.
+        '/privacy': {},
+        '/terms': {},
         '/:pathMatch(.*)*': {},
       })
     })
