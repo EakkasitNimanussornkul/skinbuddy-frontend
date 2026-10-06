@@ -848,6 +848,30 @@ const SPEC_MAP = [
       'The view mounted with @vue/test-utils on a memory history at /settings, with a fresh Pinia, cleared localStorage and a user signed in through the real auth store (setAuth). updateUserSkinType is mocked; the theme store and the toast composable are the real ones, read back per case. ExpressSkinSelectorModal is real, its Teleport stubbed, and its confirm event emitted directly. No network access.',
     note: 'The Settings page (feat/24): one responsive layout of cards, two columns of 380px or more that wrap, so it is one column beside the sidebar at 1024. The skin type card keeps the existing save flow (updateUserSkinType, then the store, then a toast; a refused save keeps the selector open) and says the type is a guide, not a diagnosis. Dark mode is a real switch; Notifications is plain text, since the old toggle saved nothing; the Language row and the Privacy, Terms and Help Center links, which went nowhere, are gone. Log out sits in the account card on lg and at the foot of the page below it, and the "Products you send" card shows below lg only, where there is no sidebar. Layout by breakpoint is read from the classes, since jsdom applies no CSS.',
   },
+  // Consent records, account deletion and the legal pages (feat/25), against
+  // the backend contract confirmed on 2026-10-07. New files at the end, so
+  // every earlier group keeps its number.
+  {
+    file: 'src/__tests__/api/consentApi.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'api/consentApi, api/accountApi (fetchMyAccount)',
+    prerequisite: 'The shared apiClient mocked (protected routes); refusals built as axios-style errors and read with readApiProblem. No network access; nothing is posted to the live backend.',
+    note: 'The consent object is read field by field as optional, and the two flags count only when exactly true, so an older GET /auth/me without `consent` reads as null and sets no gate. Refusals are thrown as they came, for the screens to read their code and detail. fetchMyAccount reads the role and the consent from one GET /auth/me; fetchMyRole answers exactly as before.',
+  },
+  {
+    file: 'src/__tests__/composables/useConsent.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'composables/useConsent',
+    prerequisite: 'The shared apiClient mocked so GET /auth/me answers with a chosen body or refusal. A fresh Pinia per case with the real auth store; the module-level consent and role state reset per case. No network access.',
+    note: 'The consent state belongs to the login it was read with, read once per token and forgotten when the token changes. A 404 from GET /auth/me means the account is gone (the contract: a deleted account\'s login stays valid for up to 7 days), so the session is ended. Any other failure sets no gate, so a backend that is down does not trap anyone; the server\'s 403 health_consent_required remains the real gate. The role from the same answer is handed to useAdmin.',
+  },
+  {
+    file: 'src/__tests__/router/consentGuard.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'router/guard (consent gates, safeNext)',
+    prerequisite: 'resolveNavigation and safeNext called directly with plain objects. No router instance, no components, no network.',
+    note: 'A signed-in user who has not agreed to the current terms is sent to /welcome from every page that needs a sign-in, except the agreement itself, the two policy pages, sign-in and the account deletion steps; public pages stay public. The health consent gates /checkin only, since reading reports stays open. A guest and a missing consent state are never gated. The `next` address is kept only when it is a path inside the app.',
+  },
 ]
 
 function runSuite() {

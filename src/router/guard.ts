@@ -29,6 +29,39 @@ export interface GuardAuth {
  */
 export interface GuardAccess {
   isAdmin: boolean | null
+  /**
+   * The signed-in user's consent state (useConsent). Null or missing means no
+   * consent screen: a guest, an older backend without `consent`, or a read
+   * that failed.
+   */
+  consent?: GuardConsent | null
+}
+
+export interface GuardConsent {
+  needs_terms?: boolean
+  needs_health_consent?: boolean
+}
+
+/**
+ * Pages a user who has not yet agreed to the terms can still open: the
+ * agreement itself, what it agrees to, and the steps of signing in and of
+ * deleting an account. Routes without requiresAuth are never gated either.
+ */
+export const TERMS_GATE_OPEN = ['welcome', 'privacy', 'terms', 'authCallback', 'account-delete-callback', 'account-deleted']
+
+/** The weekly check-in, the one page that needs the health consent. Reading reports (/analysis) does not. */
+export const HEALTH_GATED_ROUTE = 'weekly-checkin'
+
+/**
+ * A `next` address read from the query, kept only when it is a path inside
+ * this app: it starts with "/" and not "//" (or "/\", which browsers read the
+ * same way), so it can never send the user to another site. Anything else -
+ * missing, a list, a full URL - is `fallback`.
+ */
+export const safeNext = (value: unknown, fallback = '/'): string => {
+  if (typeof value !== 'string') return fallback
+  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return fallback
+  return value
 }
 
 /** Where a signed-in user who is not an admin is sent from an admin page. */
@@ -60,6 +93,21 @@ export const resolveNavigation = (to: GuardTarget, auth: GuardAuth, access: Guar
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     auth.triggerLoginPopup('Sign in to access your personalized skin routine.')
     return false // Stops navigation gracefully
+  }
+
+  // A signed-in user who has not agreed to the current terms (or confirmed
+  // their age) agrees first, then carries on to where they were going. Only
+  // pages that need a sign-in are held back; public pages stay public.
+  const consent = auth.isAuthenticated ? access.consent : null
+  if (consent?.needs_terms && to.meta.requiresAuth && !TERMS_GATE_OPEN.includes(String(to.name ?? ''))) {
+    return { path: '/welcome', query: { next: safeNext(to.fullPath) } }
+  }
+
+  // The weekly check-in asks for the health consent first. What the page
+  // offers, not security: POST /analysis/log answers 403
+  // health_consent_required without it.
+  if (consent?.needs_health_consent && to.name === HEALTH_GATED_ROUTE) {
+    return { path: '/consent/health', query: { next: safeNext(to.fullPath, '/checkin') } }
   }
 
   // An admin page turns away a user known not to be an admin. A role that

@@ -63,6 +63,16 @@ export const useAdmin = () => {
   return { isAdmin, ensureRole }
 }
 
+/**
+ * Keep a role read elsewhere for the login it was read with: the router's
+ * consent check reads GET /auth/me anyway (useConsent), so an admin page then
+ * needs no second request. A stale login's answer is dropped by the caller.
+ */
+export const rememberRole = (token: string, fetched: string | null) => {
+  role.value = fetched
+  roleToken.value = token
+}
+
 /** Forget the role. For tests. */
 export const resetAdminState = () => {
   role.value = null
