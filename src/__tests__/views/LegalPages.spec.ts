@@ -232,6 +232,23 @@ describe('feat/25 Privacy Policy and Terms of Service', () => {
       expect(placeholders.every((p) => p.text() === '[to be added]')).toBe(true)
       expect(wrapper.text()).not.toMatch(/\[(CONTACT EMAIL|TEAM NAMES|DATE|POLICY VERSION)\]/)
     })
+
+    it('cites s.19 and s.73 alone, and the other six rights only as the group "PDPA sections 30–34 and 36"', async () => {
+      const wrapper = await mountPage(PrivacyPolicyView, '/privacy')
+
+      expect(wrapper.get('.privacy-rights-withdraw').text()).toBe('withdraw consent (s.19);')
+      expect(wrapper.findAll('.privacy-rights-group li').map((li) => li.text())).toEqual([
+        'get a copy of your information, and have it sent to another service;',
+        'object to its use;',
+        'have it deleted;',
+        'restrict its use;',
+        'have it corrected;',
+      ])
+      expect(wrapper.get('.privacy-rights-sections').text()).toBe('(PDPA sections 30–34 and 36)')
+      expect(wrapper.get('.privacy-rights-complaint').text()).toBe('complain to the Personal Data Protection Committee (s.73).')
+      // No right carries a section of its own other than s.19 and s.73.
+      expect(wrapper.text().match(/\bss?\.\s?\d+/g)).toEqual(['s.19', 's.73'])
+    })
   })
 
   describe('TermsView (/terms)', () => {

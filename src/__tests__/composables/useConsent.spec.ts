@@ -80,7 +80,7 @@ describe('src/composables/useConsent.ts', () => {
       await expect(useConsent().ensureConsent()).resolves.toBeNull()
     })
 
-    it('ends the session on a 404, treating the user as a guest whose account is gone', async () => {
+    it('ends the session on a 404, treating the user as a guest whose account is gone, without the logout pop-up', async () => {
       signIn()
       vi.mocked(apiClient.get).mockRejectedValue(refusal(404))
       const auth = useAuthStore()
@@ -88,6 +88,7 @@ describe('src/composables/useConsent.ts', () => {
       await expect(useConsent().ensureConsent()).resolves.toBeNull()
       expect(auth.isAuthenticated).toBe(false)
       expect(auth.token).toBeNull()
+      expect(auth.showLogoutPopup).toBe(false)
     })
 
     it('keeps the session and sets no gate on a 5xx or a network error, and does not ask again for that login', async () => {

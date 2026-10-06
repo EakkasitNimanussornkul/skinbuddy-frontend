@@ -863,14 +863,14 @@ const SPEC_MAP = [
     feature: '#1 Authentication (supplementary)',
     module: 'composables/useConsent',
     prerequisite: 'The shared apiClient mocked so GET /auth/me answers with a chosen body or refusal. A fresh Pinia per case with the real auth store; the module-level consent and role state reset per case. No network access.',
-    note: 'The consent state belongs to the login it was read with, read once per token and forgotten when the token changes. A 404 from GET /auth/me means the account is gone (the contract: a deleted account\'s login stays valid for up to 7 days), so the session is ended. Any other failure sets no gate, so a backend that is down does not trap anyone; the server\'s 403 health_consent_required remains the real gate. The role from the same answer is handed to useAdmin.',
+    note: 'The consent state belongs to the login it was read with, read once per token and forgotten when the token changes. A 404 from GET /auth/me means the account is gone (the contract: a deleted account\'s login stays valid for up to 7 days), so the session is cleared without the logout pop-up (whose 3-second redirect to / is for a sign-out the user asked for). Any other failure sets no gate, so a backend that is down does not trap anyone; the server\'s 403 health_consent_required remains the real gate. The role from the same answer is handed to useAdmin.',
   },
   {
     file: 'src/__tests__/router/consentGuard.spec.ts',
     feature: '#1 Authentication (supplementary)',
     module: 'router/guard (consent gates, safeNext)',
     prerequisite: 'resolveNavigation and safeNext called directly with plain objects for the rule cases. The wiring cases load the real router (by a path held in a variable, as profileRoute.spec does) with apiClient mocked, a fresh Pinia and the consent and role state reset per case. No network access.',
-    note: 'A signed-in user who has not agreed to the current terms is sent to /welcome from every page that needs a sign-in, except the agreement itself, the two policy pages, sign-in and the account deletion steps; public pages stay public. The health consent gates /checkin only, since reading reports stays open. A guest and a missing consent state are never gated. The `next` address is kept only when it is a path inside the app. The router reads the consent once per login on a page that needs a sign-in; a 404 from GET /auth/me ends the session, and a 5xx lets the user through.',
+    note: 'A signed-in user who has not agreed to the current terms is sent to /welcome from every page that needs a sign-in, except the agreement itself, the two policy pages, sign-in and the account deletion steps; public pages stay public. The health consent gates /checkin only, since reading reports stays open. A guest and a missing consent state are never gated. The `next` address is kept only when it is a path inside the app. The router reads the consent once per login on a page that needs a sign-in; a 404 from GET /auth/me clears the session without the logout pop-up, and a 5xx lets the user through.',
   },
   {
     file: 'src/__tests__/views/ConsentScreens.spec.ts',
@@ -894,7 +894,7 @@ const SPEC_MAP = [
     module: 'views/AccountDeleteCallbackView, views/AccountDeletedView',
     prerequisite:
       'Each view mounted with @vue/test-utils on a memory history, signed in through the real auth store. The shared apiClient mocked; the state written to sessionStorage per case against the real clock. No network access.',
-    note: 'The callback sends the code only when the state matches, then signs out and replaces the page with /account/deleted?line=1 or line=0. A mismatched, expired or missing state and an error from LINE each send nothing and say "Nothing was deleted", linking back to Settings. A second mount with the same code sends nothing more. The deleted page asks the user to remove SkinBuddy in LINE only when LINE could not be told (line=0).',
+    note: 'The callback sends the code only when the state matches, then clears the session without the logout pop-up (which would send the user to / after 3 seconds) and replaces the page with /account/deleted?line=1 or line=0. A mismatched, expired or missing state and an error from LINE each send nothing and say "Nothing was deleted", linking back to Settings. A second mount with the same code sends nothing more. The deleted page asks the user to remove SkinBuddy in LINE only when LINE could not be told (line=0).',
   },
   {
     file: 'src/__tests__/views/SettingsPrivacy.spec.ts',
@@ -910,7 +910,7 @@ const SPEC_MAP = [
     module: 'views/PrivacyPolicyView, views/TermsView, components/Legal/LegalPage, api/metaApi (getPolicyVersions), components/Shared/AppSidebar (policy links)',
     prerequisite:
       'Each page mounted with @vue/test-utils on a memory history. Bare axios mocked for GET /meta/policy-versions and the shared apiClient mocked to show it is not used; console spied on for the fallback case. The route cases load the real router (by a path held in a variable, as profileRoute.spec does) as a signed-out visitor. No network access.',
-    note: 'The Privacy Policy and Terms of Service, readable signed out (LINE User Data Policy 2.4): the user-facing text of the owner\'s reviewed draft, Parts B and C, with none of its notes to the owner, corrected to the confirmed backend contract (only the weekly check-in needs the health consent, withdrawing deletes nothing, deleting an account removes every product the user sent while added products stay). The team names, contact email and date show as "[to be added]". The version shown is terms_version from GET /meta/policy-versions on both pages, and 2026-10-06 (the backend\'s app/core/consent.py) whenever that call fails, as it does with 404 until the backend route is merged, quietly.',
+    note: 'The Privacy Policy and Terms of Service, readable signed out (LINE User Data Policy 2.4): the user-facing text of the owner\'s reviewed draft, Parts B and C, with none of its notes to the owner, and the PDPA rights cited as the sources give them: s.19 and s.73 one by one, the other six as the group ss.30-34 and 36. The text is corrected to the confirmed backend contract (only the weekly check-in needs the health consent, withdrawing deletes nothing, deleting an account removes every product the user sent while added products stay). The team names, contact email and date show as "[to be added]". The version shown is terms_version from GET /meta/policy-versions on both pages, and 2026-10-06 (the backend\'s app/core/consent.py) whenever that call fails, as it does with 404 until the backend route is merged, quietly.',
   },
 ]
 

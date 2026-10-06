@@ -10,7 +10,7 @@ import { completeAccountDeletion, deletionFailureMessage } from '../api/accountD
  * the state matches the one this browser stored within the last 10 minutes
  * (api/accountDeletion.ts); otherwise nothing is sent and nothing is deleted.
  *
- * On success the session ends and the public /account/deleted page says what
+ * On success the session is cleared (without the logout pop-up) and the public /account/deleted page says what
  * happened, including whether the user still has to remove SkinBuddy in LINE.
  */
 
@@ -30,7 +30,10 @@ onMounted(async () => {
   })
 
   if (outcome.kind === 'deleted') {
-    authStore.logout()
+    // clearSession, not logout: logout opens the "You've logged out" pop-up,
+    // which sends the user to / after 3 seconds, away from what the deleted
+    // page has to tell them about LINE.
+    authStore.clearSession()
     await router.replace({ path: '/account/deleted', query: { line: outcome.lineDeauthorized ? '1' : '0' } })
     return
   }

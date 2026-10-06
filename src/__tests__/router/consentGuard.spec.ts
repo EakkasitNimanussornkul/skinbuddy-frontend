@@ -204,7 +204,7 @@ describe('src/router/guard.ts', () => {
       expect(router.currentRoute.value.name).toBe('shelf')
     })
 
-    it('ends the session when GET /auth/me answers 404, and shows the login prompt for a signed-in page', async () => {
+    it('ends the session when GET /auth/me answers 404, and shows the login prompt for a signed-in page, not the logout pop-up', async () => {
       useAuthStore().setAuth('token-gone', { id: 'u-1', skin_type: 'OSPW' })
       vi.mocked(apiClient.get).mockRejectedValue(Object.assign(new Error('404'), { response: { status: 404, data: { detail: 'User not found' } } }))
 
@@ -213,6 +213,7 @@ describe('src/router/guard.ts', () => {
       const auth = useAuthStore()
       expect(auth.isAuthenticated).toBe(false)
       expect(auth.showLoginPopup).toBe(true)
+      expect(auth.showLogoutPopup).toBe(false)
       expect(router.currentRoute.value.path).toBe('/')
     })
 

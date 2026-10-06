@@ -148,13 +148,23 @@ const link = 'font-bold text-brand-primary-strong dark:text-brand-primary underl
     <section class="flex flex-col gap-2.5">
       <h2 :class="h2">Your rights</h2>
       <p class="m-0">Under the PDPA you can:</p>
-      <ul :class="list">
+      <!-- s.19 and s.73 are cited one by one. The six rights between them are
+           cited as the group the sources give (ss.30-34 and 36), since which
+           section holds which right has not been confirmed. -->
+      <ul :class="['privacy-rights-withdraw', list]">
         <li>withdraw consent (s.19);</li>
-        <li>get a copy of your information, and have it sent to another service (ss.30-31);</li>
-        <li>object to its use (s.32);</li>
-        <li>have it deleted (s.33);</li>
-        <li>restrict its use (s.34);</li>
-        <li>have it corrected (s.36);</li>
+      </ul>
+      <div class="privacy-rights-group flex flex-col gap-1.5">
+        <ul :class="list">
+          <li>get a copy of your information, and have it sent to another service;</li>
+          <li>object to its use;</li>
+          <li>have it deleted;</li>
+          <li>restrict its use;</li>
+          <li>have it corrected;</li>
+        </ul>
+        <p class="privacy-rights-sections m-0 pl-5 text-sm text-stone-600 dark:text-stone-300">(PDPA sections 30–34 and 36)</p>
+      </div>
+      <ul :class="['privacy-rights-complaint', list]">
         <li>complain to the Personal Data Protection Committee (s.73).</li>
       </ul>
       <p class="m-0">Email <LegalPlaceholder />. You can delete your account and withdraw check-in consent yourself in Settings.</p>

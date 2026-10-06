@@ -16,8 +16,8 @@ import { rememberRole } from './useAdmin'
  *
  * What a failed read means:
  *   - 404: the account is gone (deleted, possibly from another tab, while this
- *     login is still within its 7 days). The session is ended and the user is a
- *     guest from then on.
+ *     login is still within its 7 days). The session is cleared quietly and
+ *     the user is a guest from then on.
  *   - anything else (offline, 5xx): no consent screen. A backend that is down
  *     must not trap people on a page they cannot leave; the server refuses a
  *     check-in without consent (403 health_consent_required) whatever this says.
@@ -55,7 +55,9 @@ export const useConsent = () => {
       .catch((error: unknown) => {
         if (auth.token !== token) return null
         if (readApiProblem(error).status === 404) {
-          auth.logout()
+          // clearSession, not logout: logout's "You've logged out" pop-up
+          // would speak of a sign-out the user did not ask for.
+          auth.clearSession()
           return null
         }
         state.value = null

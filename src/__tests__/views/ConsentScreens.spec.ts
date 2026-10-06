@@ -228,6 +228,8 @@ describe('feat/25 consent screens', () => {
       await flushPromises()
 
       expect(useAuthStore().isAuthenticated).toBe(false)
+      // A sign-out the user asked for, so the usual logout pop-up shows.
+      expect(useAuthStore().showLogoutPopup).toBe(true)
       expect(router.currentRoute.value.path).toBe('/explore')
       expect(apiClient.post).not.toHaveBeenCalled()
     })

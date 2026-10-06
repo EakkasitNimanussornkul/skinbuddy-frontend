@@ -59,7 +59,7 @@ describe('feat/25 account deletion pages', () => {
   })
 
   describe('AccountDeleteCallbackView (/account/delete/callback)', () => {
-    it('on success sends the code once, signs out and replaces the page with /account/deleted?line=1', async () => {
+    it('on success sends the code once, clears the session without the logout pop-up and replaces the page with /account/deleted?line=1', async () => {
       storeState('s-1')
       vi.mocked(apiClient.post).mockResolvedValue({ data: { deleted: true, line_deauthorized: true } })
       const router = makeRouter()
@@ -70,6 +70,9 @@ describe('feat/25 account deletion pages', () => {
       expect(apiClient.post).toHaveBeenCalledTimes(1)
       expect(apiClient.post).toHaveBeenCalledWith('/auth/me/delete', { code: 'c-1' })
       expect(useAuthStore().isAuthenticated).toBe(false)
+      // The pop-up would send the user to / after 3 seconds, away from the
+      // deleted page and its LINE step.
+      expect(useAuthStore().showLogoutPopup).toBe(false)
       expect(replace).toHaveBeenCalledWith({ path: '/account/deleted', query: { line: '1' } })
       expect(router.currentRoute.value.fullPath).toBe('/account/deleted?line=1')
       expect(sessionStorage.getItem(DELETE_STATE_KEY)).toBeNull()
