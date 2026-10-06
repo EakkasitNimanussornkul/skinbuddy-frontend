@@ -186,5 +186,12 @@ describe('feat/25 account deletion pages', () => {
       expect(wrapper.get('.line-hint').text()).toBe('Also remove SkinBuddy in LINE: Settings › Account › Authorized apps.')
       expect(wrapper.get('a.deleted-explore').attributes('href')).toBe('/explore')
     })
+
+    it('adds the LINE step only for line=0, not for an address without the flag', async () => {
+      const { wrapper } = await mountAt(AccountDeletedView, '/account/deleted')
+
+      expect(wrapper.get('h1').text()).toBe('Your account was deleted.')
+      expect(wrapper.find('.line-hint').exists()).toBe(false)
+    })
   })
 })

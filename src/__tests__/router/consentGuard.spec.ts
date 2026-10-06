@@ -123,6 +123,14 @@ describe('src/router/guard.ts', () => {
       expect(resolveNavigation(target('weekly-checkin', '/checkin'), auth(), withConsent({ needs_terms: false, needs_health_consent: false }))).toBe(true)
     })
 
+    it('never gates a guest, even on a page that does not ask for a sign-in', () => {
+      // The consent state belongs to a login; a guest's is never applied, so a
+      // stale one left beside a signed-out session cannot redirect anyone.
+      const guest = auth({ isAuthenticated: false, user: null })
+
+      expect(resolveNavigation(target('weekly-checkin', '/checkin', {}), guest, withConsent(NEEDS_HEALTH))).toBe(true)
+    })
+
     it('asks for the terms before the health consent when both are missing', () => {
       expect(resolveNavigation(target('weekly-checkin', '/checkin'), auth(), withConsent(NEEDS_TERMS))).toEqual({
         path: '/welcome',
