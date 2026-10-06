@@ -11,6 +11,7 @@ vi.mock('../../api/index', () => ({
 import { ADMIN_ONLY_REDIRECT, resolveNavigation, type GuardAuth, type GuardTarget } from '../../router/guard'
 import { apiClient } from '../../api/index'
 import { resetAdminState } from '../../composables/useAdmin'
+import { resetConsentState } from '../../composables/useConsent'
 import { useAuthStore } from '../../stores/auth'
 
 // The real router, for the wiring cases. Imported by a path held in a variable
@@ -84,6 +85,7 @@ describe('src/router/guard.ts', () => {
       localStorage.clear()
       setActivePinia(createPinia())
       resetAdminState()
+      resetConsentState()
       router = await loadRouter()
       await router.push('/')
     })
@@ -116,8 +118,10 @@ describe('src/router/guard.ts', () => {
 
       await router.push('/submissions')
 
+      // Since feat/25 a signed-in page reads GET /auth/me once for the consent
+      // state (useConsent). That is the only request: no separate role read.
       expect(router.currentRoute.value.name).toBe('my-submissions')
-      expect(apiClient.get).not.toHaveBeenCalled()
+      expect(apiClient.get).toHaveBeenCalledTimes(1)
     })
   })
 })

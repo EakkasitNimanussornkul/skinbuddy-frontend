@@ -24,6 +24,9 @@ import SubmitProductView from '../views/SubmitProductView.vue'
 import MySubmissionsView from '../views/MySubmissionsView.vue'
 import AdminSubmissionsView from '../views/AdminSubmissionsView.vue'
 import ProductEditView from '../views/ProductEditView.vue'
+import ConsentWelcomeView from '../views/ConsentWelcomeView.vue'
+import HealthConsentView from '../views/HealthConsentView.vue'
+import { useConsent } from '../composables/useConsent'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -165,6 +168,22 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true, fullScreen: true },
     },
 
+    // Consent (feat/25). The router guard sends a signed-in user here until the
+    // server has recorded the agreement (router/guard.ts); both screens draw
+    // their own way out, so they are full screen.
+    {
+      path: '/welcome',
+      name: 'welcome',
+      component: ConsentWelcomeView,
+      meta: { requiresAuth: true, fullScreen: true },
+    },
+    {
+      path: '/consent/health',
+      name: 'consent-health',
+      component: HealthConsentView,
+      meta: { requiresAuth: true, fullScreen: true },
+    },
+
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
@@ -184,12 +203,16 @@ const router = createRouter({
 // The decision itself lives in ./guard so it can be unit tested without
 // pulling every view into the test's tsconfig project.
 //
-// The role is asked for only on an admin route, and only for a signed-in user:
-// a signed-out visitor is stopped by requiresAuth first.
+// The consent state is read for a signed-in user on a page that needs a
+// sign-in, once per login (useConsent); a 404 there ends the session, so the
+// auth state is read after it. That same GET /auth/me carries the role, so the
+// role check on an admin route then asks nothing more. A signed-out visitor is
+// stopped by requiresAuth first.
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  const consent = to.meta.requiresAuth && auth.isAuthenticated ? await useConsent().ensureConsent() : null
   const isAdmin = to.meta.requiresAdmin && auth.isAuthenticated ? await useAdmin().ensureRole() : null
-  return resolveNavigation(to, auth, { isAdmin })
+  return resolveNavigation(to, auth, { isAdmin, consent })
 })
 
 export default router

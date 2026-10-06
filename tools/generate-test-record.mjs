@@ -869,8 +869,16 @@ const SPEC_MAP = [
     file: 'src/__tests__/router/consentGuard.spec.ts',
     feature: '#1 Authentication (supplementary)',
     module: 'router/guard (consent gates, safeNext)',
-    prerequisite: 'resolveNavigation and safeNext called directly with plain objects. No router instance, no components, no network.',
-    note: 'A signed-in user who has not agreed to the current terms is sent to /welcome from every page that needs a sign-in, except the agreement itself, the two policy pages, sign-in and the account deletion steps; public pages stay public. The health consent gates /checkin only, since reading reports stays open. A guest and a missing consent state are never gated. The `next` address is kept only when it is a path inside the app.',
+    prerequisite: 'resolveNavigation and safeNext called directly with plain objects for the rule cases. The wiring cases load the real router (by a path held in a variable, as profileRoute.spec does) with apiClient mocked, a fresh Pinia and the consent and role state reset per case. No network access.',
+    note: 'A signed-in user who has not agreed to the current terms is sent to /welcome from every page that needs a sign-in, except the agreement itself, the two policy pages, sign-in and the account deletion steps; public pages stay public. The health consent gates /checkin only, since reading reports stays open. A guest and a missing consent state are never gated. The `next` address is kept only when it is a path inside the app. The router reads the consent once per login on a page that needs a sign-in; a 404 from GET /auth/me ends the session, and a 5xx lets the user through.',
+  },
+  {
+    file: 'src/__tests__/views/ConsentScreens.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'views/ConsentWelcomeView, views/HealthConsentView',
+    prerequisite:
+      'Each view mounted with @vue/test-utils on a memory history, attached to the document, signed in through the real auth store. The shared apiClient is mocked, so the real consent API and useConsent run and what is posted is read off the request made; the server versions in the fixture (2026-11-01, 2026-11-02) differ from the policy pages\' own on purpose. Consent and role state reset per case. No network access.',
+    note: 'The two consent screens (owner-approved designs, copy as written). "Before you start" has two separate labelled ticks, 18 or older and the agreement, and Continue stays off until both are ticked. It posts the version the server asked for, never one written in the app, then goes to `next` (or / for an address on another site). A 409 policy_version_changed reads the state again and clears both ticks, since they were given to the old version. The health consent screen shows its five facts word for word, posts current_health_version and goes to `next`, /checkin by default. Memory history keeps no state, so the "Not now" case sets the `back` entry the browser would.',
   },
 ]
 

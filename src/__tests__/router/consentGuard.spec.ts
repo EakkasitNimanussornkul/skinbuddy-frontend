@@ -1,4 +1,24 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import type { Router } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
+
+vi.mock('../../api/index', () => ({
+  apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+}))
+
+import { apiClient } from '../../api/index'
+import { resetAdminState } from '../../composables/useAdmin'
+import { resetConsentState } from '../../composables/useConsent'
+import { useAuthStore } from '../../stores/auth'
+
+// The real router, for the wiring cases. Imported by a path held in a variable
+// so vue-tsc does not follow it into every view (see profileRoute.spec.ts).
+const ROUTER_MODULE = '../../router/index'
+const loadRouter = async (): Promise<Router> =>
+  ((await import(/* @vite-ignore */ ROUTER_MODULE)) as { default: Router }).default
+beforeAll(async () => {
+  await loadRouter()
+}, 60_000)
 
 // The consent rules of the guard, exercised directly: resolveNavigation is a
 // pure function over the target, the auth state and what is known about the
@@ -130,6 +150,82 @@ describe('src/router/guard.ts', () => {
       expect(safeNext(null, '/checkin')).toBe('/checkin')
       expect(safeNext(['/shelf', '/chat'])).toBe('/')
       expect(safeNext('//evil.example', '/checkin')).toBe('/checkin')
+    })
+  })
+
+  describe('router.beforeEach (the consent read)', () => {
+    let router: Router
+
+    beforeEach(async () => {
+      vi.clearAllMocks()
+      localStorage.clear()
+      setActivePinia(createPinia())
+      resetAdminState()
+      resetConsentState()
+      router = await loadRouter()
+      await router.push('/')
+    })
+
+    const signInWith = (data: unknown) => {
+      useAuthStore().setAuth('token-1', { id: 'u-1', skin_type: 'OSPW' })
+      vi.mocked(apiClient.get).mockResolvedValue({ data })
+    }
+
+    it('sends a signed-in user who has not agreed from /shelf to /welcome?next=/shelf', async () => {
+      signInWith({ id: 'u-1', role: 'user', consent: { needs_terms: true, needs_health_consent: true } })
+
+      await router.push('/shelf')
+
+      expect(router.currentRoute.value.fullPath).toBe('/welcome?next=/shelf')
+      expect(apiClient.get).toHaveBeenCalledTimes(1)
+    })
+
+    it('sends a user without the health consent from /checkin to /consent/health?next=/checkin', async () => {
+      signInWith({ id: 'u-1', role: 'user', consent: { needs_terms: false, needs_health_consent: true } })
+
+      await router.push('/checkin')
+
+      expect(router.currentRoute.value.fullPath).toBe('/consent/health?next=/checkin')
+    })
+
+    it('lets a user through when GET /auth/me has no consent (an older backend)', async () => {
+      signInWith({ id: 'u-1', role: 'user' })
+
+      await router.push('/shelf')
+
+      expect(router.currentRoute.value.name).toBe('shelf')
+    })
+
+    it('ends the session when GET /auth/me answers 404, and shows the login prompt for a signed-in page', async () => {
+      useAuthStore().setAuth('token-gone', { id: 'u-1', skin_type: 'OSPW' })
+      vi.mocked(apiClient.get).mockRejectedValue(Object.assign(new Error('404'), { response: { status: 404, data: { detail: 'User not found' } } }))
+
+      await router.push('/shelf')
+
+      const auth = useAuthStore()
+      expect(auth.isAuthenticated).toBe(false)
+      expect(auth.showLoginPopup).toBe(true)
+      expect(router.currentRoute.value.path).toBe('/')
+    })
+
+    it('lets a user through when GET /auth/me fails with a 5xx, so a backend that is down traps nobody', async () => {
+      useAuthStore().setAuth('token-1', { id: 'u-1', skin_type: 'OSPW' })
+      vi.mocked(apiClient.get).mockRejectedValue(Object.assign(new Error('503'), { response: { status: 503, data: {} } }))
+
+      await router.push('/shelf')
+
+      expect(router.currentRoute.value.name).toBe('shelf')
+      expect(useAuthStore().isAuthenticated).toBe(true)
+    })
+
+    it('reads nothing for a guest or for a public page', async () => {
+      await router.push('/explore')
+      expect(apiClient.get).not.toHaveBeenCalled()
+
+      signInWith({ consent: { needs_terms: true } })
+      await router.push('/how-match-works')
+      expect(router.currentRoute.value.name).toBe('match-methodology')
+      expect(apiClient.get).not.toHaveBeenCalled()
     })
   })
 })

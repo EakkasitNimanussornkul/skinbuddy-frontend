@@ -68,6 +68,9 @@ describe('src/router/index.ts', () => {
         '/submissions': { requiresAuth: true },
         '/admin/submissions/:id?': { requiresAuth: true, requiresAdmin: true },
         '/products/:slug/edit': { requiresAuth: true, requiresAdmin: true, fullScreen: true },
+        // Consent (feat/25): the two consent screens, signed-in and full screen.
+        '/welcome': { requiresAuth: true, fullScreen: true },
+        '/consent/health': { requiresAuth: true, fullScreen: true },
         '/:pathMatch(.*)*': {},
       })
     })
