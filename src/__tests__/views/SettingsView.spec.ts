@@ -7,6 +7,12 @@ import { createRouter, createMemoryHistory, type Router } from 'vue-router'
 vi.mock('../../api/authApi', () => ({
   updateUserSkinType: vi.fn(),
 }))
+// GET /auth/me, read for the Privacy and Delete account cards (feat/25, which
+// has its own spec): a normal user with no consent state, so no request leaves.
+vi.mock('../../api/accountApi', () => ({
+  fetchMyRole: vi.fn().mockResolvedValue('user'),
+  fetchMyAccount: vi.fn().mockResolvedValue({ role: 'user', consent: null }),
+}))
 
 import { updateUserSkinType } from '../../api/authApi'
 import SettingsView from '../../views/SettingsView.vue'
@@ -43,6 +49,9 @@ const mountSettings = async (user: Record<string, unknown> = { id: 'u-1', displa
       { path: '/submissions', component: page },
       { path: '/submissions/new', component: page },
       { path: '/how-match-works', component: page },
+      { path: '/privacy', component: page },
+      { path: '/terms', component: page },
+      { path: '/consent/health', component: page },
     ],
   })
   await router.push('/settings')
@@ -86,9 +95,11 @@ describe('feat/24 Settings page', () => {
       expect(wrapper.findAll('h2').map((h) => h.text())).toEqual([
         'Account',
         'Your skin type',
+        'Privacy',
         'Preferences',
         'Products you send',
         'Help',
+        'Delete account',
       ])
       // Each card is a section named by its heading.
       for (const section of wrapper.findAll('section')) {
@@ -345,13 +356,16 @@ describe('feat/24 Settings page', () => {
       expect(card.findAll('a')).toHaveLength(1)
     })
 
-    it('has no Privacy policy, Terms of service or Help Center links', async () => {
+    it('keeps the Privacy policy and Terms of service links out of the Help card, and has no Help Center link', async () => {
       const { wrapper } = await mountSettings()
 
-      const text = wrapper.text().toLowerCase()
-      expect(text).not.toContain('privacy')
-      expect(text).not.toContain('terms of service')
-      expect(text).not.toContain('help center')
+      // Since feat/25 the Privacy Policy and Terms exist and are linked from
+      // the Privacy card; the Help card still has neither, and there is no
+      // Help Center anywhere.
+      const help = wrapper.get('.settings-help').text().toLowerCase()
+      expect(help).not.toContain('privacy')
+      expect(help).not.toContain('terms of service')
+      expect(wrapper.text().toLowerCase()).not.toContain('help center')
     })
   })
 })

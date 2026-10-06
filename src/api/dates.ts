@@ -43,6 +43,23 @@ export const parseLocalDate = (value: string | null | undefined): Date | null =>
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
+// Spelled out rather than left to toLocaleDateString, whose short month for
+// September differs between ICU versions ("Sep" / "Sept").
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/**
+ * An instant as the day it fell on, in the en-GB order: "4 Oct 2026", in the
+ * viewer's own time zone. Null for a missing or unreadable date, so nothing
+ * invented is shown. Moved here from components/Submissions/submissionStatus.ts
+ * (which still exports it) for the consent date in Settings.
+ */
+export const formatDay = (value: string | null): string | null => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`
+}
+
 /**
  * `date` advanced by `months`, as a calendar day string.
  *

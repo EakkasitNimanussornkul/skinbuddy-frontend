@@ -846,7 +846,7 @@ const SPEC_MAP = [
     module: 'views/SettingsView',
     prerequisite:
       'The view mounted with @vue/test-utils on a memory history at /settings, with a fresh Pinia, cleared localStorage and a user signed in through the real auth store (setAuth). updateUserSkinType is mocked; the theme store and the toast composable are the real ones, read back per case. ExpressSkinSelectorModal is real, its Teleport stubbed, and its confirm event emitted directly. No network access.',
-    note: 'The Settings page (feat/24): one responsive layout of cards, two columns of 380px or more that wrap, so it is one column beside the sidebar at 1024. The skin type card keeps the existing save flow (updateUserSkinType, then the store, then a toast; a refused save keeps the selector open) and says the type is a guide, not a diagnosis. Dark mode is a real switch; Notifications is plain text, since the old toggle saved nothing; the Language row and the Privacy, Terms and Help Center links, which went nowhere, are gone. Log out sits in the account card on lg and at the foot of the page below it, and the "Products you send" card shows below lg only, where there is no sidebar. Layout by breakpoint is read from the classes, since jsdom applies no CSS.',
+    note: 'The Settings page (feat/24): one responsive layout of cards, two columns of 380px or more that wrap, so it is one column beside the sidebar at 1024. The skin type card keeps the existing save flow (updateUserSkinType, then the store, then a toast; a refused save keeps the selector open) and says the type is a guide, not a diagnosis. Dark mode is a real switch; Notifications is plain text, since the old toggle saved nothing; the Language row and the Privacy, Terms and Help Center links, which went nowhere, are gone. Log out sits in the account card on lg and at the foot of the page below it, and the "Products you send" card shows below lg only, where there is no sidebar. Layout by breakpoint is read from the classes, since jsdom applies no CSS. Since feat/25 the Privacy Policy and Terms exist and are linked from a new Privacy card, with a Delete account card at the end (covered in views/SettingsPrivacy.spec.ts). Two cases here were edited in place for that, keeping their IDs: the h2 list gains Privacy and Delete account, and the Help Center case now checks the Help card alone. GET /auth/me is mocked through api/accountApi.',
   },
   // Consent records, account deletion and the legal pages (feat/25), against
   // the backend contract confirmed on 2026-10-07. New files at the end, so
@@ -879,6 +879,30 @@ const SPEC_MAP = [
     prerequisite:
       'Each view mounted with @vue/test-utils on a memory history, attached to the document, signed in through the real auth store. The shared apiClient is mocked, so the real consent API and useConsent run and what is posted is read off the request made; the server versions in the fixture (2026-11-01, 2026-11-02) differ from the policy pages\' own on purpose. Consent and role state reset per case. No network access.',
     note: 'The two consent screens (owner-approved designs, copy as written). "Before you start" has two separate labelled ticks, 18 or older and the agreement, and Continue stays off until both are ticked. It posts the version the server asked for, never one written in the app, then goes to `next` (or / for an address on another site). A 409 policy_version_changed reads the state again and clears both ticks, since they were given to the old version. The health consent screen shows its five facts word for word, posts current_health_version and goes to `next`, /checkin by default. Memory history keeps no state, so the "Not now" case sets the `back` entry the browser would.',
+  },
+  {
+    file: 'src/__tests__/api/accountDeletion.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'api/accountDeletion',
+    prerequisite:
+      'The shared apiClient mocked. VITE_LINE_CLIENT_ID and VITE_LINE_DELETE_REDIRECT_URI stubbed with vi.stubEnv per case; crypto.randomUUID spied on; the page change passed in as a spy (jsdom cannot leave the page); a fixed clock passed in; sessionStorage and the sent-code record cleared per case. No network access, and nothing is sent to LINE.',
+    note: 'Starting a deletion stores a random state with a 10-minute expiry in sessionStorage (sb_delete_state) and goes to LINE\'s authorize page with exactly response_type, client_id, redirect_uri (the delete callback), state and scope "profile openid". Without the redirect address or the client id nothing is stored and nothing happens. On the way back a missing, different or expired state, or an error from LINE, sends nothing; the stored state is used once; a code is sent once even if asked twice. Each refusal code is worded from the backend\'s detail, adding "Nothing was deleted." only where the contract says nothing was removed.',
+  },
+  {
+    file: 'src/__tests__/views/AccountDeletion.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'views/AccountDeleteCallbackView, views/AccountDeletedView',
+    prerequisite:
+      'Each view mounted with @vue/test-utils on a memory history, signed in through the real auth store. The shared apiClient mocked; the state written to sessionStorage per case against the real clock. No network access.',
+    note: 'The callback sends the code only when the state matches, then signs out and replaces the page with /account/deleted?line=1 or line=0. A mismatched, expired or missing state and an error from LINE each send nothing and say "Nothing was deleted", linking back to Settings. A second mount with the same code sends nothing more. The deleted page asks the user to remove SkinBuddy in LINE only when LINE could not be told (line=0).',
+  },
+  {
+    file: 'src/__tests__/views/SettingsPrivacy.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'views/SettingsView (Privacy and Delete account cards), components/Shared/AlertDialog',
+    prerequisite:
+      'SettingsView mounted with @vue/test-utils on a memory history, attached to the document with the real Teleport so the dialogs render into the body. The shared apiClient mocked (GET /auth/me answers the role and the consent; DELETE /consent/health); the real startAccountDeletion runs with its page change caught by a spy; the LINE env values stubbed per case. Consent, role and toast state reset per case. No network access.',
+    note: 'The Privacy card (owner-approved ConsentSettings design): "Given on 6 Oct 2026" with Withdraw while the consent stands, "Not given" with a Give consent link otherwise (none, withdrawn, or an older backend), and links to the Privacy Policy and the Terms. Withdrawing asks first, in the design\'s words, then sends DELETE /consent/health. Delete account (AccountDelete design): the dialog lists what is deleted and what stays, and its red button is off until "I understand this can\'t be undone" is ticked; confirming stores the state and goes to LINE, or says deletion is not available yet when it is not configured. An admin\'s button is off, with a note. The dialog moves focus in, keeps Tab inside, closes on Escape and gives focus back.',
   },
 ]
 

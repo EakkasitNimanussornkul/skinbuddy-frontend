@@ -26,6 +26,8 @@ import AdminSubmissionsView from '../views/AdminSubmissionsView.vue'
 import ProductEditView from '../views/ProductEditView.vue'
 import ConsentWelcomeView from '../views/ConsentWelcomeView.vue'
 import HealthConsentView from '../views/HealthConsentView.vue'
+import AccountDeleteCallbackView from '../views/AccountDeleteCallbackView.vue'
+import AccountDeletedView from '../views/AccountDeletedView.vue'
 import { useConsent } from '../composables/useConsent'
 
 const router = createRouter({
@@ -182,6 +184,21 @@ const router = createRouter({
       name: 'consent-health',
       component: HealthConsentView,
       meta: { requiresAuth: true, fullScreen: true },
+    },
+    {
+      // Where LINE returns after the user confirms an account deletion. The
+      // address must equal VITE_LINE_DELETE_REDIRECT_URI.
+      path: '/account/delete/callback',
+      name: 'account-delete-callback',
+      component: AccountDeleteCallbackView,
+      meta: { requiresAuth: true, fullScreen: true },
+    },
+    {
+      // Public: the session has ended by the time this shows.
+      path: '/account/deleted',
+      name: 'account-deleted',
+      component: AccountDeletedView,
+      meta: { fullScreen: true },
     },
 
     {

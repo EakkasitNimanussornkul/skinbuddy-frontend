@@ -71,6 +71,9 @@ describe('src/router/index.ts', () => {
         // Consent (feat/25): the two consent screens, signed-in and full screen.
         '/welcome': { requiresAuth: true, fullScreen: true },
         '/consent/health': { requiresAuth: true, fullScreen: true },
+        // Account deletion: LINE's callback (signed in) and the public result.
+        '/account/delete/callback': { requiresAuth: true, fullScreen: true },
+        '/account/deleted': { fullScreen: true },
         '/:pathMatch(.*)*': {},
       })
     })

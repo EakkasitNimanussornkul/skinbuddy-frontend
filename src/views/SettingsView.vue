@@ -1,24 +1,45 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/themeStore'
 import { useToast } from '../composables/useToast'
+import { useConsent } from '../composables/useConsent'
+import { useAdmin } from '../composables/useAdmin'
 import { updateUserSkinType } from '../api/authApi'
+import { withdrawHealthConsent } from '../api/consentApi'
+import { readApiProblem } from '../api/apiProblem'
+import { formatDay } from '../api/dates'
+import { DELETION_UNAVAILABLE, startAccountDeletion } from '../api/accountDeletion'
+import { consentRefusalMessage } from '../components/Consent/consentMessages'
 import ExpressSkinSelectorModal from '../components/Quiz/ExpressSkinSelectorModal.vue'
+import AlertDialog from '../components/Shared/AlertDialog.vue'
 
 /**
  * Settings (feat/24, owner-approved layout): one responsive page of cards in
  * place of the old desktop tabs and the separate phone markup. Two columns
  * where there is room (each 380px or more), so beside the sidebar at 1024 it
- * is one. Links that went nowhere (Help Center, Privacy, Terms) and the
- * Language row are gone; Notifications says plainly that it is not available.
+ * is one. Links that went nowhere (Help Center) and the Language row are gone;
+ * Notifications says plainly that it is not available.
+ *
+ * feat/25 adds the Privacy card (the weekly check-in consent with Withdraw,
+ * and the Privacy Policy and Terms, which now exist) and Delete account, both
+ * from the owner-approved ConsentSettings and AccountDelete designs. The
+ * privacy links sit in the Privacy card, as the design has them, so Help
+ * keeps its name.
  */
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const router = useRouter()
 const { addToast } = useToast()
+const { consent, ensureConsent, setConsent } = useConsent()
+const { isAdmin, ensureRole } = useAdmin()
+
+onMounted(() => {
+  ensureConsent()
+  ensureRole()
+})
 
 const APP_VERSION = '0.1.2'
 
@@ -50,7 +71,65 @@ const handleExpressConfirm = async (selectedType: string) => {
   }
 }
 
-const cardClass = 'bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 rounded-[22px] lg:rounded-3xl'
+// --- Privacy: the weekly check-in consent -------------------------------------
+// Given while it has a date and has not been withdrawn. Withdrawing deletes
+// nothing: the check-ins already sent stay until the account is deleted.
+const healthGiven = computed(() => !!consent.value?.health_consent_at && !consent.value?.health_consent_withdrawn_at)
+const healthStatus = computed(() => {
+  if (!healthGiven.value) return 'Not given'
+  const day = formatDay(consent.value?.health_consent_at ?? null)
+  return day ? `Given on ${day}` : 'Given'
+})
+
+const showWithdraw = ref(false)
+const withdrawing = ref(false)
+const withdrawError = ref<string | null>(null)
+const giveConsentLink = ref<{ $el: HTMLElement } | null>(null)
+
+const openWithdraw = () => {
+  withdrawError.value = null
+  showWithdraw.value = true
+}
+
+const confirmWithdraw = async () => {
+  withdrawing.value = true
+  withdrawError.value = null
+  try {
+    setConsent(await withdrawHealthConsent())
+    showWithdraw.value = false
+    addToast('Weekly check-in consent withdrawn.', 'success')
+    // The Withdraw button that opened the dialog is gone; focus the link that
+    // replaced it.
+    await nextTick()
+    giveConsentLink.value?.$el.focus()
+  } catch (error) {
+    withdrawError.value = consentRefusalMessage(readApiProblem(error))
+  } finally {
+    withdrawing.value = false
+  }
+}
+
+// --- Delete account ------------------------------------------------------------
+// The backend refuses an admin (409 admin_account) before calling LINE; the
+// button is off for one here so they are not sent through LINE for nothing.
+const showDelete = ref(false)
+const understood = ref(false)
+const deleteError = ref<string | null>(null)
+
+const openDelete = () => {
+  if (isAdmin.value) return
+  understood.value = false
+  deleteError.value = null
+  showDelete.value = true
+}
+
+const confirmDelete = () => {
+  if (!understood.value || isAdmin.value) return
+  deleteError.value = null
+  if (!startAccountDeletion()) deleteError.value = DELETION_UNAVAILABLE
+}
+
+const cardClass ='bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-700 rounded-[22px] lg:rounded-3xl'
 const headingClass = 'm-0 text-xs lg:text-[13px] font-extrabold uppercase tracking-[0.1em] text-stone-600 dark:text-stone-300'
 const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold text-stone-800 dark:text-stone-100 hover:text-brand-primary-strong dark:hover:text-brand-primary-accent transition-colors'
 </script>
@@ -115,6 +194,40 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
               <svg class="ml-auto w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
             </RouterLink>
           </section>
+
+          <section aria-labelledby="settings-privacy" :class="['settings-privacy px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
+            <h2 id="settings-privacy" :class="[headingClass, 'mt-3 mb-1 lg:mt-3.5 lg:mb-1.5']">Privacy</h2>
+            <div class="health-consent-row min-h-[72px] flex items-center gap-3 border-b border-brand-surface-border dark:border-stone-700">
+              <span class="flex-grow flex flex-col gap-0.5">
+                <span class="text-[15px] font-bold text-stone-800 dark:text-stone-100">Weekly check-in consent</span>
+                <span class="consent-status text-[13px] text-stone-600 dark:text-stone-300">{{ healthStatus }}</span>
+              </span>
+              <button
+                v-if="healthGiven"
+                type="button"
+                class="withdraw-consent min-h-11 px-3.5 shrink-0 rounded-xl border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-sm font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                @click="openWithdraw"
+              >
+                Withdraw
+              </button>
+              <RouterLink
+                v-else
+                ref="giveConsentLink"
+                :to="{ path: '/consent/health', query: { next: '/settings' } }"
+                class="give-consent min-h-11 px-3.5 shrink-0 rounded-xl inline-flex items-center border border-brand-primary-strong dark:border-brand-primary text-brand-primary-strong dark:text-brand-primary text-sm font-extrabold hover:bg-brand-primary-light dark:hover:bg-brand-primary/15 transition-colors"
+              >
+                Give consent
+              </RouterLink>
+            </div>
+            <RouterLink to="/privacy" :class="['privacy-link border-b border-brand-surface-border dark:border-stone-700', rowLinkClass]">
+              Privacy Policy
+              <svg class="ml-auto w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+            </RouterLink>
+            <RouterLink to="/terms" :class="['terms-link', rowLinkClass]">
+              Terms of Service
+              <svg class="ml-auto w-4 h-4 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+            </RouterLink>
+          </section>
         </div>
 
         <div class="flex-[1_1_380px] min-w-0 flex flex-col gap-4 lg:gap-[22px]">
@@ -172,6 +285,21 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
               <span class="ml-auto text-sm text-stone-600 dark:text-stone-300">{{ APP_VERSION }}</span>
             </div>
           </section>
+
+          <section aria-labelledby="settings-delete" class="settings-delete p-[18px] lg:p-[22px] flex flex-col gap-2.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-red-200 dark:border-red-900 rounded-[22px] lg:rounded-3xl">
+            <h2 id="settings-delete" class="m-0 text-xs lg:text-[13px] font-extrabold uppercase tracking-[0.1em] text-red-700 dark:text-red-300">Delete account</h2>
+            <p class="m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">Removes your SkinBuddy account and everything in it, and ends the link with your LINE account.</p>
+            <button
+              type="button"
+              class="delete-account min-h-12 rounded-[14px] border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-[15px] font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              :disabled="isAdmin"
+              :aria-describedby="isAdmin ? 'settings-delete-admin' : undefined"
+              @click="openDelete"
+            >
+              Delete my account
+            </button>
+            <p v-if="isAdmin" id="settings-delete-admin" class="admin-delete-note m-0 text-[13px] text-stone-600 dark:text-stone-300">Admin accounts can't be deleted here.</p>
+          </section>
         </div>
       </div>
 
@@ -186,5 +314,53 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
       @close="showSelector = false"
       @confirm="handleExpressConfirm"
     />
+
+    <AlertDialog
+      v-if="showWithdraw"
+      title="Withdraw your consent?"
+      cancel-label="Keep it"
+      confirm-label="Withdraw"
+      :busy="withdrawing"
+      @cancel="showWithdraw = false"
+      @confirm="confirmWithdraw"
+    >
+      <p class="withdraw-body m-0 text-[15px] leading-relaxed text-stone-600 dark:text-stone-300">You won't be able to add new weekly check-ins until you agree again. The check-ins you already sent stay saved until you delete your account.</p>
+      <template #extra>
+        <p v-if="withdrawError" role="alert" class="withdraw-error m-0 rounded-[14px] px-3.5 py-3 text-sm font-semibold bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900">{{ withdrawError }}</p>
+      </template>
+    </AlertDialog>
+
+    <AlertDialog
+      v-if="showDelete"
+      title="Delete your account?"
+      cancel-label="Keep my account"
+      confirm-label="Delete my account"
+      :confirm-disabled="!understood || isAdmin"
+      @cancel="showDelete = false"
+      @confirm="confirmDelete"
+    >
+      <div class="flex flex-col gap-1">
+        <span class="text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Deleted for good</span>
+        <ul class="delete-list m-0 pl-[18px] list-disc text-[15px] leading-relaxed text-stone-800 dark:text-stone-100">
+          <li>Your LINE name, picture and LINE ID</li>
+          <li>Your skin type and quiz results</li>
+          <li>Your shelf, routines and routine history</li>
+          <li>Your weekly check-ins and reports</li>
+          <li>Every product you sent, and its photo unless a product in the catalogue shows it</li>
+        </ul>
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Stays</span>
+        <p class="m-0 text-[15px] leading-relaxed text-stone-800 dark:text-stone-100">Products that were added to the catalogue stay, with no name or note from you.</p>
+      </div>
+      <p class="m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">Next, LINE will ask you to confirm it's you. LY Corporation will then be told, and the link between SkinBuddy and your LINE account will end. This can't be undone; if you sign in again later, you'll start with a new, empty account.</p>
+      <template #extra>
+        <label class="min-h-[52px] flex gap-3 items-center px-3.5 py-2.5 rounded-[14px] border border-brand-surface-border dark:border-stone-600 text-[15px] font-bold text-stone-800 dark:text-stone-100 cursor-pointer">
+          <input v-model="understood" type="checkbox" class="delete-understood w-[22px] h-[22px] shrink-0 accent-[#B3261E] cursor-pointer" />
+          I understand this can't be undone
+        </label>
+        <p v-if="deleteError" role="alert" class="delete-error m-0 rounded-[14px] px-3.5 py-3 text-sm font-semibold bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900">{{ deleteError }}</p>
+      </template>
+    </AlertDialog>
   </div>
 </template>
