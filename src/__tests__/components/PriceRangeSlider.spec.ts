@@ -214,6 +214,28 @@ describe('feat/27 the shared price slider: typed boxes and a bar, in a popover a
       expect(lastUpdate(w)).toEqual({ min: 1480, maxCap: null })
     })
 
+    it('keeps a typed number on Enter in Highest as well as in Lowest', async () => {
+      const w = mountSlider({ variant: 'sheet' })
+
+      await highBox(w).setValue('900')
+      await highBox(w).trigger('keydown', { key: 'Enter' })
+
+      expect(lastUpdate(w)).toEqual({ min: 0, maxCap: 900 })
+    })
+
+    it('leaves a bar that grew alone when Highest is entered and left again without a change', async () => {
+      const w = mountSlider({ variant: 'sheet', maxCap: 3000 })
+      highHandle(w).element.value = '2000'
+      await highHandle(w).trigger('input')
+      expect(highBox(w).element.value).toBe('2,000')
+
+      await highBox(w).trigger('blur')
+
+      // Read back as typed, 2,000 would have shrunk the bar to 2,000.
+      expect(highHandle(w).attributes('max')).toBe('3000')
+      expect(w.get('.price-scale-end').text()).toBe('฿3,000')
+    })
+
     it('keeps the Lowest below the bar when the cap is cleared from a grown bar', async () => {
       const w = mountSlider({ variant: 'sheet', minPrice: 2500, maxCap: 3000 })
 

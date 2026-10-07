@@ -193,6 +193,18 @@ describe('feat/27 the desktop filter bar', () => {
       expect(floating.every((el) => box.element.contains(el.element) || el.element === box.element || wrapper.get('.toolbar-brand').element.contains(el.element) || el.classes().includes('price-handle') || el.element.closest('.price-track') !== null)).toBe(true)
     })
 
+    it('lets nothing reorder the results ahead of the toolbar on screen: no order class on the results or their ancestors', async () => {
+      const { wrapper } = await mountExplore()
+      const results = wrapper.get('.catalog-results').element
+
+      for (let el: Element | null = results; el && el !== wrapper.element; el = el.parentElement) {
+        expect(Array.from(el.classList).some((c) => /(^|:)(order-|flex-col-reverse|flex-row-reverse)/.test(c))).toBe(false)
+      }
+      for (const el of [toolbar(wrapper).element, wrapper.get('.explore-filters').element]) {
+        expect(Array.from(el.classList).some((c) => /(^|:)(order-|-mb-|-translate-y)/.test(c))).toBe(false)
+      }
+    })
+
     it('is never wider than the content column, and is 400px wide when there is room', async () => {
       const { wrapper } = await mountExplore()
       await openPrice(wrapper)
