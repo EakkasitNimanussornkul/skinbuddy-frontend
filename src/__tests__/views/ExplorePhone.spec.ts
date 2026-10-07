@@ -78,6 +78,12 @@ const filtersButton = (w: VueWrapper) => w.get('button.filters-button')
 const sheet = (w: VueWrapper) => w.find('[role="dialog"]')
 const chips = (w: VueWrapper) => w.findAll('button.active-filter-chip')
 const slider = (w: VueWrapper) => w.findComponent({ name: 'PriceRangeSlider' })
+// The price slider in the filters sheet (feat/26); the lg panel's comes first.
+const sheetSlider = (w: VueWrapper) => w.findAllComponents({ name: 'PriceRangeSlider' }).find((s) => s.props('variant') === 'sheet')!
+const dragSheetPrice = async (w: VueWrapper, min: number, max: number) => {
+  sheetSlider(w).vm.$emit('update:range', { min, max })
+  await flushPromises()
+}
 
 const openSheet = async (w: VueWrapper) => {
   await filtersButton(w).trigger('click')
@@ -318,8 +324,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(sheetButton(wrapper, 'Serums').attributes('aria-pressed')).toBe('true')
       expect(sheetButton(wrapper, 'All').attributes('aria-pressed')).toBe('false')
       expect((wrapper.get('#sheet-brand').element as HTMLSelectElement).value).toBe('CeraVe')
-      expect((wrapper.get('input.sheet-price-min').element as HTMLInputElement).value).toBe('200')
-      expect((wrapper.get('input.sheet-price-max').element as HTMLInputElement).value).toBe('800')
+      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 200, maxPrice: 800, defaultMaxLimit: 1500 })
     })
 
     it('applies the category, brand and price on "Show products", through the page\'s own handlers', async () => {
@@ -329,8 +334,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await sheetButton(wrapper, 'Serums').trigger('click')
       expect(sheetButton(wrapper, 'Serums').attributes('aria-pressed')).toBe('true')
       await wrapper.get('#sheet-brand').setValue('CeraVe')
-      await wrapper.get('input.sheet-price-min').setValue('200')
-      await wrapper.get('input.sheet-price-max').setValue('800')
+      await dragSheetPrice(wrapper, 200, 800)
       await sheetButton(wrapper, 'Show products').trigger('click')
       await flushPromises()
 
@@ -349,7 +353,8 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await openSheet(wrapper)
       await sheetButton(wrapper, 'Serums').trigger('click')
       await wrapper.get('#sheet-brand').setValue('CeraVe')
-      await wrapper.get('input.sheet-price-max').setValue('500')
+      await dragSheetPrice(wrapper, 0, 500)
+      expect(sheetSlider(wrapper).props('maxPrice')).toBe(500)
 
       await wrapper.get('[role="dialog"] button[aria-label="Close filters"]').trigger('click')
       await flushPromises()
@@ -360,7 +365,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await openSheet(wrapper)
       expect(sheetButton(wrapper, 'All').attributes('aria-pressed')).toBe('true')
       expect((wrapper.get('#sheet-brand').element as HTMLSelectElement).value).toBe('All')
-      expect((wrapper.get('input.sheet-price-max').element as HTMLInputElement).value).toBe('1500')
+      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 0, maxPrice: 1500 })
     })
 
     it('resets every filter with "Clear all", applied on "Show products"', async () => {
@@ -373,8 +378,8 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await sheetButton(wrapper, 'Clear all').trigger('click')
       expect(sheetButton(wrapper, 'All').attributes('aria-pressed')).toBe('true')
       expect((wrapper.get('#sheet-brand').element as HTMLSelectElement).value).toBe('All')
-      expect((wrapper.get('input.sheet-price-min').element as HTMLInputElement).value).toBe('0')
-      expect((wrapper.get('input.sheet-price-max').element as HTMLInputElement).value).toBe('1500')
+      // The handles go back to the ends of the track.
+      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 0, maxPrice: 1500 })
       // Nothing applied yet.
       expect(router.currentRoute.value.query).toEqual({ category: 'Serums' })
       expect(chips(wrapper)).toHaveLength(2)
@@ -387,18 +392,17 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(chips(wrapper)).toHaveLength(0)
     })
 
-    it('reads a price typed the wrong way round as a range, and a blank one as no limit', async () => {
+    it('puts a price range given the wrong way round in order, and reads one that is not a number as no limit', async () => {
+      // The slider keeps its handles in order; the page still guards the request.
       const { wrapper } = await mountExplore()
       await openSheet(wrapper)
-      await wrapper.get('input.sheet-price-min').setValue('900')
-      await wrapper.get('input.sheet-price-max').setValue('300')
+      await dragSheetPrice(wrapper, 900, 300)
       await sheetButton(wrapper, 'Show products').trigger('click')
       await flushPromises()
       expect(lastRequest()).toEqual(['', 300, 900])
 
       await openSheet(wrapper)
-      await wrapper.get('input.sheet-price-min').setValue('')
-      await wrapper.get('input.sheet-price-max').setValue('')
+      await dragSheetPrice(wrapper, Number.NaN, Number.NaN)
       await sheetButton(wrapper, 'Show products').trigger('click')
       await flushPromises()
       expect(lastRequest()).toEqual(['', 0, 1500])
@@ -415,17 +419,16 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(router.currentRoute.value.query).toEqual({ category: 'Serums' })
     })
 
-    it('lets the price inputs shrink with the sheet, so nothing scrolls sideways on a 375px screen', async () => {
-      // jsdom has no layout, so the classes that allow shrinking are read.
+    it('lets the price slider shrink with the sheet, so nothing scrolls sideways on a 375px screen', async () => {
+      // jsdom has no layout, so the classes that allow shrinking are read. The
+      // slider's own root is checked in PriceSliderSheet.spec.
       const { wrapper } = await mountExplore()
       await openSheet(wrapper)
       const row = wrapper.get('.sheet-price-row')
 
-      expect(row.classes()).toEqual(expect.arrayContaining(['grid', 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]']))
-      for (const input of ['input.sheet-price-min', 'input.sheet-price-max']) {
-        expect(wrapper.get(input).classes()).toEqual(expect.arrayContaining(['w-full', 'min-w-0']))
-        expect(wrapper.get(input).element.closest('label')!.classList.contains('min-w-0')).toBe(true)
-      }
+      expect(row.classes()).toEqual(expect.arrayContaining(['w-full', 'min-w-0']))
+      expect(row.findComponent({ name: 'PriceRangeSlider' }).props('variant')).toBe('sheet')
+      expect(wrapper.findAll('[role="dialog"] input[type="number"]')).toHaveLength(0)
       expect(wrapper.findAll('[role="dialog"] fieldset').every((f) => f.classes().includes('min-w-0'))).toBe(true)
       expect(wrapper.get('.bottom-sheet-body').classes()).toEqual(expect.arrayContaining(['overflow-x-hidden', 'min-w-0']))
     })

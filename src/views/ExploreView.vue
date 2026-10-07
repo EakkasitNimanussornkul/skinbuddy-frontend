@@ -161,7 +161,7 @@ const priceChipLabel = computed(() =>
 
 const filtersOpen = ref(false)
 const filtersButton = ref<HTMLButtonElement | null>(null)
-const filterDraft = reactive({ category: 'All', brand: 'All', min: PRICE_FLOOR as number | string, max: PRICE_CEILING as number | string })
+const filterDraft = reactive({ category: 'All', brand: 'All', min: PRICE_FLOOR, max: PRICE_CEILING })
 
 const openFilters = () => {
   Object.assign(filterDraft, {
@@ -177,11 +177,16 @@ const clearFilterDraft = () => {
   Object.assign(filterDraft, { category: 'All', brand: 'All', min: PRICE_FLOOR, max: PRICE_CEILING })
 }
 
-// A typed price as a whole number of baht; blank or not a number keeps the default.
-const readBaht = (typed: number | string, fallback: number) => {
-  const value = typeof typed === 'number' ? typed : Number.parseFloat(typed)
-  return Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback
+// The sheet's price slider writes the draft as it moves (feat/26; it replaced
+// the typed From and Up to boxes).
+const setDraftPrice = (range: { min: number; max: number }) => {
+  filterDraft.min = range.min
+  filterDraft.max = range.max
 }
+
+// A price as a whole number of baht; anything that is not a number of zero or
+// more keeps the default, so a bad value can never reach the request.
+const readBaht = (value: number, fallback: number) => (Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback)
 
 const applyFilters = () => {
   filtersOpen.value = false
@@ -772,33 +777,18 @@ watch(
 
         <fieldset class="sheet-fieldset m-0 p-0 border-0 min-w-0 flex flex-col gap-2.5">
           <legend class="pb-2.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">Price (baht)</legend>
-          <!-- Two columns that may shrink (min-w-0), so the inputs never push past
-               a 375px screen. The fieldsets carry min-w-0 too: a fieldset is
-               min-content wide by default, which is what let the row overflow. -->
-          <div class="sheet-price-row grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2.5">
-            <label class="min-w-0 w-full flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
-              From
-              <input
-                v-model="filterDraft.min"
-                class="sheet-price-min w-full min-w-0 min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                step="10"
-              />
-            </label>
-            <span aria-hidden="true" class="pb-3 text-stone-600 dark:text-stone-300">to</span>
-            <label class="min-w-0 w-full flex flex-col gap-1 text-xs font-bold text-stone-600 dark:text-stone-300">
-              Up to
-              <input
-                v-model="filterDraft.max"
-                class="sheet-price-max w-full min-w-0 min-h-[46px] rounded-xl border border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100 px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-brand-primary"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                step="10"
-              />
-            </label>
+          <!-- One track, a handle for the lowest and the highest price (the
+               owner's choice over typed boxes). The row may shrink (min-w-0),
+               so it never pushes past a 375px screen. The fieldsets carry
+               min-w-0 too: a fieldset is min-content wide by default. -->
+          <div class="sheet-price-row w-full min-w-0">
+            <PriceRangeSlider
+              variant="sheet"
+              :min-price="filterDraft.min"
+              :max-price="filterDraft.max"
+              :default-max-limit="PRICE_CEILING"
+              @update:range="setDraftPrice"
+            />
           </div>
         </fieldset>
       </div>
