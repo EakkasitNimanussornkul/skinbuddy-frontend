@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   searchProducts,
@@ -28,6 +28,7 @@ import {
   isPriceFiltered,
   normalizePriceRange,
   priceChipLabel as priceChipText,
+  priceButtonLabel,
   UNPRICED_NOTE,
   type PriceRange,
 } from '../components/Catalog/priceRange'
@@ -214,6 +215,101 @@ const removeBrandFilter = () => {
   selectedBrand.value = 'All'
 }
 
+// --- The filter bar (lg and up) ---------------------------------------------------
+// The heading: the category in view (spelled as the chip is, whatever the address
+// said), with how many products the list holds. The count is read off the list
+// itself, so it is whatever the server returned, and is blank while loading or
+// when the catalogue could not be reached.
+const headingTitle = computed(() => {
+  if (selectedCategory.value === 'All') return 'All formulations'
+  const wanted = cleanString(selectedCategory.value)
+  return uniqueCategories.value.find((c) => c !== 'All' && cleanString(c) === wanted) ?? selectedCategory.value
+})
+const countText = computed(() => {
+  if (catalogState.value !== 'results' && catalogState.value !== 'empty') return ''
+  const count = filteredCatalog.value.length
+  return `${count} ${count === 1 ? 'product' : 'products'}`
+})
+
+const TOOLBAR_IDLE = 'border-brand-surface-border dark:border-stone-600 bg-brand-bg-light dark:bg-stone-800 text-stone-800 dark:text-stone-100'
+const TOOLBAR_ACTIVE = 'border-brand-primary-strong ring-1 ring-brand-primary-strong dark:border-brand-primary dark:ring-brand-primary bg-brand-primary-light dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent'
+const brandActive = computed(() => selectedBrand.value !== 'All')
+const priceButtonText = computed(() => priceButtonLabel(activeMinPrice.value, activeMaxCap.value))
+
+// The Price popover. A dialog that is not modal: Escape and a click outside close
+// it, Tab leaving it closes it, and Escape gives focus back to its button.
+const priceOpen = ref(false)
+const priceButton = ref<HTMLButtonElement | null>(null)
+const pricePopover = ref<HTMLElement | null>(null)
+
+const closePrice = (returnFocus = false) => {
+  if (!priceOpen.value) return
+  priceOpen.value = false
+  if (returnFocus) nextTick(() => priceButton.value?.focus())
+}
+
+const togglePrice = async () => {
+  if (priceOpen.value) return closePrice(true)
+  priceOpen.value = true
+  await nextTick()
+  pricePopover.value?.querySelector<HTMLElement>('input')?.focus()
+}
+
+const onPriceKeydown = (event: KeyboardEvent) => {
+  if (event.key !== 'Escape') return
+  event.preventDefault()
+  closePrice(true)
+}
+const onPricePointerDown = (event: Event) => {
+  const target = event.target as Node | null
+  if (target && (pricePopover.value?.contains(target) || priceButton.value?.contains(target))) return
+  closePrice()
+}
+const onPriceFocusOut = (event: FocusEvent) => {
+  const next = event.relatedTarget as Node | null
+  if (!priceOpen.value || !next) return
+  if (pricePopover.value?.contains(next) || priceButton.value?.contains(next)) return
+  closePrice()
+}
+watch(priceOpen, (open) => {
+  if (open) {
+    document.addEventListener('keydown', onPriceKeydown)
+    document.addEventListener('pointerdown', onPricePointerDown)
+  } else {
+    document.removeEventListener('keydown', onPriceKeydown)
+    document.removeEventListener('pointerdown', onPricePointerDown)
+  }
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onPriceKeydown)
+  document.removeEventListener('pointerdown', onPricePointerDown)
+})
+
+const onPriceApply = (range: PriceRange) => {
+  handlePriceApply(range)
+  closePrice(true)
+}
+
+// The filters in use as removable chips, the category included (on lg it is the
+// one place that says what is selected apart from the highlighted chip).
+const activeChips = computed(() => {
+  const chips: { key: string; label: string; remove: () => void }[] = []
+  if (selectedCategory.value !== 'All') chips.push({ key: 'category', label: headingTitle.value, remove: () => handleCategoryUpdate('All') })
+  if (selectedBrand.value !== 'All') chips.push({ key: 'brand', label: selectedBrand.value, remove: removeBrandFilter })
+  if (priceFiltered.value) chips.push({ key: 'price', label: priceChipLabel.value, remove: handlePriceClear })
+  return chips
+})
+
+// Clears the category, the brand and the price. A brand or category carried by
+// the address goes from it too, or the address would put it straight back.
+const clearAllFilters = () => {
+  selectedBrand.value = 'All'
+  if (priceFiltered.value) handlePriceClear()
+  if (route.query.category || route.query.brand) {
+    router.push({ path: route.path, query: { ...route.query, category: undefined, brand: undefined } })
+  }
+}
+
 // --- What % Match is, on a phone: a sheet --------------------------------------
 const matchSheetOpen = ref(false)
 const matchInfoButton = ref<HTMLButtonElement | null>(null)
@@ -355,72 +451,19 @@ watch(
         <p class="m-0 text-sm text-stone-600 dark:text-stone-300">Every product in our catalogue.</p>
       </div>
 
- <!-- Header Dashboard Banner (Full-Width / Borderless Desktop Variant) -->
-<div class="explore-hero hidden lg:block w-full py-4 sm:py-6 border-b border-brand-surface-border dark:border-stone-800/80 transition-colors duration-300 space-y-6">
-
-  <!-- 2-Column Responsive Layout: Content Left, Marquee Right -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-
-    <!-- Left Column: Title & Text (7 cols) -->
-    <div class="lg:col-span-7 space-y-3">
-      <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
-        Global Formulation Registry
-      </span>
-      <h1 class="text-3xl sm:text-5xl font-serif font-bold text-brand-text dark:text-stone-100 tracking-tight">
-        Explore Skincare Catalog
-      </h1>
-      <p class="text-xs sm:text-sm text-brand-text-muted dark:text-stone-400 leading-relaxed font-medium max-w-2xl">
-        Discover curated formulations with complete active ingredient breakdowns, sensitivity risk factors, and personalized Baumann skin compatibility scores.
-      </p>
-    </div>
-
-    <!-- Right Column: Sliding Marquee (5 cols) -->
-    <div class="lg:col-span-5 flex flex-col items-end justify-center w-full min-w-0">
-      <ProductShowcaseMarquee :products="catalog" />
-    </div>
-
-  </div>
-
-  <!-- Feature Highlights Grid (0 Emojis, Clean SVG Checkmarks) -->
-  <div class="pt-4 border-t border-brand-surface-border dark:border-stone-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="flex items-center gap-3">
-      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
-        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+      <!-- lg and up: one compact band. The title and a line under it on the left,
+           the product carousel (smaller) on the right. The four tick marks and
+           the long paragraph of the old banner are gone: the ticks said what
+           the cards and the product page already show. -->
+      <div class="explore-hero hidden lg:flex items-center justify-between gap-6 py-2 max-h-[120px]">
+        <div class="min-w-0">
+          <h1 class="explore-hero-title m-0 font-serif text-3xl font-bold tracking-tight text-brand-text dark:text-stone-100">Explore</h1>
+          <p class="explore-hero-line m-0 mt-1 text-sm text-stone-600 dark:text-stone-300">Every product in our catalogue, with ingredient breakdowns and a match for your skin type.</p>
+        </div>
+        <div class="explore-hero-thumbs w-[19rem] max-w-[40%] shrink-0 min-w-0">
+          <ProductShowcaseMarquee :products="catalog" :is-loading="isLoading" />
+        </div>
       </div>
-      <span class="text-xs font-bold text-brand-text dark:text-stone-200">Detailed ingredient breakdowns</span>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
-        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-      <span class="text-xs font-bold text-brand-text dark:text-stone-200">Safety & compatibility ratings</span>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
-        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-      <span class="text-xs font-bold text-brand-text dark:text-stone-200">Personalized Baumann matching</span>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <div class="w-6 h-6 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
-        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-      <span class="text-xs font-bold text-brand-text dark:text-stone-200">100% Independent analysis</span>
-    </div>
-  </div>
-
-</div>
 
       <!-- 1. Recommended products for you, above the search and the filter
            panel. Owner decision: the filters sit directly over the grid they
@@ -528,66 +571,119 @@ watch(
         <p v-if="priceFiltered" class="unpriced-note-phone m-0 text-xs leading-normal text-stone-600 dark:text-stone-300">{{ UNPRICED_NOTE }}</p>
       </div>
 
-      <!-- Control Deck Container (lg and up) -->
-      <div class="explore-filter-panel bg-brand-surface-light dark:bg-brand-surface-dark p-6 rounded-[2.5rem] border border-brand-surface-border dark:border-stone-800 shadow-sm hidden lg:grid lg:grid-cols-12 gap-8 items-center">
+      <!-- 2. The full catalogue. A normal column: the heading, the filter bar, the
+           active filters and the % Match note are ordinary blocks in the flow, so
+           the results always start below the lowest of them. Only the price
+           popover floats, and it closes on Escape, a click outside, or Apply. -->
+      <div class="explore-catalogue space-y-6">
+        <!-- lg and up. Below lg the phone intro and the Filters button above
+             say the same things. -->
+        <section class="explore-filters hidden lg:block" aria-label="Filter products">
+          <!-- The heading is the category in view, with how many products there are. -->
+          <div class="catalog-heading flex flex-wrap items-baseline justify-between gap-x-3">
+            <h2 class="catalog-title m-0 font-serif text-3xl font-bold text-brand-text dark:text-stone-100">{{ headingTitle }}</h2>
+            <span class="catalog-count min-h-5 text-sm text-stone-600 dark:text-stone-300" aria-live="polite">
+              <span v-if="countText" class="inline-block">{{ countText }}</span>
+            </span>
+          </div>
 
-        <!-- LEFT PANEL: Formulation Filters -->
-        <div class="lg:col-span-7 flex flex-col gap-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div class="space-y-0.5">
-              <span class="text-xs font-bold uppercase tracking-wider text-brand-text-muted">Filter Formulation</span>
-              <p class="text-[11px] text-brand-text-muted">Isolate target skincare categories and curated brands.</p>
+          <!-- The positioning box for the popover only; the toolbar itself is not
+               positioned, sticky or fixed. -->
+          <div class="explore-filter-anchor relative mt-3.5" @focusout="onPriceFocusOut">
+            <div
+              role="toolbar"
+              aria-label="Filters"
+              class="explore-toolbar min-h-[60px] flex flex-wrap items-center gap-2 rounded-[18px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-2.5 py-1.5"
+            >
+              <div class="toolbar-categories flex-1 basis-[360px] min-w-0">
+                <ExploreCategoryBar
+                  class="pt-0! pb-1!"
+                  :categories="uniqueCategories"
+                  :selected-category="selectedCategory"
+                  @update:selected-category="handleCategoryUpdate"
+                />
+              </div>
+
+              <div class="toolbar-controls ml-auto flex items-center gap-2">
+                <!-- A real select, drawn as a button: the select itself is
+                     invisible over the label, so the keyboard and the screen
+                     reader get the native one. -->
+                <label :class="['toolbar-brand relative min-h-11 pl-3.5 pr-3 rounded-xl border inline-flex items-center gap-2 text-sm cursor-pointer focus-within:ring-2 focus-within:ring-brand-primary-strong dark:focus-within:ring-brand-primary', brandActive ? TOOLBAR_ACTIVE : TOOLBAR_IDLE]">
+                  <span aria-hidden="true" class="toolbar-brand-text font-bold">Brand: {{ selectedBrand === 'All' ? 'All' : selectedBrand }}</span>
+                  <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  <select
+                    v-model="selectedBrand"
+                    aria-label="Brand"
+                    class="toolbar-brand-select absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  >
+                    <option v-for="brand in uniqueBrands" :key="brand" :value="brand">
+                      {{ brand === 'All' ? 'All brands' : brand }}
+                    </option>
+                  </select>
+                </label>
+
+                <button
+                  ref="priceButton"
+                  type="button"
+                  :class="['toolbar-price min-h-11 pl-3.5 pr-3 rounded-xl border inline-flex items-center gap-2 text-sm font-bold', priceOpen || priceFiltered ? TOOLBAR_ACTIVE : TOOLBAR_IDLE]"
+                  aria-haspopup="dialog"
+                  :aria-expanded="priceOpen ? 'true' : 'false'"
+                  @click="togglePrice"
+                >
+                  {{ priceButtonText }}
+                  <svg :class="['toolbar-price-chevron w-3.5 h-3.5 shrink-0', priceOpen ? 'rotate-180' : '']" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+              </div>
             </div>
 
-            <select
-              v-model="selectedBrand"
-              class="w-full sm:w-56 bg-brand-bg-light dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 text-xs font-bold rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer transition-all text-brand-text dark:text-stone-200"
-            >
-              <option v-for="brand in uniqueBrands" :key="brand" :value="brand">
-                {{ brand === 'All' ? 'All Curated Brands' : brand }}
-              </option>
-            </select>
+            <!-- The only overlay: below the sticky top bar (z-50), above the cards. -->
+            <div
+                v-if="priceOpen"
+                ref="pricePopover"
+                role="dialog"
+                aria-label="Price range"
+                class="price-popover absolute right-0 top-full mt-2 z-30 w-[400px] max-w-full rounded-[20px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl p-[18px]"
+              >
+                <PriceRangeSlider
+                  variant="popover"
+                  :min-price="activeMinPrice"
+                  :max-cap="activeMaxCap"
+                  @apply="onPriceApply"
+                  @clear="handlePriceClear"
+                />
+              </div>
           </div>
 
-          <div class="w-full pt-1">
-            <ExploreCategoryBar
-              :categories="uniqueCategories"
-              :selected-category="selectedCategory"
-              @update:selected-category="handleCategoryUpdate"
-            />
-          </div>
-        </div>
+          <!-- The filters in use, each removable. Folds open with the first chip
+               and shut with the last. -->
+            <div v-if="activeChips.length" class="active-filters-bar">
+              <div class="active-filters flex flex-wrap items-center gap-2 pt-3">
+                <button
+                  v-for="chip in activeChips"
+                  :key="chip.key"
+                  type="button"
+                  class="desktop-filter-chip min-h-9 pl-3 pr-1.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100 hover:border-brand-primary-strong dark:hover:border-brand-primary"
+                  :aria-label="`Remove filter: ${chip.label}`"
+                  @click="chip.remove()"
+                >
+                  {{ chip.label }}
+                  <span class="w-6 h-6 inline-flex items-center justify-center text-stone-600 dark:text-stone-300"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
+                </button>
+                <button
+                  key="clear-all"
+                  type="button"
+                  class="clear-all-filters min-h-9 px-2 text-[13px] font-extrabold text-brand-primary-strong dark:text-brand-primary hover:underline"
+                  @click="clearAllFilters"
+                >
+                  Clear all
+                </button>
+              </div>
+              <p v-if="priceFiltered" class="unpriced-note-bar m-0 mt-2 text-xs leading-normal text-stone-600 dark:text-stone-300">{{ UNPRICED_NOTE }}</p>
+            </div>
 
-        <!-- MIDDLE: Splitter Line -->
-        <div class="hidden lg:block lg:col-span-1 h-16 border-r border-brand-surface-border dark:border-stone-800 justify-self-center"></div>
-
-        <!-- RIGHT PANEL: Price Slider -->
-        <div class="lg:col-span-4 w-full">
-          <PriceRangeSlider
-            :min-price="activeMinPrice"
-            :max-cap="activeMaxCap"
-            @apply="handlePriceApply"
-            @clear="handlePriceClear"
-          />
-        </div>
-
-      </div>
-
-      <!-- 2. The full catalogue -->
-      <div class="space-y-6">
-        <!-- The heading is for lg and up: on a phone the intro at the top
-             already says it (feat/23). -->
-        <div class="catalog-heading hidden lg:block">
-          <span class="text-[11px] font-bold uppercase tracking-widest text-brand-primary">Complete Registry</span>
-          <h3 class="text-xl sm:text-2xl font-serif font-bold text-brand-text dark:text-white mt-1">
-            All Formulations
-          </h3>
-          <p class="text-xs sm:text-sm text-brand-text-muted mt-1">
-            Every product in the catalog, filtered by your selections above.
-          </p>
-          <!-- What % Match is (lg and up), folded by default (feat/23). On a
-               phone the same words open in a sheet from "What's % Match?" in
-               the filter bar. Wording unchanged. -->
+          <!-- What % Match is, folded by default (feat/23). On a phone the same
+               words open in a sheet from "What's % Match?" in the filter bar.
+               Wording unchanged. -->
           <div class="match-explainer hidden lg:block mt-3">
             <MatchInfoDisclosure>
               <p class="m-0 text-xs text-brand-text-muted dark:text-stone-400 leading-relaxed bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/15 rounded-xl px-3 py-2">
@@ -600,7 +696,7 @@ watch(
               </p>
             </MatchInfoDisclosure>
           </div>
-        </div>
+        </section>
 
       <div ref="resultsRegion" class="catalog-results" :style="heldHeight ? { minHeight: `${heldHeight}px` } : undefined">
       <!-- Loading: placeholder cards in the product card's own shape, so the

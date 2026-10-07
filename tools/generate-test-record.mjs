@@ -970,6 +970,14 @@ const SPEC_MAP = [
       'Each component mounted with @vue/test-utils with a product whose price_thb and price_usd are both null; the hero on a memory history with a fresh Pinia and Teleport stubbed; the search input with searchProducts mocked and fake timers for its debounce. No network access.',
     note: 'Seventeen of the 34 live products have no listed price. The Explore card, the product page header and the search suggestions each say "Price unavailable" for such a product and never show a made-up price (no ฿null, ฿NaN or ฿0). No cases existed for this before. Compare and the shelf show no price at all, so there is nothing to pin there.',
   },
+  {
+    file: 'src/__tests__/views/ExploreFilterBar.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/ExploreView (desktop filter bar, heading and count, slim intro)',
+    prerequisite:
+      'ExploreView mounted on a memory history with a fresh Pinia, attached to the document so focus can be read, Teleport stubbed and its other child components stubbed; the real price slider runs inside the popover. searchProducts is mocked. Layout is read from classes and from the order of elements in the document, since jsdom applies no CSS. No network access.',
+    note: 'The desktop filter bar (feat/27, lg and up; below lg nothing changed). One toolbar holds the category chips, a Brand control (a real select drawn as a button) and a Price button reading "Price: any", "up to", a range or "from". The price popover is the only overlay: absolute, below the sticky top bar in z-order, at most the content column wide, closed by Escape (focus returns to the Price button), a click outside, Tab leaving it, or Apply. The no-overlap promise is pinned structurally: the toolbar, the heading, the active-filters row and every ancestor are in the normal flow (none is sticky, fixed or absolute) and the results follow them in a column spaced by space-y-6, so the first card row always starts below the lowest of them. The heading reads "All formulations" or the category name with the number of products the server returned (singular for one, blank while loading or when the catalogue cannot be reached). The active-filters row shows removable chips with "Clear all" and, while a price chip is shown, the note that products with no listed price are hidden. The slim intro replaced the old banner and its four ticks (the ticks, including "100% Independent analysis", were dropped); the phone intro is unchanged. The size of the toolbar and the position of the first card are checked in the browser, since jsdom has no layout.',
+  },
 ]
 
 function runSuite() {

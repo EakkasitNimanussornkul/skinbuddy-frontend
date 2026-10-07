@@ -92,6 +92,18 @@ const catalogRequests = () =>
 
 const cards = (wrapper: VueWrapper) => wrapper.findAllComponents(ExploreProductCard)
 
+/**
+ * The Price popover's slider. The popover is drawn only while it is open (feat/27),
+ * so it is opened from the toolbar's Price button first if it is not.
+ */
+const priceSlider = async (wrapper: VueWrapper) => {
+  if (!wrapper.find('[role="dialog"][aria-label="Price range"]').exists()) {
+    await wrapper.get('button.toolbar-price').trigger('click')
+    await flushPromises()
+  }
+  return wrapper.findComponent({ name: 'PriceRangeSlider' })
+}
+
 /** Opens "What is % Match?" over the catalogue, folded by default since feat/23. */
 const openMatchNote = async (wrapper: VueWrapper) => {
   await wrapper.get('.match-explainer .match-info-toggle').trigger('click')
@@ -252,15 +264,16 @@ describe('src/views/ExploreView.vue', () => {
 
       const widget = wrapper.findComponent(SkinTypeRecommendationsWidget)
       const brandFilter = wrapper.get('select')
-      const heading = wrapper.findAll('h3').find((h) => h.text() === 'All Formulations')!
+      const heading = wrapper.findAll('h2').find((h) => h.text() === 'All formulations')!
       const firstCard = cards(wrapper)[0]!
 
-      // Document order: recommendations, filters, catalogue heading, grid.
+      // Document order: recommendations, catalogue heading, filters, grid. (Since
+      // feat/27 the heading sits above the filter bar rather than below it.)
       const follows = (a: Element, b: Element) =>
         !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
-      expect(follows(widget.element, brandFilter.element)).toBe(true)
-      expect(follows(brandFilter.element, heading.element)).toBe(true)
-      expect(follows(heading.element, firstCard.element)).toBe(true)
+      expect(follows(widget.element, heading.element)).toBe(true)
+      expect(follows(heading.element, brandFilter.element)).toBe(true)
+      expect(follows(brandFilter.element, firstCard.element)).toBe(true)
     })
 
     it('asks the widget to be foldable here', async () => {
@@ -377,7 +390,7 @@ describe('src/views/ExploreView.vue', () => {
       const { wrapper } = await mountExplore()
 
       const options = wrapper.findAll('select option').map((o) => o.text())
-      expect(options).toEqual(['All Curated Brands', 'Beauty of Joseon', 'CeraVe', 'La Roche-Posay'])
+      expect(options).toEqual(['All brands', 'Beauty of Joseon', 'CeraVe', 'La Roche-Posay'])
     })
 
     it('follows the address when it changes rather than only on load', async () => {
@@ -420,7 +433,7 @@ describe('src/views/ExploreView.vue', () => {
       // applying them has to re-request rather than re-filter.
       const { wrapper } = await mountExplore('/explore?q=serum')
 
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       expect(catalogRequests()).toEqual([
@@ -432,24 +445,25 @@ describe('src/views/ExploreView.vue', () => {
     it('passes the applied bounds back to the slider', async () => {
       const { wrapper } = await mountExplore()
 
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
-      const slider = wrapper.findComponent({ name: 'PriceRangeSlider' })
+      // Applying closes the popover; opened again, it starts from what was applied.
+      const slider = await priceSlider(wrapper)
       expect(slider.props('minPrice')).toBe(200)
       expect(slider.props('maxCap')).toBe(800)
     })
 
     it('restores the default bounds and requests again when cleared', async () => {
       const { wrapper } = await mountExplore()
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('clear')
+      ;(await priceSlider(wrapper)).vm.$emit('clear')
       await flushPromises()
 
       expect(catalogRequests()[2]).toEqual(['', undefined, undefined])
-      expect(wrapper.findComponent({ name: 'PriceRangeSlider' }).props('maxCap')).toBeNull()
+      expect((await priceSlider(wrapper)).props('maxCap')).toBeNull()
     })
 
     it('clears the grid rather than keeping the previous bounds’ results when a re-request fails', async () => {
@@ -461,7 +475,7 @@ describe('src/views/ExploreView.vue', () => {
       expect(marquee().props('products')).toHaveLength(1)
 
       vi.mocked(searchProducts).mockRejectedValue(new Error('network down'))
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       // Read off the header marquee, not the grid. The first version of this
@@ -537,7 +551,7 @@ describe('src/views/ExploreView.vue', () => {
 
       let resolve!: (value: unknown) => void
       vi.mocked(searchProducts).mockReturnValue(new Promise((r) => { resolve = r }) as never)
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await wrapper.vm.$nextTick()
 
       expect(region().attributes('style')).toContain('min-height: 900px')

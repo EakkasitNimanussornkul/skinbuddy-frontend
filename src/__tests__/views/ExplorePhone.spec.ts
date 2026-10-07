@@ -77,8 +77,16 @@ const lastRequest = () => catalogRequests()[catalogRequests().length - 1]
 const filtersButton = (w: VueWrapper) => w.get('button.filters-button')
 const sheet = (w: VueWrapper) => w.find('[role="dialog"]')
 const chips = (w: VueWrapper) => w.findAll('button.active-filter-chip')
-const slider = (w: VueWrapper) => w.findComponent({ name: 'PriceRangeSlider' })
-// The price slider in the filters sheet (feat/26); the lg panel's comes first.
+// The Price popover's slider. The popover is drawn only while open (feat/27), so
+// it is opened from the toolbar's Price button first if it is not.
+const priceSlider = async (w: VueWrapper) => {
+  if (!w.find('[role="dialog"][aria-label="Price range"]').exists()) {
+    await w.get('button.toolbar-price').trigger('click')
+    await flushPromises()
+  }
+  return w.findComponent({ name: 'PriceRangeSlider' })
+}
+// The price slider in the filters sheet (feat/26).
 const sheetSlider = (w: VueWrapper) => w.findAllComponents({ name: 'PriceRangeSlider' }).find((s) => s.props('variant') === 'sheet')!
 const dragSheetPrice = async (w: VueWrapper, min: number, maxCap: number | null) => {
   sheetSlider(w).vm.$emit('update:range', { min, maxCap })
@@ -119,32 +127,43 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(intro.get('p').text()).toBe('Every product in our catalogue.')
     })
 
-    it('keeps the banner, its product carousel and the four ticks for lg and up only', async () => {
+    it('keeps one compact band with a smaller product carousel for lg and up only, and no tick marks', async () => {
+      // Rewritten in feat/27: the banner with its large title, paragraph and four
+      // ticks became one short band. The ticks were dropped, and with them the
+      // "100% Independent analysis" claim.
       const { wrapper } = await mountExplore()
       const hero = wrapper.get('.explore-hero')
 
-      expect(hero.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:block']))
-      expect(hero.get('h1').text()).toBe('Explore Skincare Catalog')
+      expect(hero.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:flex', 'max-h-[120px]']))
+      expect(hero.get('h1').text()).toBe('Explore')
+      expect(hero.get('h1').classes()).toContain('font-serif')
+      expect(hero.get('p').text()).toBe('Every product in our catalogue, with ingredient breakdowns and a match for your skin type.')
       expect(hero.findComponent({ name: 'ProductShowcaseMarquee' }).exists()).toBe(true)
-      expect(hero.text()).toContain('Detailed ingredient breakdowns')
-      expect(hero.text()).toContain('100% Independent analysis')
+      expect(hero.text()).not.toContain('Independent analysis')
+      expect(hero.find('svg').exists()).toBe(false)
     })
 
-    it('hides the "Complete Registry" heading below lg, where the intro already says it, and keeps it for lg and up', async () => {
+    it('hides the catalogue heading below lg, where the intro already says it, and keeps it for lg and up', async () => {
+      // Rewritten in feat/27: "Complete Registry / All Formulations" and its
+      // sentence became a serif "All formulations" with a count.
       const { wrapper } = await mountExplore()
-      const heading = wrapper.get('.catalog-heading')
+      const section = wrapper.get('.explore-filters')
+      const heading = section.get('.catalog-heading')
 
-      expect(heading.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:block']))
-      expect(heading.get('h3').text()).toBe('All Formulations')
-      expect(heading.text()).toContain('Every product in the catalog, filtered by your selections above.')
+      expect(section.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:block']))
+      expect(heading.get('h2').text()).toBe('All formulations')
+      expect(heading.get('h2').classes()).toContain('font-serif')
+      expect(wrapper.text()).not.toContain('Complete Registry')
     })
   })
 
   describe('ExploreView (phone filter bar)', () => {
-    it('puts a Filters button before the category chips below lg, and keeps the big panel for lg and up', async () => {
+    it('puts a Filters button before the category chips below lg, and keeps the filter bar for lg and up', async () => {
+      // Reworded in feat/27: the big filter panel became the toolbar. Its price
+      // slider is in the popover, which is drawn only once opened.
       const { wrapper } = await mountExplore()
       const bar = wrapper.get('.explore-phone-filters')
-      const panel = wrapper.get('.explore-filter-panel')
+      const panel = wrapper.get('.explore-filters')
 
       expect(bar.classes()).toContain('lg:hidden')
       expect(filtersButton(wrapper).text()).toContain('Filters')
@@ -152,8 +171,9 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       const chipsBar = bar.findComponent({ name: 'ExploreCategoryBar' })
       expect(chipsBar.exists()).toBe(true)
       expect(filtersButton(wrapper).element.compareDocumentPosition(chipsBar.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(panel.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:grid']))
-      expect(panel.findComponent({ name: 'PriceRangeSlider' }).exists()).toBe(true)
+      expect(panel.classes()).toEqual(expect.arrayContaining(['hidden', 'lg:block']))
+      expect(panel.get('[role="toolbar"]').attributes('aria-label')).toBe('Filters')
+      expect(panel.findComponent({ name: 'PriceRangeSlider' }).exists()).toBe(false)
     })
 
     it('shows no count while no brand or price filter is set, the category included', async () => {
@@ -170,7 +190,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(wrapper.get('.filters-count').text()).toBe('1')
       expect(filtersButton(wrapper).text()).toContain('1 active')
 
-      slider(wrapper).vm.$emit('apply', { min: 0, maxCap: 1000 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 0, maxCap: 1000 })
       await flushPromises()
       expect(wrapper.get('.filters-count').text()).toBe('2')
       expect(wrapper.get('.filters-count').attributes('aria-hidden')).toBe('true')
@@ -192,11 +212,11 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('words a price filter "Up to ฿1,000" from zero, and "฿200 to ฿800" otherwise', async () => {
       const { wrapper } = await mountExplore()
 
-      slider(wrapper).vm.$emit('apply', { min: 0, maxCap: 1000 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 0, maxCap: 1000 })
       await flushPromises()
       expect(chips(wrapper).map((c) => [c.text(), c.attributes('aria-label')])).toEqual([['Up to ฿1,000', 'Remove filter: Up to ฿1,000']])
 
-      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
       expect(chips(wrapper).map((c) => c.text())).toEqual(['฿200 to ฿800'])
     })
@@ -204,7 +224,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('counts and shows a price filter that only raises the lower bound', async () => {
       const { wrapper } = await mountExplore()
 
-      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: null })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: null })
       await flushPromises()
 
       expect(chips(wrapper).map((c) => c.text())).toEqual(['From ฿200'])
@@ -213,14 +233,14 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
 
     it('clears the price filter from its chip, asking for the full range again', async () => {
       const { wrapper } = await mountExplore()
-      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       await chips(wrapper)[0]!.trigger('click')
       await flushPromises()
 
       expect(lastRequest()).toEqual(['', undefined, undefined])
-      expect(slider(wrapper).props('maxCap')).toBeNull()
+      expect((await priceSlider(wrapper)).props('maxCap')).toBeNull()
       expect(chips(wrapper)).toHaveLength(0)
     })
 
@@ -316,7 +336,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('starts from the filters on screen, and marks the chosen category with aria-pressed', async () => {
       const { wrapper } = await mountExplore('/explore?category=Serums')
       await wrapper.get('select').setValue('CeraVe')
-      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       await openSheet(wrapper)
@@ -344,8 +364,8 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       // The brand outlives the category change, which re-reads the address.
       expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('CeraVe')
       expect(chips(wrapper).map((c) => c.text())).toEqual(['CeraVe', '฿200 to ฿800'])
-      expect(slider(wrapper).props('minPrice')).toBe(200)
-      expect(slider(wrapper).props('maxCap')).toBe(800)
+      expect((await priceSlider(wrapper)).props('minPrice')).toBe(200)
+      expect((await priceSlider(wrapper)).props('maxCap')).toBe(800)
     })
 
     it('discards what was changed when the sheet is closed without "Show products"', async () => {
@@ -371,7 +391,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('resets every filter with "Clear all", applied on "Show products"', async () => {
       const { wrapper, router } = await mountExplore('/explore?category=Serums')
       await wrapper.get('select').setValue('CeraVe')
-      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
+      ;(await priceSlider(wrapper)).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
       await openSheet(wrapper)
 
