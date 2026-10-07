@@ -107,7 +107,7 @@ const EMPTY_TAB_TEXT: Record<SubmissionTab, string> = {
       <!-- Failed -->
       <section
         v-else-if="state === 'failed'"
-        class="load-failed mt-10 rounded-3xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-6 py-8 flex flex-col items-center text-center"
+        class="load-failed rise-in mt-10 rounded-3xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-6 py-8 flex flex-col items-center text-center"
         role="alert"
       >
         <svg class="w-8 h-8 text-amber-600 dark:text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" /></svg>
@@ -126,7 +126,7 @@ const EMPTY_TAB_TEXT: Record<SubmissionTab, string> = {
       <template v-else-if="rows.length === 0">
         <section
           aria-labelledby="subs-empty-h"
-          class="submissions-empty mt-10 rounded-3xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-[22px] py-8 flex flex-col items-center text-center"
+          class="submissions-empty rise-in mt-10 rounded-3xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-[22px] py-8 flex flex-col items-center text-center"
         >
           <span class="w-[72px] h-[72px] rounded-[22px] border-2 border-dashed border-stone-300 dark:border-stone-500 flex items-center justify-center">
             <svg class="w-[30px] h-[30px] text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6v4l2 3v10a1 1 0 01-1 1H8a1 1 0 01-1-1V10l2-3z" /><path d="M12 12v5M9.5 14.5h5" /></svg>
@@ -143,7 +143,7 @@ const EMPTY_TAB_TEXT: Record<SubmissionTab, string> = {
             Submit a product
           </RouterLink>
         </section>
-        <section aria-labelledby="subs-how-h" class="mt-3.5 rounded-[20px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-[18px] py-4">
+        <section aria-labelledby="subs-how-h" style="--rise-delay: 50ms" class="subs-how rise-in mt-3.5 rounded-[20px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark px-[18px] py-4">
           <h2 id="subs-how-h" class="m-0 mb-2.5 text-[13px] font-extrabold text-stone-800 dark:text-white">How it works</h2>
           <ol class="list-none m-0 p-0 flex flex-col gap-3">
             <li v-for="(line, i) in ['You send the product and its ingredients', 'Our team checks the details', 'It appears in Explore, with its % Match']" :key="i" class="flex gap-3 items-center">
@@ -156,16 +156,18 @@ const EMPTY_TAB_TEXT: Record<SubmissionTab, string> = {
 
       <!-- The list -->
       <template v-else>
-        <h1 class="mt-3 font-serif text-[26px] font-bold text-stone-800 dark:text-white">Products you sent</h1>
+        <!-- The blocks fade up in order as the screen opens (rise-in in style.css). -->
+        <h1 class="rise-in mt-3 font-serif text-[26px] font-bold text-stone-800 dark:text-white">Products you sent</h1>
         <RouterLink
           to="/submissions/new"
-          class="mt-3 min-h-12 rounded-[14px] border-[1.5px] border-brand-primary-strong dark:border-brand-primary text-brand-primary-strong-hover dark:text-brand-primary-accent text-[15px] font-extrabold flex items-center justify-center gap-2"
+          style="--rise-delay: 50ms"
+          class="rise-in mt-3 min-h-12 rounded-[14px] border-[1.5px] border-brand-primary-strong dark:border-brand-primary text-brand-primary-strong-hover dark:text-brand-primary-accent text-[15px] font-extrabold flex items-center justify-center gap-2"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           Submit a product
         </RouterLink>
 
-        <div role="tablist" aria-label="Filter by status" class="mt-4 flex gap-1.5 overflow-x-auto pb-1">
+        <div role="tablist" aria-label="Filter by status" style="--rise-delay: 100ms" class="rise-in mt-4 flex gap-1.5 overflow-x-auto pb-1">
           <button
             v-for="(t, i) in SUBMISSION_TABS"
             :id="`subs-tab-${t.id}`"
@@ -188,7 +190,7 @@ const EMPTY_TAB_TEXT: Record<SubmissionTab, string> = {
           </button>
         </div>
 
-        <div id="subs-panel" role="tabpanel" :aria-labelledby="`subs-tab-${tab}`" tabindex="0" class="mt-3.5 focus:outline-none">
+        <div id="subs-panel" role="tabpanel" :aria-labelledby="`subs-tab-${tab}`" tabindex="0" style="--rise-delay: 150ms" class="rise-in mt-3.5 focus:outline-none">
           <ul v-if="shown.length" class="list-none m-0 p-0 flex flex-col gap-2.5">
             <li
               v-for="row in shown"

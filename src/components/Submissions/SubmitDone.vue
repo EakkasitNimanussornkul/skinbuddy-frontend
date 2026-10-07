@@ -13,7 +13,8 @@ onMounted(() => heading.value?.focus())
 
 <template>
   <div class="submit-done flex-grow w-full max-w-md mx-auto px-5 pt-5 pb-6 flex flex-col lg:max-w-lg lg:pt-16">
-    <div class="mt-16 lg:mt-0 flex flex-col items-center text-center">
+    <!-- The blocks fade up in order as the screen opens (rise-in in style.css). -->
+    <div class="rise-in mt-16 lg:mt-0 flex flex-col items-center text-center">
       <span class="w-[72px] h-[72px] rounded-full bg-brand-primary-light dark:bg-brand-primary/20 flex items-center justify-center">
         <svg class="w-[34px] h-[34px] text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
       </span>
@@ -23,7 +24,7 @@ onMounted(() => heading.value?.focus())
       </p>
     </div>
 
-    <div class="mt-7 rounded-[18px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark p-4 flex gap-3.5 items-center">
+    <div style="--rise-delay: 50ms" class="sent-summary rise-in mt-7 rounded-[18px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark p-4 flex gap-3.5 items-center">
       <span class="w-14 h-14 rounded-[14px] bg-brand-bg-light dark:bg-stone-800 flex items-center justify-center shrink-0">
         <svg class="w-6 h-6 text-stone-500 dark:text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6v4l2 3v10a1 1 0 01-1 1H8a1 1 0 01-1-1V10l2-3z" /></svg>
       </span>
@@ -34,7 +35,7 @@ onMounted(() => heading.value?.focus())
       </span>
     </div>
 
-    <div class="mt-auto pt-8 flex flex-col gap-2.5">
+    <div style="--rise-delay: 100ms" class="rise-in mt-auto pt-8 flex flex-col gap-2.5">
       <RouterLink
         to="/submissions"
         class="h-[54px] rounded-2xl bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white text-base font-bold flex items-center justify-center transition-colors"

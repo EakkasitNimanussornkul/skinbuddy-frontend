@@ -105,31 +105,34 @@ onUnmounted(() => window.removeEventListener('click', onClickOutside))
         </svg>
         </button>
 
-        <nav
-          v-if="isMenuOpen"
-          id="mobile-account-menu"
-          aria-label="Account"
-          class="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-brand-surface-border dark:border-stone-700 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl p-1.5 z-50"
-        >
-          <!-- First, and tinted: the way in to sending a product. -->
-          <RouterLink to="/submissions/new" class="mobile-submit-product min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-extrabold bg-brand-primary-light dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent hover:bg-brand-primary-light/70 dark:hover:bg-brand-primary/25" @click="closeMenu()">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-            Submit a product
-          </RouterLink>
-          <RouterLink to="/submissions" class="mobile-my-submissions min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
-            <svg class="w-5 h-5 text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H5.2L4 17.2z" /><path d="M8 9h8M8 12h5" /></svg>
-            My submissions
-          </RouterLink>
-          <RouterLink v-if="isAdmin" to="/admin/submissions" class="mobile-review-submissions min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
-            <svg class="w-5 h-5 text-brand-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></svg>
-            Review submissions
-            <span class="ml-auto text-[10px] font-extrabold tracking-wider text-brand-text-muted">ADMIN</span>
-          </RouterLink>
-          <RouterLink to="/settings" class="mobile-settings min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
-            <svg class="w-5 h-5 text-brand-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
-            Settings
-          </RouterLink>
-        </nav>
+        <!-- Drops from the cog, from its top right corner. -->
+        <Transition name="menu-drop">
+          <nav
+            v-if="isMenuOpen"
+            id="mobile-account-menu"
+            aria-label="Account"
+            class="absolute right-0 top-full mt-2 w-60 origin-top-right rounded-2xl border border-brand-surface-border dark:border-stone-700 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl p-1.5 z-50"
+          >
+            <!-- First, and tinted: the way in to sending a product. -->
+            <RouterLink to="/submissions/new" class="mobile-submit-product min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-extrabold bg-brand-primary-light dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent hover:bg-brand-primary-light/70 dark:hover:bg-brand-primary/25" @click="closeMenu()">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              Submit a product
+            </RouterLink>
+            <RouterLink to="/submissions" class="mobile-my-submissions min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
+              <svg class="w-5 h-5 text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H5.2L4 17.2z" /><path d="M8 9h8M8 12h5" /></svg>
+              My submissions
+            </RouterLink>
+            <RouterLink v-if="isAdmin" to="/admin/submissions" class="mobile-review-submissions min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
+              <svg class="w-5 h-5 text-brand-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></svg>
+              Review submissions
+              <span class="ml-auto text-[10px] font-extrabold tracking-wider text-brand-text-muted">ADMIN</span>
+            </RouterLink>
+            <RouterLink to="/settings" class="mobile-settings min-h-11 px-3 flex items-center gap-3 rounded-xl text-sm font-bold text-brand-text dark:text-stone-200 hover:bg-brand-bg-light dark:hover:bg-stone-800" @click="closeMenu()">
+              <svg class="w-5 h-5 text-brand-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
+              Settings
+            </RouterLink>
+          </nav>
+        </Transition>
       </div>
 
     </div>

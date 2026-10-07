@@ -171,3 +171,88 @@ body {
     transition: none;
   }
 }
+
+/* A page's main blocks fading up into place as it opens, on the curve and
+   distance of the quiz's entrance (components/Quiz/quizMotion.css). Plays once,
+   when the element mounts or is shown again after display: none. Stagger with
+   --rise-delay; --rise-duration and --rise-distance tune a smaller use, such as
+   the sidebar's categories. `backwards` holds the start through the delay and
+   lets go at the end, so a later hover or colour change still transitions. */
+.rise-in {
+  animation: rise-in var(--rise-duration, 300ms) cubic-bezier(0.16, 1, 0.3, 1) var(--rise-delay, 0ms) backwards;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise-distance, 10px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* A small menu opening from its button, as the old top-bar user menu did:
+   <Transition name="menu-drop"> for one that opens downwards, "menu-rise" for
+   one that opens upwards (the sidebar's account menu). A leaving menu takes no
+   clicks. */
+.menu-drop-enter-active,
+.menu-drop-leave-active,
+.menu-rise-enter-active,
+.menu-rise-leave-active {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.menu-drop-leave-active,
+.menu-rise-leave-active {
+  pointer-events: none;
+}
+.menu-drop-enter-from,
+.menu-drop-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
+.menu-rise-enter-from,
+.menu-rise-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+}
+
+/* A modal dialog: <Transition name="dialog-pop"> on the backdrop, which fades,
+   with the panel inside marked .dialog-pop-panel, which also scales up from
+   0.96. Leaving runs the same in reverse. */
+.dialog-pop-enter-active,
+.dialog-pop-leave-active {
+  transition: opacity 200ms ease;
+}
+.dialog-pop-leave-active {
+  pointer-events: none;
+}
+.dialog-pop-enter-active .dialog-pop-panel,
+.dialog-pop-leave-active .dialog-pop-panel {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dialog-pop-enter-from,
+.dialog-pop-leave-to {
+  opacity: 0;
+}
+.dialog-pop-enter-from .dialog-pop-panel,
+.dialog-pop-leave-to .dialog-pop-panel {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+  .menu-drop-enter-active,
+  .menu-drop-leave-active,
+  .menu-rise-enter-active,
+  .menu-rise-leave-active,
+  .dialog-pop-enter-active,
+  .dialog-pop-leave-active,
+  .dialog-pop-enter-active .dialog-pop-panel,
+  .dialog-pop-leave-active .dialog-pop-panel {
+    transition: none;
+  }
+}

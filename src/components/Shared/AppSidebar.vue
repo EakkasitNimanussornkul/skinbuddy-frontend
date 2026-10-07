@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useAdmin } from '../../composables/useAdmin'
+import CollapseTransition from './CollapseTransition.vue'
 
 /**
  * The desktop navigation (lg and up), down the left of every page: the main
@@ -42,6 +43,11 @@ const currentCategory = computed(() => (onExplore.value && typeof route.query.ca
 // default on /explore, the list pushed Routine, Shelves, SkinBuddy AI and
 // "Products you send" below the fold at 1280x800 (owner check).
 const exploreOpen = ref(false)
+
+// The items' fade as the list opens, kept short: the last of the ten starts
+// 63ms in and is done by 193ms. Skipped under reduced motion (style.css).
+const CATEGORY_STAGGER_MS = 7
+const CATEGORY_RISE = { '--rise-duration': '130ms', '--rise-distance': '4px' }
 const toggleExplore = () => {
   exploreOpen.value = !exploreOpen.value
 }
@@ -164,36 +170,43 @@ const linkClass = (current: boolean) => [
               <svg :class="['w-4 h-4 transition-transform duration-200 motion-reduce:transition-none', exploreOpen ? '' : 'rotate-180']" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
             </button>
           </div>
-          <!-- A compact two-column grid, so the open list stays short. -->
-          <ul
-            v-show="exploreOpen"
-            id="sidebar-explore-categories"
-            class="list-none mt-0.5 mb-1.5 ml-3 pl-2 border-l-2 border-brand-surface-border dark:border-stone-600 grid grid-cols-2 gap-0.5"
-          >
-            <li v-for="category in CATEGORIES" :key="category">
-              <RouterLink
-                :to="{ path: '/explore', query: { category } }"
-                :class="[
-                  'sidebar-category min-h-10 px-2 rounded-[10px] flex items-center text-[13px] leading-tight break-words transition-colors',
-                  currentCategory === category
-                    ? 'bg-brand-primary-light/70 dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent font-extrabold'
-                    : 'text-stone-700 dark:text-stone-200 font-semibold hover:bg-brand-bg-light dark:hover:bg-stone-700/60',
-                ]"
-                :aria-current="currentCategory === category ? 'true' : undefined"
+          <!-- A compact two-column grid, so the open list stays short. It
+               folds open and shut, the wrapper taking the fold since a margin
+               on the folded element would show while it closes, and the items
+               fade in one after another as it opens. -->
+          <CollapseTransition>
+            <div v-show="exploreOpen" class="sidebar-categories-fold">
+              <ul
+                id="sidebar-explore-categories"
+                class="list-none mt-0.5 mb-1.5 ml-3 pl-2 border-l-2 border-brand-surface-border dark:border-stone-600 grid grid-cols-2 gap-0.5"
+                :style="CATEGORY_RISE"
               >
-                {{ category }}
-              </RouterLink>
-            </li>
-            <li class="col-span-2">
-              <RouterLink
-                to="/submissions/new"
-                class="sidebar-category-submit mt-1.5 min-h-11 px-2.5 py-2 rounded-xl flex flex-col justify-center gap-0.5 bg-brand-bg-light dark:bg-stone-700/50 hover:bg-brand-primary-light dark:hover:bg-brand-primary/15 transition-colors"
-              >
-                <!-- One line, so the link reads with a space between its parts. -->
-                <span class="text-[13px] font-bold text-stone-600 dark:text-stone-300">Couldn't find your product?</span> <span class="text-sm font-extrabold text-brand-primary-strong dark:text-brand-primary">Submit it here</span>
-              </RouterLink>
-            </li>
-          </ul>
+                <li v-for="(category, i) in CATEGORIES" :key="category" class="rise-in" :style="{ '--rise-delay': `${i * CATEGORY_STAGGER_MS}ms` }">
+                  <RouterLink
+                    :to="{ path: '/explore', query: { category } }"
+                    :class="[
+                      'sidebar-category min-h-10 px-2 rounded-[10px] flex items-center text-[13px] leading-tight break-words transition-colors',
+                      currentCategory === category
+                        ? 'bg-brand-primary-light/70 dark:bg-brand-primary/15 text-brand-primary-strong-hover dark:text-brand-primary-accent font-extrabold'
+                        : 'text-stone-700 dark:text-stone-200 font-semibold hover:bg-brand-bg-light dark:hover:bg-stone-700/60',
+                    ]"
+                    :aria-current="currentCategory === category ? 'true' : undefined"
+                  >
+                    {{ category }}
+                  </RouterLink>
+                </li>
+                <li class="col-span-2 rise-in" :style="{ '--rise-delay': `${CATEGORIES.length * CATEGORY_STAGGER_MS}ms` }">
+                  <RouterLink
+                    to="/submissions/new"
+                    class="sidebar-category-submit mt-1.5 min-h-11 px-2.5 py-2 rounded-xl flex flex-col justify-center gap-0.5 bg-brand-bg-light dark:bg-stone-700/50 hover:bg-brand-primary-light dark:hover:bg-brand-primary/15 transition-colors"
+                  >
+                    <!-- One line, so the link reads with a space between its parts. -->
+                    <span class="text-[13px] font-bold text-stone-600 dark:text-stone-300">Couldn't find your product?</span> <span class="text-sm font-extrabold text-brand-primary-strong dark:text-brand-primary">Submit it here</span>
+                  </RouterLink>
+                </li>
+              </ul>
+            </div>
+          </CollapseTransition>
         </li>
 
         <li v-for="link in MAIN_LINKS" :key="link.to">
@@ -246,25 +259,28 @@ const linkClass = (current: boolean) => [
       </RouterLink>
 
       <div ref="menuRoot" class="relative" @keydown="onMenuKeydown">
-        <ul
-          v-if="isMenuOpen"
-          id="sidebar-account-menu"
-          aria-label="Account"
-          class="list-none m-0 absolute bottom-full left-0 right-0 mb-2 p-1.5 rounded-2xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl z-40 flex flex-col gap-0.5"
-        >
-          <li>
-            <RouterLink to="/profile" class="sidebar-profile min-h-11 px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-stone-800 dark:text-stone-100 hover:bg-brand-bg-light dark:hover:bg-stone-700/60" @click="closeMenu()">
-              <svg class="w-5 h-5 shrink-0 text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 21a7 7 0 0114 0" /></svg>
-              Your skin profile
-            </RouterLink>
-          </li>
-          <li>
-            <button type="button" class="sidebar-logout w-full min-h-11 px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30" @click="logOut">
-              <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 16l4-4-4-4M21 12H9M13 20H6a2 2 0 01-2-2V6a2 2 0 012-2h7" /></svg>
-              Log out
-            </button>
-          </li>
-        </ul>
+        <!-- Opens upwards, so it rises from its bottom edge. -->
+        <Transition name="menu-rise">
+          <ul
+            v-if="isMenuOpen"
+            id="sidebar-account-menu"
+            aria-label="Account"
+            class="list-none m-0 absolute bottom-full left-0 right-0 mb-2 p-1.5 origin-bottom rounded-2xl border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl z-40 flex flex-col gap-0.5"
+          >
+            <li>
+              <RouterLink to="/profile" class="sidebar-profile min-h-11 px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-stone-800 dark:text-stone-100 hover:bg-brand-bg-light dark:hover:bg-stone-700/60" @click="closeMenu()">
+                <svg class="w-5 h-5 shrink-0 text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 21a7 7 0 0114 0" /></svg>
+                Your skin profile
+              </RouterLink>
+            </li>
+            <li>
+              <button type="button" class="sidebar-logout w-full min-h-11 px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30" @click="logOut">
+                <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 16l4-4-4-4M21 12H9M13 20H6a2 2 0 01-2-2V6a2 2 0 012-2h7" /></svg>
+                Log out
+              </button>
+            </li>
+          </ul>
+        </Transition>
 
         <button
           ref="menuButton"

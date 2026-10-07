@@ -81,27 +81,28 @@ const notNow = () => {
         Back
       </button>
 
-      <span class="w-[52px] h-[52px] rounded-2xl bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center">
+      <!-- The blocks fade up in order as the screen opens (rise-in in style.css). -->
+      <span class="rise-in w-[52px] h-[52px] rounded-2xl bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center">
         <svg class="w-[26px] h-[26px] text-amber-800 dark:text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M12 9v4M12 16h.01" /></svg>
       </span>
-      <div class="flex flex-col gap-2">
+      <div class="rise-in flex flex-col gap-2" style="--rise-delay: 50ms">
         <h1 class="m-0 font-serif text-[28px] font-bold leading-tight text-stone-800 dark:text-white">Your check-ins are health information</h1>
         <p class="m-0 text-[15px] leading-relaxed text-stone-600 dark:text-stone-300">Thai law treats this as sensitive, so we ask before you start.</p>
       </div>
 
-      <section aria-label="What this consent covers" class="health-facts rounded-[20px] border border-brand-surface-border dark:border-stone-700 bg-brand-surface-light dark:bg-brand-surface-dark p-4 flex flex-col gap-3">
+      <section aria-label="What this consent covers" style="--rise-delay: 100ms" class="health-facts rise-in rounded-[20px] border border-brand-surface-border dark:border-stone-700 bg-brand-surface-light dark:bg-brand-surface-dark p-4 flex flex-col gap-3">
         <div v-for="fact in FACTS" :key="fact.label" class="health-fact flex flex-col gap-0.5">
           <span class="text-[13px] font-extrabold uppercase tracking-[0.08em] text-stone-600 dark:text-stone-300">{{ fact.label }}</span>
           <span class="text-[15px] leading-normal text-stone-800 dark:text-stone-100">{{ fact.body }}</span>
         </div>
       </section>
 
-      <p class="m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+      <p class="rise-in m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300" style="--rise-delay: 150ms">
         The weekly report is a guide, not a diagnosis. You can withdraw this consent in Settings at any time. More in the
         <RouterLink to="/privacy" class="privacy-link font-extrabold text-brand-primary-strong dark:text-brand-primary underline-offset-2 hover:underline">Privacy Policy</RouterLink>.
       </p>
 
-      <label class="min-h-14 flex gap-3 items-center px-3.5 py-3 rounded-[14px] border-2 border-brand-primary-strong dark:border-brand-primary bg-brand-surface-light dark:bg-brand-surface-dark text-[15px] font-bold leading-snug text-stone-800 dark:text-stone-100 cursor-pointer">
+      <label class="rise-in min-h-14 flex gap-3 items-center px-3.5 py-3 rounded-[14px] border-2 border-brand-primary-strong dark:border-brand-primary bg-brand-surface-light dark:bg-brand-surface-dark text-[15px] font-bold leading-snug text-stone-800 dark:text-stone-100 cursor-pointer" style="--rise-delay: 200ms">
         <input v-model="agreed" type="checkbox" class="health-check w-[22px] h-[22px] shrink-0 accent-brand-primary-strong dark:accent-brand-primary cursor-pointer" :disabled="busy" />
         I agree that SkinBuddy may keep and analyse my check-ins as described above
       </label>
@@ -110,7 +111,7 @@ const notNow = () => {
         {{ error }}
       </p>
 
-      <div class="mt-auto flex flex-col gap-2">
+      <div class="rise-in mt-auto flex flex-col gap-2" style="--rise-delay: 250ms">
         <button
           type="button"
           class="health-agree min-h-[52px] rounded-2xl text-base font-extrabold transition-colors motion-reduce:transition-none bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white dark:bg-brand-primary dark:hover:bg-brand-primary-hover dark:text-stone-900 disabled:bg-brand-surface-border disabled:text-stone-600 dark:disabled:bg-stone-600 dark:disabled:text-stone-300 disabled:cursor-not-allowed"

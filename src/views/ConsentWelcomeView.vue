@@ -84,13 +84,14 @@ const policyLink = 'font-extrabold text-brand-primary-strong dark:text-brand-pri
 <template>
   <div class="consent-welcome min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-200 transition-colors duration-300 motion-reduce:transition-none">
     <main class="w-full max-w-md mx-auto min-h-screen px-5 pt-7 pb-6 flex flex-col gap-[18px]">
-      <img src="/images/jelly.png" alt="" class="w-16 h-16 object-contain" />
-      <div class="flex flex-col gap-2">
+      <!-- The blocks fade up in order as the screen opens (rise-in in style.css). -->
+      <img src="/images/jelly.png" alt="" class="rise-in w-16 h-16 object-contain" />
+      <div class="rise-in flex flex-col gap-2" style="--rise-delay: 50ms">
         <h1 class="m-0 font-serif text-[30px] font-bold text-stone-800 dark:text-white">Before you start</h1>
         <p class="m-0 text-[15px] leading-relaxed text-stone-600 dark:text-stone-300">SkinBuddy is a student project. Here's what it keeps when you use it.</p>
       </div>
 
-      <ul class="welcome-points list-none m-0 p-0 flex flex-col gap-2.5">
+      <ul class="welcome-points rise-in list-none m-0 p-0 flex flex-col gap-2.5" style="--rise-delay: 100ms">
         <li v-for="point in POINTS" :key="point.title" class="flex gap-3 items-start rounded-2xl border border-brand-surface-border dark:border-stone-700 bg-brand-surface-light dark:bg-brand-surface-dark px-3.5 py-3">
           <span class="w-8 h-8 shrink-0 rounded-[10px] bg-brand-primary-light dark:bg-brand-primary/15 flex items-center justify-center">
             <svg class="w-4 h-4 text-brand-primary-strong dark:text-brand-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
@@ -102,14 +103,14 @@ const policyLink = 'font-extrabold text-brand-primary-strong dark:text-brand-pri
         </li>
       </ul>
 
-      <p class="m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+      <p class="rise-in m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300" style="--rise-delay: 150ms">
         SkinBuddy gives guidance, not medical advice. Read the full
         <RouterLink to="/privacy" :class="['privacy-link', policyLink]">Privacy Policy</RouterLink>
         and
         <RouterLink to="/terms" :class="['terms-link', policyLink]">Terms of Service</RouterLink>.
       </p>
 
-      <fieldset class="border-0 m-0 p-0 flex flex-col gap-2.5">
+      <fieldset class="rise-in border-0 m-0 p-0 flex flex-col gap-2.5" style="--rise-delay: 200ms">
         <legend class="sr-only">Confirm to continue</legend>
         <label :class="checkboxRow">
           <input v-model="ageConfirmed" type="checkbox" class="age-check" :class="checkbox" :disabled="busy" />
@@ -125,7 +126,7 @@ const policyLink = 'font-extrabold text-brand-primary-strong dark:text-brand-pri
         {{ error }}
       </p>
 
-      <div class="mt-auto flex flex-col gap-2">
+      <div class="rise-in mt-auto flex flex-col gap-2" style="--rise-delay: 250ms">
         <button
           type="button"
           class="welcome-continue min-h-[52px] rounded-2xl text-base font-extrabold transition-colors motion-reduce:transition-none bg-brand-primary-strong hover:bg-brand-primary-strong-hover text-white dark:bg-brand-primary dark:hover:bg-brand-primary-hover dark:text-stone-900 disabled:bg-brand-surface-border disabled:text-stone-600 dark:disabled:bg-stone-600 dark:disabled:text-stone-300 disabled:cursor-not-allowed"

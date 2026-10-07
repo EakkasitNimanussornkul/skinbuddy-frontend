@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -18,27 +16,10 @@ import AppSidebar from '../../components/Shared/AppSidebar.vue'
 import AlertDialog from '../../components/Shared/AlertDialog.vue'
 import BottomSheet from '../../components/Shared/BottomSheet.vue'
 import SearchAutocompleteInput from '../../components/Shared/SearchAutocompleteInput.vue'
+import { STYLE, rules, declared } from '../fixtures/styleRules'
 
 // jsdom draws no scrollbars and applies no stylesheet, so the rules are read
-// from style.css as text and the classes from the rendered markup. Read from
-// disk (Vitest runs from the project root): it empties a CSS import, ?raw included.
-const STYLE = readFileSync(join(process.cwd(), 'src', 'assets', 'style.css'), 'utf8')
-
-type Rule = { selector: string; body: string }
-
-// Every innermost `selector { declarations }` block, comments removed. A rule
-// inside an @media block comes out with its own selector.
-const rules = (css: string): Rule[] =>
-  Array.from(css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g), (m) => ({
-    selector: m[1]!.trim().replace(/\s+/g, ' '),
-    body: m[2]!.replace(/\s+/g, ' ').trim(),
-  }))
-
-const declared = (selector: string, property: string) =>
-  rules(STYLE)
-    .filter((r) => r.selector.split(',').map((s) => s.trim()).includes(selector))
-    .map((r) => r.body.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`))?.[1]?.trim())
-    .filter((v): v is string => !!v)
+// from style.css as text and the classes from the rendered markup.
 
 const mounted: VueWrapper[] = []
 const track = (w: VueWrapper) => {

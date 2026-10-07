@@ -922,6 +922,22 @@ const SPEC_MAP = [
       'style.css read from disk as text (Vitest empties a CSS import) and split into its rules. The components mounted with @vue/test-utils, attached to the document, with a fresh Pinia; AppSidebar and SearchAutocompleteInput on a memory history, with the shared apiClient and searchProducts mocked and Vitest fake timers driving the search debounce. The theme store is the real one. No network access.',
     note: 'jsdom draws no scrollbars and applies no stylesheet, so these cards pin the rules in style.css and the classes on the rendered panels; the bars themselves are checked in a real browser. The root says color-scheme light, and the rule saying dark matches <html> exactly while themeStore has put the dark class on it, so native scrollbars and form controls follow the theme. .scroll-thin is a thin bar with a muted brand thumb on a clear track, with its own dark colour and webkit fallbacks. The sidebar scroll area, where Explore\'s categories open, uses it with a stable gutter, and so do the search suggestions, a bottom sheet body and the alert dialog.',
   },
+  {
+    file: 'src/__tests__/components/NavigationMotion.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'assets/style.css (rise-in, menu-drop, menu-rise, reduced motion), components/Shared/AppSidebar, components/Shared/MobileTopBar, components/Shared/MatchInfoDisclosure, components/Shared/SearchAutocompleteInput, views/MySubmissionsView, components/Submissions/SubmitDone',
+    prerequisite:
+      'style.css read from disk as text and split into its rules (src/__tests__/fixtures/styleRules.ts). The components mounted with @vue/test-utils on a memory history, attached to the document, with a fresh Pinia; the shared apiClient, searchProducts and getMySubmissions mocked, and Vitest fake timers driving the search debounce. Transition is stubbed by @vue/test-utils, so the transition used is read off the stub\'s name; one case mounts it for real with prefers-reduced-motion lifted. No network access.',
+    note: 'The motion is pinned by what drives it, since jsdom runs no CSS animation: the class or transition on each element, the stagger delays, and the rules in style.css. Every animation and transition in style.css is switched off under prefers-reduced-motion. Explore\'s categories fold with CollapseTransition (a height animation only when motion is allowed) and fade in one after another within 200ms; the account menus drop (MobileTopBar, search suggestions) or rise (the sidebar) with the old top-bar menu\'s fade, 8px and 0.97 scale; "What is % Match?" folds the same way. The submission pages fade their blocks up on the quiz\'s entrance curve. The look and timing are checked in a real browser.',
+  },
+  {
+    file: 'src/__tests__/views/ConsentMotion.spec.ts',
+    feature: '#1 Authentication (supplementary)',
+    module: 'components/Shared/AlertDialog (open, dialog-pop), views/SettingsView, views/ConsentWelcomeView, views/HealthConsentView, views/AccountDeletedView, components/Legal/LegalPage',
+    prerequisite:
+      'Each view mounted with @vue/test-utils on a memory history, attached to the document, signed in through the real auth store, with GET /auth/me answering a given consent through the mocked apiClient; bare axios mocked to fail for the policy version. AlertDialog mounted alone with the real Teleport. Transition is stubbed by @vue/test-utils except in the one case that mounts it for real with prefers-reduced-motion lifted. Consent and role state reset per case. No network access.',
+    note: 'The Withdraw and Delete dialogs stay mounted and open through an `open` prop, so they can play their closing half: the backdrop fades and the panel scales from 0.96, in and out. Focus moves to the safe choice as soon as a dialog opens and back to the opener as soon as it closes, without waiting for the motion. On Settings the consent state cross-fades (old and new share one grid cell) and the cards fade up 40ms apart; the consent, account deleted and legal screens fade their blocks up 50ms apart. The Continue and Agree buttons already eased their colour from off to on; that is pinned here, and the tick boxes stay native with no added animation.',
+  },
 ]
 
 function runSuite() {

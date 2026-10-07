@@ -137,14 +137,16 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
 <template>
   <div class="settings-page min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-brand-text dark:text-stone-200 pb-32 lg:pb-12 transition-colors duration-300">
     <main class="w-full max-w-[1040px] px-4 pt-5 sm:px-7 lg:pt-8 flex flex-col gap-4 lg:gap-[22px]">
-      <h1 class="m-0 font-serif text-[30px] lg:text-4xl font-bold text-stone-800 dark:text-white">Settings</h1>
+      <!-- The cards fade up in reading order as the page opens, 40ms apart
+           (rise-in in style.css). -->
+      <h1 class="rise-in m-0 font-serif text-[30px] lg:text-4xl font-bold text-stone-800 dark:text-white">Settings</h1>
 
       <!-- Each column grows from 380px and wraps, so two sit side by side only
            where both fit. -->
       <div class="flex flex-wrap items-start gap-4 lg:gap-[22px]">
         <div class="flex-[1_1_380px] min-w-0 flex flex-col gap-4 lg:gap-[22px]">
 
-          <section aria-labelledby="settings-account" :class="['settings-account p-[18px] lg:p-[22px] flex flex-col gap-3 lg:gap-4', cardClass]">
+          <section aria-labelledby="settings-account" style="--rise-delay: 40ms" :class="['settings-account rise-in p-[18px] lg:p-[22px] flex flex-col gap-3 lg:gap-4', cardClass]">
             <h2 id="settings-account" :class="headingClass">Account</h2>
             <div class="flex items-center gap-3.5 lg:gap-4">
               <span class="w-14 h-14 lg:w-16 lg:h-16 rounded-full overflow-hidden shrink-0 bg-brand-surface-border dark:bg-stone-600 flex items-center justify-center">
@@ -167,7 +169,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
             </button>
           </section>
 
-          <section aria-labelledby="settings-skin" :class="['settings-skin p-[18px] lg:p-[22px] flex flex-col gap-3 lg:gap-3.5', cardClass]">
+          <section aria-labelledby="settings-skin" style="--rise-delay: 80ms" :class="['settings-skin rise-in p-[18px] lg:p-[22px] flex flex-col gap-3 lg:gap-3.5', cardClass]">
             <h2 id="settings-skin" :class="headingClass">Your skin type</h2>
             <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <span v-if="skinType" class="skin-type font-serif text-[30px] lg:text-[34px] font-bold text-stone-800 dark:text-white">{{ skinType }}</span>
@@ -195,29 +197,40 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
             </RouterLink>
           </section>
 
-          <section aria-labelledby="settings-privacy" :class="['settings-privacy px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
+          <section aria-labelledby="settings-privacy" style="--rise-delay: 120ms" :class="['settings-privacy rise-in px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
             <h2 id="settings-privacy" :class="[headingClass, 'mt-3 mb-1 lg:mt-3.5 lg:mb-1.5']">Privacy</h2>
+            <!-- Given and Not given cross-fade: the old and new state share one
+                 grid cell while they swap, so nothing jumps, and the new one is
+                 in place at once for focus to move to. -->
             <div class="health-consent-row min-h-[72px] flex items-center gap-3 border-b border-brand-surface-border dark:border-stone-700">
               <span class="flex-grow flex flex-col gap-0.5">
                 <span class="text-[15px] font-bold text-stone-800 dark:text-stone-100">Weekly check-in consent</span>
-                <span class="consent-status text-[13px] text-stone-600 dark:text-stone-300">{{ healthStatus }}</span>
+                <span class="consent-status-cell grid">
+                  <Transition name="swap-fade">
+                    <span :key="healthStatus" class="consent-status [grid-area:1/1] text-[13px] text-stone-600 dark:text-stone-300">{{ healthStatus }}</span>
+                  </Transition>
+                </span>
               </span>
-              <button
-                v-if="healthGiven"
-                type="button"
-                class="withdraw-consent min-h-11 px-3.5 shrink-0 rounded-xl border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-sm font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                @click="openWithdraw"
-              >
-                Withdraw
-              </button>
-              <RouterLink
-                v-else
-                ref="giveConsentLink"
-                :to="{ path: '/consent/health', query: { next: '/settings' } }"
-                class="give-consent min-h-11 px-3.5 shrink-0 rounded-xl inline-flex items-center border border-brand-primary-strong dark:border-brand-primary text-brand-primary-strong dark:text-brand-primary text-sm font-extrabold hover:bg-brand-primary-light dark:hover:bg-brand-primary/15 transition-colors"
-              >
-                Give consent
-              </RouterLink>
+              <span class="consent-action-cell grid shrink-0 justify-items-end">
+                <Transition name="swap-fade">
+                  <button
+                    v-if="healthGiven"
+                    type="button"
+                    class="withdraw-consent [grid-area:1/1] min-h-11 px-3.5 rounded-xl border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-sm font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                    @click="openWithdraw"
+                  >
+                    Withdraw
+                  </button>
+                  <RouterLink
+                    v-else
+                    ref="giveConsentLink"
+                    :to="{ path: '/consent/health', query: { next: '/settings' } }"
+                    class="give-consent [grid-area:1/1] min-h-11 px-3.5 rounded-xl inline-flex items-center border border-brand-primary-strong dark:border-brand-primary text-brand-primary-strong dark:text-brand-primary text-sm font-extrabold hover:bg-brand-primary-light dark:hover:bg-brand-primary/15 transition-colors"
+                  >
+                    Give consent
+                  </RouterLink>
+                </Transition>
+              </span>
             </div>
             <RouterLink to="/privacy" :class="['privacy-link border-b border-brand-surface-border dark:border-stone-700', rowLinkClass]">
               Privacy Policy
@@ -231,7 +244,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
         </div>
 
         <div class="flex-[1_1_380px] min-w-0 flex flex-col gap-4 lg:gap-[22px]">
-          <section aria-labelledby="settings-prefs" :class="['settings-prefs px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
+          <section aria-labelledby="settings-prefs" style="--rise-delay: 160ms" :class="['settings-prefs rise-in px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
             <h2 id="settings-prefs" :class="[headingClass, 'mt-3 mb-1 lg:mt-3.5 lg:mb-1.5']">Preferences</h2>
             <div class="min-h-[60px] flex items-center gap-3 border-b border-brand-surface-border dark:border-stone-700">
               <svg class="w-5 h-5 shrink-0 text-stone-600 dark:text-stone-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>
@@ -261,7 +274,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
           </section>
 
           <!-- Phones only: on lg the sidebar carries these two links. -->
-          <section aria-labelledby="settings-send" :class="['settings-send lg:hidden px-[18px] py-1.5 flex flex-col', cardClass]">
+          <section aria-labelledby="settings-send" style="--rise-delay: 200ms" :class="['settings-send rise-in lg:hidden px-[18px] py-1.5 flex flex-col', cardClass]">
             <h2 id="settings-send" :class="[headingClass, 'mt-3 mb-1']">Products you send</h2>
             <RouterLink to="/submissions" :class="['my-submissions-link border-b border-brand-surface-border dark:border-stone-700', rowLinkClass]">
               My submissions
@@ -274,7 +287,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
           </section>
 
           <!-- "Help and legal" once the privacy and terms pages exist. -->
-          <section aria-labelledby="settings-help" :class="['settings-help px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
+          <section aria-labelledby="settings-help" style="--rise-delay: 240ms" :class="['settings-help rise-in px-[18px] py-1.5 lg:px-[22px] lg:py-2 flex flex-col', cardClass]">
             <h2 id="settings-help" :class="[headingClass, 'mt-3 mb-1 lg:mt-3.5 lg:mb-1.5']">Help</h2>
             <RouterLink to="/how-match-works" :class="['match-link border-b border-brand-surface-border dark:border-stone-700', rowLinkClass]">
               How % Match works
@@ -286,7 +299,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
             </div>
           </section>
 
-          <section aria-labelledby="settings-delete" class="settings-delete p-[18px] lg:p-[22px] flex flex-col gap-2.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-red-200 dark:border-red-900 rounded-[22px] lg:rounded-3xl">
+          <section aria-labelledby="settings-delete" style="--rise-delay: 280ms" class="settings-delete rise-in p-[18px] lg:p-[22px] flex flex-col gap-2.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-red-200 dark:border-red-900 rounded-[22px] lg:rounded-3xl">
             <h2 id="settings-delete" class="m-0 text-xs lg:text-[13px] font-extrabold uppercase tracking-[0.1em] text-red-700 dark:text-red-300">Delete account</h2>
             <p class="m-0 text-sm leading-relaxed text-stone-600 dark:text-stone-300">Removes your SkinBuddy account and everything in it, and ends the link with your LINE account.</p>
             <button
@@ -303,7 +316,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
         </div>
       </div>
 
-      <button type="button" class="logout-phone lg:hidden min-h-[52px] rounded-2xl border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-[15px] font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" @click="handleLogout">
+      <button type="button" style="--rise-delay: 320ms" class="logout-phone rise-in lg:hidden min-h-[52px] rounded-2xl border border-red-200 dark:border-red-900 bg-transparent text-red-700 dark:text-red-300 text-[15px] font-extrabold hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" @click="handleLogout">
         Log out
       </button>
     </main>
@@ -316,7 +329,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
     />
 
     <AlertDialog
-      v-if="showWithdraw"
+      :open="showWithdraw"
       title="Withdraw your consent?"
       cancel-label="Keep it"
       confirm-label="Withdraw"
@@ -331,7 +344,7 @@ const rowLinkClass = 'min-h-14 flex items-center gap-3 text-[15px] font-bold tex
     </AlertDialog>
 
     <AlertDialog
-      v-if="showDelete"
+      :open="showDelete"
       title="Delete your account?"
       cancel-label="Keep my account"
       confirm-label="Delete my account"

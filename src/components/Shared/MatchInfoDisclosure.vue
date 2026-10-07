@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, useId } from 'vue'
+import CollapseTransition from './CollapseTransition.vue'
 
 /**
  * "What is % Match?" as a disclosure, folded by default: the long explanation
@@ -27,8 +28,14 @@ const open = ref(false)
       {{ label }}
       <svg :class="['w-3.5 h-3.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none', open ? 'rotate-180' : '']" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
     </button>
-    <div v-if="open" :id="`${uid}-match-info`" class="match-info-body mt-1.5">
-      <slot />
-    </div>
+    <!-- Folds open and shut. The gap above sits inside, since a margin on
+         the folded element would show while it closes. -->
+    <CollapseTransition>
+      <div v-if="open" :id="`${uid}-match-info`" class="match-info-body">
+        <div class="pt-1.5">
+          <slot />
+        </div>
+      </div>
+    </CollapseTransition>
   </div>
 </template>

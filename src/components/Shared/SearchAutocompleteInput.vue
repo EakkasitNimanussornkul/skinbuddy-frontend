@@ -94,9 +94,12 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
       </button>
     </div>
 
+    <!-- Drops in and out like the account menus (menu-drop in style.css),
+         and stays still under reduced motion. -->
+    <Transition name="menu-drop">
     <div
       v-if="isFocused && searchQuery.trim().length >= 2"
-      class="absolute left-0 right-0 top-full mt-2.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 rounded-[2rem] shadow-2xl z-50 overflow-hidden max-h-[82vh] flex flex-col animate-fade-in divide-y divide-brand-surface-border dark:divide-stone-800/80"
+      class="search-dropdown origin-top absolute left-0 right-0 top-full mt-2.5 bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-800 rounded-[2rem] shadow-2xl z-50 overflow-hidden max-h-[82vh] flex flex-col divide-y divide-brand-surface-border dark:divide-stone-800/80"
     >
 <!-- Section A: quick search suggestion -->
 <div class="p-3 bg-brand-bg-light dark:bg-brand-bg-dark/70">
@@ -211,11 +214,7 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
         Not the one you're looking for? Submit your product
       </RouterLink>
     </div>
+    </Transition>
 
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-</style>

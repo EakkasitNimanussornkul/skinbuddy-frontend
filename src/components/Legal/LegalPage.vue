@@ -47,14 +47,15 @@ const goBack = () => {
         Back
       </button>
 
-      <header class="space-y-2">
+      <!-- The blocks fade up in order as the screen opens (rise-in in style.css). -->
+      <header class="rise-in space-y-2">
         <h1 class="text-2xl sm:text-3xl font-serif font-bold text-stone-800 dark:text-white">{{ title }}</h1>
         <p class="legal-version text-sm text-stone-600 dark:text-stone-300">
           Last updated: <LegalPlaceholder /> · Version <span class="legal-version-number font-semibold">{{ version }}</span>
         </p>
       </header>
 
-      <article class="legal-body bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-700 p-5 sm:p-7 flex flex-col gap-5 text-[15px] leading-relaxed text-stone-700 dark:text-stone-200">
+      <article style="--rise-delay: 50ms" class="legal-body rise-in bg-brand-surface-light dark:bg-brand-surface-dark rounded-3xl border border-brand-surface-border dark:border-stone-700 p-5 sm:p-7 flex flex-col gap-5 text-[15px] leading-relaxed text-stone-700 dark:text-stone-200">
         <slot />
       </article>
     </div>
