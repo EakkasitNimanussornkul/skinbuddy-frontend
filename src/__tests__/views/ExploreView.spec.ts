@@ -113,7 +113,9 @@ describe('src/views/ExploreView.vue', () => {
       // actually searched for rather than an empty one.
       await mountExplore('/explore?q=retinol')
 
-      expect(catalogRequests()).toEqual([['retinol', 0, 1500]])
+      // With no price filter set, neither bound is sent: a product above 1,500 must
+      // not be hidden by a default the shopper never chose.
+      expect(catalogRequests()).toEqual([['retinol', undefined, undefined]])
     })
 
     it('reports a catalogue that could not be reached in place of the grid', async () => {
@@ -185,8 +187,8 @@ describe('src/views/ExploreView.vue', () => {
       await flushPromises()
 
       expect(catalogRequests()).toEqual([
-        ['', 0, 1500],
-        ['niacinamide', 0, 1500],
+        ['', undefined, undefined],
+        ['niacinamide', undefined, undefined],
       ])
     })
 
@@ -418,11 +420,11 @@ describe('src/views/ExploreView.vue', () => {
       // applying them has to re-request rather than re-filter.
       const { wrapper } = await mountExplore('/explore?q=serum')
 
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       expect(catalogRequests()).toEqual([
-        ['serum', 0, 1500],
+        ['serum', undefined, undefined],
         ['serum', 200, 800],
       ])
     })
@@ -430,24 +432,24 @@ describe('src/views/ExploreView.vue', () => {
     it('passes the applied bounds back to the slider', async () => {
       const { wrapper } = await mountExplore()
 
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       const slider = wrapper.findComponent({ name: 'PriceRangeSlider' })
       expect(slider.props('minPrice')).toBe(200)
-      expect(slider.props('maxPrice')).toBe(800)
+      expect(slider.props('maxCap')).toBe(800)
     })
 
     it('restores the default bounds and requests again when cleared', async () => {
       const { wrapper } = await mountExplore()
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('clear')
       await flushPromises()
 
-      expect(catalogRequests()[2]).toEqual(['', 0, 1500])
-      expect(wrapper.findComponent({ name: 'PriceRangeSlider' }).props('maxPrice')).toBe(1500)
+      expect(catalogRequests()[2]).toEqual(['', undefined, undefined])
+      expect(wrapper.findComponent({ name: 'PriceRangeSlider' }).props('maxCap')).toBeNull()
     })
 
     it('clears the grid rather than keeping the previous bounds’ results when a re-request fails', async () => {
@@ -459,7 +461,7 @@ describe('src/views/ExploreView.vue', () => {
       expect(marquee().props('products')).toHaveLength(1)
 
       vi.mocked(searchProducts).mockRejectedValue(new Error('network down'))
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       // Read off the header marquee, not the grid. The first version of this
@@ -535,7 +537,7 @@ describe('src/views/ExploreView.vue', () => {
 
       let resolve!: (value: unknown) => void
       vi.mocked(searchProducts).mockReturnValue(new Promise((r) => { resolve = r }) as never)
-      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, max: 800 })
+      wrapper.findComponent({ name: 'PriceRangeSlider' }).vm.$emit('apply', { min: 200, maxCap: 800 })
       await wrapper.vm.$nextTick()
 
       expect(region().attributes('style')).toContain('min-height: 900px')

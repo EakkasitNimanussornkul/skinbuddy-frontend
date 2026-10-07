@@ -80,8 +80,8 @@ const chips = (w: VueWrapper) => w.findAll('button.active-filter-chip')
 const slider = (w: VueWrapper) => w.findComponent({ name: 'PriceRangeSlider' })
 // The price slider in the filters sheet (feat/26); the lg panel's comes first.
 const sheetSlider = (w: VueWrapper) => w.findAllComponents({ name: 'PriceRangeSlider' }).find((s) => s.props('variant') === 'sheet')!
-const dragSheetPrice = async (w: VueWrapper, min: number, max: number) => {
-  sheetSlider(w).vm.$emit('update:range', { min, max })
+const dragSheetPrice = async (w: VueWrapper, min: number, maxCap: number | null) => {
+  sheetSlider(w).vm.$emit('update:range', { min, maxCap })
   await flushPromises()
 }
 
@@ -170,7 +170,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(wrapper.get('.filters-count').text()).toBe('1')
       expect(filtersButton(wrapper).text()).toContain('1 active')
 
-      slider(wrapper).vm.$emit('apply', { min: 0, max: 1000 })
+      slider(wrapper).vm.$emit('apply', { min: 0, maxCap: 1000 })
       await flushPromises()
       expect(wrapper.get('.filters-count').text()).toBe('2')
       expect(wrapper.get('.filters-count').attributes('aria-hidden')).toBe('true')
@@ -192,11 +192,11 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('words a price filter "Up to ฿1,000" from zero, and "฿200 to ฿800" otherwise', async () => {
       const { wrapper } = await mountExplore()
 
-      slider(wrapper).vm.$emit('apply', { min: 0, max: 1000 })
+      slider(wrapper).vm.$emit('apply', { min: 0, maxCap: 1000 })
       await flushPromises()
       expect(chips(wrapper).map((c) => [c.text(), c.attributes('aria-label')])).toEqual([['Up to ฿1,000', 'Remove filter: Up to ฿1,000']])
 
-      slider(wrapper).vm.$emit('apply', { min: 200, max: 800 })
+      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
       expect(chips(wrapper).map((c) => c.text())).toEqual(['฿200 to ฿800'])
     })
@@ -204,23 +204,23 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('counts and shows a price filter that only raises the lower bound', async () => {
       const { wrapper } = await mountExplore()
 
-      slider(wrapper).vm.$emit('apply', { min: 200, max: 1500 })
+      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: null })
       await flushPromises()
 
-      expect(chips(wrapper).map((c) => c.text())).toEqual(['฿200 to ฿1,500'])
+      expect(chips(wrapper).map((c) => c.text())).toEqual(['From ฿200'])
       expect(wrapper.get('.filters-count').text()).toBe('1')
     })
 
     it('clears the price filter from its chip, asking for the full range again', async () => {
       const { wrapper } = await mountExplore()
-      slider(wrapper).vm.$emit('apply', { min: 200, max: 800 })
+      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       await chips(wrapper)[0]!.trigger('click')
       await flushPromises()
 
-      expect(lastRequest()).toEqual(['', 0, 1500])
-      expect(slider(wrapper).props('maxPrice')).toBe(1500)
+      expect(lastRequest()).toEqual(['', undefined, undefined])
+      expect(slider(wrapper).props('maxCap')).toBeNull()
       expect(chips(wrapper)).toHaveLength(0)
     })
 
@@ -316,7 +316,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
     it('starts from the filters on screen, and marks the chosen category with aria-pressed', async () => {
       const { wrapper } = await mountExplore('/explore?category=Serums')
       await wrapper.get('select').setValue('CeraVe')
-      slider(wrapper).vm.$emit('apply', { min: 200, max: 800 })
+      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
 
       await openSheet(wrapper)
@@ -324,7 +324,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect(sheetButton(wrapper, 'Serums').attributes('aria-pressed')).toBe('true')
       expect(sheetButton(wrapper, 'All').attributes('aria-pressed')).toBe('false')
       expect((wrapper.get('#sheet-brand').element as HTMLSelectElement).value).toBe('CeraVe')
-      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 200, maxPrice: 800, defaultMaxLimit: 1500 })
+      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 200, maxCap: 800, variant: 'sheet' })
     })
 
     it('applies the category, brand and price on "Show products", through the page\'s own handlers', async () => {
@@ -345,7 +345,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('CeraVe')
       expect(chips(wrapper).map((c) => c.text())).toEqual(['CeraVe', '฿200 to ฿800'])
       expect(slider(wrapper).props('minPrice')).toBe(200)
-      expect(slider(wrapper).props('maxPrice')).toBe(800)
+      expect(slider(wrapper).props('maxCap')).toBe(800)
     })
 
     it('discards what was changed when the sheet is closed without "Show products"', async () => {
@@ -354,7 +354,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await sheetButton(wrapper, 'Serums').trigger('click')
       await wrapper.get('#sheet-brand').setValue('CeraVe')
       await dragSheetPrice(wrapper, 0, 500)
-      expect(sheetSlider(wrapper).props('maxPrice')).toBe(500)
+      expect(sheetSlider(wrapper).props('maxCap')).toBe(500)
 
       await wrapper.get('[role="dialog"] button[aria-label="Close filters"]').trigger('click')
       await flushPromises()
@@ -365,21 +365,21 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await openSheet(wrapper)
       expect(sheetButton(wrapper, 'All').attributes('aria-pressed')).toBe('true')
       expect((wrapper.get('#sheet-brand').element as HTMLSelectElement).value).toBe('All')
-      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 0, maxPrice: 1500 })
+      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 0, maxCap: null })
     })
 
     it('resets every filter with "Clear all", applied on "Show products"', async () => {
       const { wrapper, router } = await mountExplore('/explore?category=Serums')
       await wrapper.get('select').setValue('CeraVe')
-      slider(wrapper).vm.$emit('apply', { min: 200, max: 800 })
+      slider(wrapper).vm.$emit('apply', { min: 200, maxCap: 800 })
       await flushPromises()
       await openSheet(wrapper)
 
       await sheetButton(wrapper, 'Clear all').trigger('click')
       expect(sheetButton(wrapper, 'All').attributes('aria-pressed')).toBe('true')
       expect((wrapper.get('#sheet-brand').element as HTMLSelectElement).value).toBe('All')
-      // The handles go back to the ends of the track.
-      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 0, maxPrice: 1500 })
+      // The handles go back to the ends of the track: 0 and no limit.
+      expect(sheetSlider(wrapper).props()).toMatchObject({ minPrice: 0, maxCap: null })
       // Nothing applied yet.
       expect(router.currentRoute.value.query).toEqual({ category: 'Serums' })
       expect(chips(wrapper)).toHaveLength(2)
@@ -388,7 +388,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await flushPromises()
 
       expect(router.currentRoute.value.query).toEqual({})
-      expect(lastRequest()).toEqual(['', 0, 1500])
+      expect(lastRequest()).toEqual(['', undefined, undefined])
       expect(chips(wrapper)).toHaveLength(0)
     })
 
@@ -405,7 +405,7 @@ describe('feat/23 phone Explore and the folded % Match note', () => {
       await dragSheetPrice(wrapper, Number.NaN, Number.NaN)
       await sheetButton(wrapper, 'Show products').trigger('click')
       await flushPromises()
-      expect(lastRequest()).toEqual(['', 0, 1500])
+      expect(lastRequest()).toEqual(['', undefined, undefined])
     })
 
     it('asks for nothing new when "Show products" changes nothing', async () => {

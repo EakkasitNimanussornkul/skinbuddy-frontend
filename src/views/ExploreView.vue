@@ -23,6 +23,14 @@ import ProductShowcaseMarquee from '../components/Catalog/ProductShowcaseMarquee
 import BottomSheet from '../components/Shared/BottomSheet.vue'
 import MatchInfoDisclosure from '../components/Shared/MatchInfoDisclosure.vue'
 import { cardFlowDelay, pinLeavingCard } from '../components/Shared/cardFlow'
+import {
+  PRICE_FLOOR,
+  isPriceFiltered,
+  normalizePriceRange,
+  priceChipLabel as priceChipText,
+  UNPRICED_NOTE,
+  type PriceRange,
+} from '../components/Catalog/priceRange'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,11 +46,11 @@ const searchQuery = ref('')
 const selectedCategory = ref('All')
 const selectedBrand = ref('All')
 
-// The price bounds when no price filter is set.
-const PRICE_FLOOR = 0
-const PRICE_CEILING = 1500
+// The price filter: a lowest price, and a highest that is a number of baht or
+// null for no upper limit. Nothing is sent for either until it is set, so a
+// product above 1,500 is not hidden when no filter is on.
 const activeMinPrice = ref(PRICE_FLOOR)
-const activeMaxPrice = ref(PRICE_CEILING)
+const activeMaxCap = ref<number | null>(null)
 
 const selectedForInspection = ref<any>(null)
 const baseProductForCompare = ref<any | null>(null)
@@ -107,7 +115,11 @@ const fetchCatalog = async () => {
   // address change.
   fetchedQuery = searchQuery.value
   try {
-    const data = await searchProducts(searchQuery.value, activeMinPrice.value, activeMaxPrice.value)
+    const data = await searchProducts(
+      searchQuery.value,
+      activeMinPrice.value > PRICE_FLOOR ? activeMinPrice.value : undefined,
+      activeMaxCap.value ?? undefined,
+    )
     catalog.value = data || []
   } catch {
     // Clear rather than keep. A failed re-request from the price controls would
@@ -132,15 +144,19 @@ const handleCategoryUpdate = (newCategory: string) => {
   })
 }
 
-const handlePriceApply = (range: { min: number; max: number }) => {
-  activeMinPrice.value = range.min
-  activeMaxPrice.value = range.max
+// Whatever arrives is made safe first: a lowest price that is not a number is 0,
+// a highest that is not a number is no limit, a cap is at most 20,000, and a
+// range given the wrong way round is put in order.
+const handlePriceApply = (range: { min: unknown; maxCap: unknown }) => {
+  const safe = normalizePriceRange(range.min, range.maxCap)
+  activeMinPrice.value = safe.min
+  activeMaxCap.value = safe.maxCap
   fetchCatalog()
 }
 
 const handlePriceClear = () => {
   activeMinPrice.value = PRICE_FLOOR
-  activeMaxPrice.value = PRICE_CEILING
+  activeMaxCap.value = null
   fetchCatalog()
 }
 
@@ -149,54 +165,47 @@ const handlePriceClear = () => {
 // removable chips, and a sheet with every filter. The sheet works on a copy:
 // "Show products" applies it through the handlers above, and closing it any
 // other way drops it. The big filter panel is for lg and up only.
-const priceFiltered = computed(() => activeMinPrice.value !== PRICE_FLOOR || activeMaxPrice.value !== PRICE_CEILING)
+const priceFiltered = computed(() => isPriceFiltered(activeMinPrice.value, activeMaxCap.value))
 const activeFilterCount = computed(() => (selectedBrand.value !== 'All' ? 1 : 0) + (priceFiltered.value ? 1 : 0))
 
-const baht = (amount: number) => `฿${amount.toLocaleString('en-US')}`
-const priceChipLabel = computed(() =>
-  activeMinPrice.value === PRICE_FLOOR
-    ? `Up to ${baht(activeMaxPrice.value)}`
-    : `${baht(activeMinPrice.value)} to ${baht(activeMaxPrice.value)}`,
-)
+const priceChipLabel = computed(() => priceChipText(activeMinPrice.value, activeMaxCap.value))
 
 const filtersOpen = ref(false)
 const filtersButton = ref<HTMLButtonElement | null>(null)
-const filterDraft = reactive({ category: 'All', brand: 'All', min: PRICE_FLOOR, max: PRICE_CEILING })
+const filterDraft = reactive<{ category: string; brand: string; min: number; maxCap: number | null }>({
+  category: 'All',
+  brand: 'All',
+  min: PRICE_FLOOR,
+  maxCap: null,
+})
 
 const openFilters = () => {
   Object.assign(filterDraft, {
     category: selectedCategory.value,
     brand: selectedBrand.value,
     min: activeMinPrice.value,
-    max: activeMaxPrice.value,
+    maxCap: activeMaxCap.value,
   })
   filtersOpen.value = true
 }
 
 const clearFilterDraft = () => {
-  Object.assign(filterDraft, { category: 'All', brand: 'All', min: PRICE_FLOOR, max: PRICE_CEILING })
+  Object.assign(filterDraft, { category: 'All', brand: 'All', min: PRICE_FLOOR, maxCap: null })
 }
 
 // The sheet's price slider writes the draft as it moves (feat/26; it replaced
 // the typed From and Up to boxes).
-const setDraftPrice = (range: { min: number; max: number }) => {
+const setDraftPrice = (range: PriceRange) => {
   filterDraft.min = range.min
-  filterDraft.max = range.max
+  filterDraft.maxCap = range.maxCap
 }
-
-// A price as a whole number of baht; anything that is not a number of zero or
-// more keeps the default, so a bad value can never reach the request.
-const readBaht = (value: number, fallback: number) => (Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback)
 
 const applyFilters = () => {
   filtersOpen.value = false
-  let min = readBaht(filterDraft.min, PRICE_FLOOR)
-  let max = readBaht(filterDraft.max, PRICE_CEILING)
-  if (min > max) [min, max] = [max, min]
-  if (min !== activeMinPrice.value || max !== activeMaxPrice.value) {
-    if (min === PRICE_FLOOR && max === PRICE_CEILING) handlePriceClear()
-    else handlePriceApply({ min, max })
-  }
+  // The same guards as any price change: a value that is not a number cannot
+  // reach the request, and a range the wrong way round is put in order.
+  const range = normalizePriceRange(filterDraft.min, filterDraft.maxCap)
+  if (range.min !== activeMinPrice.value || range.maxCap !== activeMaxCap.value) handlePriceApply(range)
   selectedBrand.value = filterDraft.brand
   if (filterDraft.category !== selectedCategory.value) handleCategoryUpdate(filterDraft.category)
 }
@@ -516,6 +525,7 @@ watch(
             What's % Match?
           </button>
         </div>
+        <p v-if="priceFiltered" class="unpriced-note-phone m-0 text-xs leading-normal text-stone-600 dark:text-stone-300">{{ UNPRICED_NOTE }}</p>
       </div>
 
       <!-- Control Deck Container (lg and up) -->
@@ -555,8 +565,7 @@ watch(
         <div class="lg:col-span-4 w-full">
           <PriceRangeSlider
             :min-price="activeMinPrice"
-            :max-price="activeMaxPrice"
-            :default-max-limit="1500"
+            :max-cap="activeMaxCap"
             @apply="handlePriceApply"
             @clear="handlePriceClear"
           />
@@ -785,8 +794,7 @@ watch(
             <PriceRangeSlider
               variant="sheet"
               :min-price="filterDraft.min"
-              :max-price="filterDraft.max"
-              :default-max-limit="PRICE_CEILING"
+              :max-cap="filterDraft.maxCap"
               @update:range="setDraftPrice"
             />
           </div>

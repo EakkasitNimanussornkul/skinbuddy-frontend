@@ -26,10 +26,13 @@ const track = (w: VueWrapper) => {
 }
 
 const mountSlider = (props: Record<string, unknown>) =>
-  track(mount(PriceRangeSlider, { props: { minPrice: 0, maxPrice: 1500, defaultMaxLimit: 1500, ...props }, attachTo: document.body }))
+  track(mount(PriceRangeSlider, { props: { minPrice: 0, maxCap: null, ...props }, attachTo: document.body }))
 
-const lowest = (w: VueWrapper) => w.get<HTMLInputElement>('input[aria-label="Lowest price"]')
-const highest = (w: VueWrapper) => w.get<HTMLInputElement>('input[aria-label="Highest price"]')
+// The lg Price popover has the same two handles, so inside Explore these are
+// read from the filters sheet.
+const scope = (w: VueWrapper) => (w.find('.filters-sheet').exists() ? w.get('.filters-sheet') : w)
+const lowest = (w: VueWrapper) => scope(w).get<HTMLInputElement>('input[aria-label="Lowest price"]')
+const highest = (w: VueWrapper) => scope(w).get<HTMLInputElement>('input[aria-label="Highest price"]')
 
 /** Moves a handle the way a drag or an arrow key does: a new value, then input. */
 const move = async (input: ReturnType<typeof lowest>, value: number) => {
@@ -88,15 +91,20 @@ describe('feat/26 the phone Filters sheet price slider', () => {
   })
 
   describe('PriceRangeSlider (sheet variant)', () => {
-    it('has no Apply, Clear or ceiling box in the sheet, and keeps all three on the lg panel', () => {
-      const panel = mountSlider({})
-      expect(panel.findAll('button').map((b) => b.text())).toEqual(['CLEAR', 'APPLY'])
-      expect(panel.findAll('input[type="number"]')).toHaveLength(1)
+    it('has no Apply or Clear in the sheet, has Clear and Apply in the popover, and has no ceiling box in either', () => {
+      // Retitled in feat/27: the lg panel and its ceiling box became the Price
+      // popover with a Lowest and a Highest box; the sheet still has no buttons.
+      const popover = mountSlider({})
+      expect(popover.findAll('button').map((b) => b.text())).toEqual(['Clear', 'Apply'])
+      expect(popover.findAll('input[type="number"]')).toHaveLength(0)
+      expect(popover.text()).not.toContain('Ceiling')
 
       const sheet = mountSlider({ variant: 'sheet' })
       expect(sheet.findAll('button')).toHaveLength(0)
       expect(sheet.findAll('input[type="number"]')).toHaveLength(0)
+      expect(sheet.text()).not.toContain('Ceiling')
       expect(sheet.findAll('input[type="range"]')).toHaveLength(2)
+      expect(sheet.findAll('input[inputmode="numeric"]')).toHaveLength(2)
     })
 
     it('reports every move of a handle as the live range, for the sheet to keep', async () => {
@@ -105,12 +113,13 @@ describe('feat/26 the phone Filters sheet price slider', () => {
       await move(lowest(w), 200)
       await move(highest(w), 800)
 
-      expect(w.emitted('update:range')).toEqual([[{ min: 200, max: 1500 }], [{ min: 200, max: 800 }]])
+      // The highest handle left at the end of the default bar is no limit (null).
+      expect(w.emitted('update:range')).toEqual([[{ min: 200, maxCap: null }], [{ min: 200, maxCap: 800 }]])
       expect(w.emitted('apply')).toBeUndefined()
     })
 
     it('keeps the handles 20 baht apart, and puts a handle pushed past that back where the rule kept it', async () => {
-      const w = mountSlider({ variant: 'sheet', minPrice: 200, maxPrice: 300 })
+      const w = mountSlider({ variant: 'sheet', minPrice: 200, maxCap: 300 })
 
       await move(lowest(w), 300)
       expect(lowest(w).element.value).toBe('280')
@@ -120,36 +129,44 @@ describe('feat/26 the phone Filters sheet price slider', () => {
       await move(highest(w), 200)
       expect(highest(w).element.value).toBe('300')
       const moves = w.emitted('update:range')!
-      expect(moves[moves.length - 1]).toEqual([{ min: 280, max: 300 }])
+      expect(moves[moves.length - 1]).toEqual([{ min: 280, maxCap: 300 }])
     })
 
-    it('moves both handles back to 0 and 1,500 when the sheet clears its draft', async () => {
-      const w = mountSlider({ variant: 'sheet', minPrice: 200, maxPrice: 800 })
+    it('moves both handles back to 0 and the end of the bar (no limit) when the sheet clears its draft', async () => {
+      const w = mountSlider({ variant: 'sheet', minPrice: 200, maxCap: 800 })
       expect([lowest(w).element.value, highest(w).element.value]).toEqual(['200', '800'])
 
-      await w.setProps({ minPrice: 0, maxPrice: 1500 })
+      await w.setProps({ minPrice: 0, maxCap: null })
 
       expect([lowest(w).element.value, highest(w).element.value]).toEqual(['0', '1500'])
-      expect(w.get('.price-range-label').text()).toBe('฿0 – ฿1,500')
+      expect([w.get<HTMLInputElement>('.price-input-low').element.value, w.get<HTMLInputElement>('.price-input-high').element.value]).toEqual(['0', '1,500+'])
     })
 
     it('names the handles "Lowest price" and "Highest price" and reads their values out in baht', async () => {
-      const w = mountSlider({ variant: 'sheet', minPrice: 200, maxPrice: 1200 })
+      const w = mountSlider({ variant: 'sheet', minPrice: 200, maxCap: 1200 })
 
       expect(lowest(w).attributes()).toMatchObject({ type: 'range', min: '0', max: '1500', step: '10', 'aria-valuetext': '200 baht' })
       expect(highest(w).attributes('aria-valuetext')).toBe('1,200 baht')
       await move(lowest(w), 450)
       expect(lowest(w).attributes('aria-valuetext')).toBe('450 baht')
+      // At the end of the default bar the highest handle is no limit, and says so.
+      await move(highest(w), 1500)
+      expect(highest(w).attributes('aria-valuetext')).toBe('no upper limit')
     })
 
-    it('shows the range as one "฿X – ฿Y" label above the track, with no tag on each handle to overlap where they meet', () => {
-      const w = mountSlider({ variant: 'sheet', minPrice: 700, maxPrice: 720 })
-      const label = w.get('.price-range-label')
+    it('shows the two prices in the Lowest and Highest boxes above the track, with no tag on each handle to overlap where they meet', () => {
+      // Retitled in feat/27: the one "฿X – ฿Y" label became two labelled boxes.
+      const w = mountSlider({ variant: 'sheet', minPrice: 700, maxCap: 720 })
+      const low = w.get<HTMLInputElement>('.price-input-low')
+      const high = w.get<HTMLInputElement>('.price-input-high')
 
-      expect(label.text()).toBe('฿700 – ฿720')
-      expect(w.findAll('*').filter((el) => el.element.children.length === 0 && el.text().includes('฿'))).toHaveLength(1)
-      // The label comes before the track.
-      expect(label.element.compareDocumentPosition(w.get('.price-track').element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect([low.element.value, high.element.value]).toEqual(['700', '720'])
+      expect(w.findAll('label').map((l) => l.text().replace('฿', '').trim())).toEqual(['Lowest', 'Highest'])
+      // The drawn handles carry no text, so nothing overlaps where they meet.
+      expect(w.findAll('.price-handle')).toHaveLength(2)
+      expect(w.findAll('.price-handle').every((h) => h.text() === '')).toBe(true)
+      // The boxes come before the track.
+      expect(high.element.compareDocumentPosition(w.get('.price-track').element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('lets a drag on the track pan sideways only, so moving a handle never scrolls the sheet', () => {
@@ -161,11 +178,12 @@ describe('feat/26 the phone Filters sheet price slider', () => {
       expect(area.find('input[aria-label="Highest price"]').exists()).toBe(true)
     })
 
-    it('gives each handle a 44px touch target, and only the handles take a touch', () => {
+    it('gives each handle a 44px touch target under a drawn handle of at least 36px, and only the handles take a touch', () => {
       const w = mountSlider({ variant: 'sheet' })
 
-      for (const input of [lowest(w), highest(w)]) expect(input.classes()).toEqual(expect.arrayContaining(['sheet-range', 'h-11', 'pointer-events-none']))
-      for (const thumb of ['.sheet-range::-webkit-slider-thumb', '.sheet-range::-moz-range-thumb']) {
+      for (const input of [lowest(w), highest(w)]) expect(input.classes()).toEqual(expect.arrayContaining(['price-range-input', 'h-11', 'pointer-events-none']))
+      for (const handle of w.findAll('.price-handle')) expect(handle.classes()).toEqual(expect.arrayContaining(['w-9', 'h-9']))
+      for (const thumb of ['.price-range-input::-webkit-slider-thumb', '.price-range-input::-moz-range-thumb']) {
         expect(declared(thumb, 'width', SLIDER_STYLE)).toEqual(['44px'])
         expect(declared(thumb, 'height', SLIDER_STYLE)).toEqual(['44px'])
         expect(declared(thumb, 'pointer-events', SLIDER_STYLE)).toEqual(['auto'])
@@ -173,30 +191,43 @@ describe('feat/26 the phone Filters sheet price slider', () => {
     })
 
     it('puts the lower handle on top once it is past the middle, so either can still move where they meet', async () => {
-      const w = mountSlider({ variant: 'sheet', minPrice: 100, maxPrice: 120 })
+      const w = mountSlider({ variant: 'sheet', minPrice: 100, maxCap: 120 })
       expect(lowest(w).classes()).toContain('z-20')
 
-      await w.setProps({ minPrice: 1460, maxPrice: 1480 })
+      await w.setProps({ minPrice: 1460, maxCap: 1480 })
       expect(lowest(w).classes()).toContain('z-30')
       expect(highest(w).classes()).toContain('z-20')
     })
 
-    it('adds no motion to the label, the track or the handles, so there is nothing to reduce', () => {
+    it('glides the drawn bar and handles when a number is typed, but not while a handle is held, and not under reduced motion', async () => {
+      // Retitled in feat/27: the feat/26 slider had no motion at all; the bar
+      // now glides to a typed number and follows the finger with no delay.
       const w = mountSlider({ variant: 'sheet' })
-      const sheetRules = SLIDER_STYLE.slice(SLIDER_STYLE.indexOf('.sheet-range'))
+      const fill = () => w.get('.price-track-fill').classes()
 
-      expect(sheetRules).not.toMatch(/transition|animation/)
-      expect(w.findAll('*').some((el) => el.classes().some((c) => /^(transition|animate|duration)/.test(c)))).toBe(false)
+      expect(fill()).toEqual(expect.arrayContaining(['transition-[left,width]', 'motion-reduce:transition-none']))
+      expect(w.get('.price-handle-max').classes()).toEqual(expect.arrayContaining(['transition-[left]', 'motion-reduce:transition-none']))
+      // The native handles themselves have no transition rule.
+      expect(SLIDER_STYLE).not.toMatch(/transition|animation/)
+
+      await highest(w).trigger('pointerdown')
+      expect(fill()).not.toContain('transition-[left,width]')
+      expect(w.get('.price-handle-max').classes()).not.toContain('transition-[left]')
+
+      window.dispatchEvent(new Event('pointerup'))
+      await flushPromises()
+      expect(fill()).toContain('transition-[left,width]')
     })
 
-    it('stacks the range label above the track on screen as well as in reading order', () => {
+    it('stacks the Lowest and Highest boxes above the track on screen as well as in reading order', () => {
       const w = mountSlider({ variant: 'sheet' })
       const root = w.get('.price-slider-sheet')
 
-      // A plain top-to-bottom column, the label first: nothing reorders them visually.
+      // A plain top-to-bottom column, the boxes first: nothing reorders them visually.
       expect(root.classes()).toContain('flex-col')
       expect(root.classes().some((c) => /(^|:)(flex-col-reverse|order-)/.test(c))).toBe(false)
-      expect(root.element.firstElementChild).toBe(w.get('.price-range-label').element)
+      expect(root.element.firstElementChild!.contains(w.get('.price-input-low').element)).toBe(true)
+      expect(root.element.firstElementChild!.contains(w.get('.price-input-high').element)).toBe(true)
       expect(w.findAll('.price-slider-sheet *').some((el) => el.classes().some((c) => /(^|:)order-/.test(c)))).toBe(false)
     })
   })
@@ -230,7 +261,7 @@ describe('feat/26 the phone Filters sheet price slider', () => {
 
       await sheetButton(w, 'Show products').trigger('click')
       await flushPromises()
-      expect(lastRequest()).toEqual(['', 0, 1500])
+      expect(lastRequest()).toEqual(['', undefined, undefined])
     })
 
     it('drops a moved handle when the sheet is closed without "Show products"', async () => {
