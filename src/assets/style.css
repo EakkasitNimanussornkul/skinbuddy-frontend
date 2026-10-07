@@ -33,6 +33,16 @@
   --color-semantic-error: #DC5E58; /* Red Button */
 }
 
+/* Native scrollbars and form controls (select, date and number inputs) follow
+   the theme. themeStore puts the dark class on <html>, so the same selector. */
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
 /* Base body styling */
 body {
   @apply bg-brand-bg-light text-brand-text transition-colors duration-300;
@@ -58,6 +68,42 @@ body {
   .dark .hide-scrollbar::-webkit-scrollbar-thumb {
     background-color: var(--color-brand-text-muted);
   }
+}
+
+/* A thin scrollbar in the theme's colours for a panel that scrolls inside the
+   page (the sidebar, the search suggestions, a sheet or dialog body), in place
+   of the browser's default bar, which stays white on a dark panel. A muted
+   thumb on a clear track, a shade stronger while the pointer is over it.
+   Browsers that read scrollbar-color ignore the ::-webkit-scrollbar rules;
+   those are for the ones that do not. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-brand-text-muted) 55%, transparent) transparent;
+}
+.scroll-thin:hover,
+.scroll-thin:focus-within {
+  scrollbar-color: var(--color-brand-text-muted) transparent;
+}
+.dark .scroll-thin {
+  scrollbar-color: color-mix(in srgb, var(--color-brand-text-muted) 45%, transparent) transparent;
+}
+.dark .scroll-thin:hover,
+.dark .scroll-thin:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--color-brand-text-muted) 75%, transparent) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-brand-text-muted) 55%, transparent);
+  border-radius: 9999px;
+}
+.dark .scroll-thin::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-brand-text-muted) 45%, transparent);
 }
 
 /* Items revealed by "Show N more" fade up into place rather than popping in.

@@ -96,7 +96,7 @@ const onKeydown = (event: KeyboardEvent) => {
         :aria-describedby="`${uid}-body`"
         :aria-busy="busy ? 'true' : undefined"
         tabindex="-1"
-        class="alert-dialog outline-none w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-600 shadow-2xl p-[22px] flex flex-col gap-3.5"
+        class="alert-dialog scroll-thin outline-none w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-brand-surface-light dark:bg-brand-surface-dark border border-brand-surface-border dark:border-stone-600 shadow-2xl p-[22px] flex flex-col gap-3.5"
         @keydown="onKeydown"
       >
         <h2 :id="`${uid}-title`" class="m-0 font-serif text-[22px] font-bold text-stone-800 dark:text-white">{{ title }}</h2>

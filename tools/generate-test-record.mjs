@@ -912,6 +912,16 @@ const SPEC_MAP = [
       'Each page mounted with @vue/test-utils on a memory history. Bare axios mocked for GET /meta/policy-versions and the shared apiClient mocked to show it is not used; console spied on for the fallback case. The route cases load the real router (by a path held in a variable, as profileRoute.spec does) as a signed-out visitor. No network access.',
     note: 'The Privacy Policy and Terms of Service, readable signed out (LINE User Data Policy 2.4): the user-facing text of the owner\'s reviewed draft, Parts B and C, with none of its notes to the owner, and the PDPA rights cited as the sources give them: s.19 and s.73 one by one, the other six as the group ss.30-34 and 36. The text is corrected to the confirmed backend contract (only the weekly check-in needs the health consent, withdrawing deletes nothing, deleting an account removes every product the user sent while added products stay). The team names, contact email and date show as "[to be added]". The version shown is terms_version from GET /meta/policy-versions on both pages, and 2026-10-06 (the backend\'s app/core/consent.py) whenever that call fails, as it does with 404 until the backend route is merged, quietly.',
   },
+  // Motion and scrollbars (feat/26). New files at the end, so every earlier
+  // group keeps its number.
+  {
+    file: 'src/__tests__/components/ScrollbarTheme.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'assets/style.css (color-scheme, .scroll-thin), components/Shared/AppSidebar, components/Shared/SearchAutocompleteInput, components/Shared/BottomSheet, components/Shared/AlertDialog',
+    prerequisite:
+      'style.css read from disk as text (Vitest empties a CSS import) and split into its rules. The components mounted with @vue/test-utils, attached to the document, with a fresh Pinia; AppSidebar and SearchAutocompleteInput on a memory history, with the shared apiClient and searchProducts mocked and Vitest fake timers driving the search debounce. The theme store is the real one. No network access.',
+    note: 'jsdom draws no scrollbars and applies no stylesheet, so these cards pin the rules in style.css and the classes on the rendered panels; the bars themselves are checked in a real browser. The root says color-scheme light, and the rule saying dark matches <html> exactly while themeStore has put the dark class on it, so native scrollbars and form controls follow the theme. .scroll-thin is a thin bar with a muted brand thumb on a clear track, with its own dark colour and webkit fallbacks. The sidebar scroll area, where Explore\'s categories open, uses it with a stable gutter, and so do the search suggestions, a bottom sheet body and the alert dialog.',
+  },
 ]
 
 function runSuite() {

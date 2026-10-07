@@ -94,7 +94,7 @@ const onKeydown = (event: KeyboardEvent) => {
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
-        <div class="bottom-sheet-body flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-5 pt-1 pb-5">
+        <div class="bottom-sheet-body scroll-thin flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-5 pt-1 pb-5">
           <slot />
         </div>
         <div v-if="$slots.footer" class="shrink-0 px-5 pt-3 pb-6 flex gap-2.5 border-t border-brand-surface-border dark:border-stone-600">

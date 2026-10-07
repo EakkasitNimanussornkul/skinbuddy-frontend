@@ -122,7 +122,7 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 </div>
 
       <!-- Section B: Enriched Product Match Rows -->
-      <div class="overflow-y-auto flex-1 p-3 space-y-2">
+      <div class="search-results scroll-thin overflow-y-auto flex-1 p-3 space-y-2">
         <div v-if="isLoading" class="p-8 text-center text-xs text-brand-text-muted font-bold flex items-center justify-center gap-2.5">
           <div class="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
           <span>Matching formulation matrix...</span>

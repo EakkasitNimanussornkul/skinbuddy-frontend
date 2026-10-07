@@ -119,7 +119,9 @@ const linkClass = (current: boolean) => [
 
 <template>
   <div class="app-sidebar hidden lg:flex flex-col sticky top-0 self-start h-screen w-64 shrink-0 z-30 bg-brand-surface-light dark:bg-brand-surface-dark border-r border-brand-surface-border dark:border-stone-700 transition-colors duration-300">
-    <nav aria-label="Main" class="flex-1 min-h-0 overflow-y-auto px-3.5 pt-5 pb-3 flex flex-col gap-[18px]">
+    <!-- The themed thin scrollbar, with its gutter kept even when nothing
+         overflows, so opening the categories does not shift the links. -->
+    <nav aria-label="Main" class="sidebar-scroll scroll-thin [scrollbar-gutter:stable] flex-1 min-h-0 overflow-y-auto px-3.5 pt-5 pb-3 flex flex-col gap-[18px]">
       <!-- Not marked current: Home below is the one link that says so. -->
       <RouterLink to="/" class="sidebar-brand min-h-12 px-2 flex items-center gap-2.5 rounded-[14px]" :aria-current="undefined">
         <img src="/images/jelly.png" alt="" class="w-[42px] h-[42px] object-contain" />
