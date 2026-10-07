@@ -241,7 +241,31 @@ body {
   transform: scale(0.96);
 }
 
+/* A removable filter chip: <TransitionGroup name="chip-pop"> in a wrapping row.
+   Each chip scales up from 0.9 as it fades in, and back down as it goes, while
+   the chips after it slide into the gap. */
+.chip-pop-enter-active,
+.chip-pop-leave-active {
+  transition: opacity 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chip-pop-move {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chip-pop-leave-active {
+  pointer-events: none;
+}
+.chip-pop-enter-from,
+.chip-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .chip-pop-enter-active,
+  .chip-pop-leave-active,
+  .chip-pop-move {
+    transition: none;
+  }
   .rise-in {
     animation: none;
   }

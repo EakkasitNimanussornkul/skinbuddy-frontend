@@ -59,4 +59,11 @@ const displayProducts = computed(() => {
 .animate-marquee {
   animation: marquee 25s linear infinite;
 }
+
+/* Held still for anyone who asked for less motion; the row can still be read. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
 </style>

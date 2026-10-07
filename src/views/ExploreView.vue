@@ -22,6 +22,7 @@ import EmptyState from '../components/Shared/EmptyState.vue'
 import ProductShowcaseMarquee from '../components/Catalog/ProductShowcaseMarquee.vue'
 import BottomSheet from '../components/Shared/BottomSheet.vue'
 import MatchInfoDisclosure from '../components/Shared/MatchInfoDisclosure.vue'
+import CollapseTransition from '../components/Shared/CollapseTransition.vue'
 import { cardFlowDelay, pinLeavingCard } from '../components/Shared/cardFlow'
 import {
   PRICE_FLOOR,
@@ -457,10 +458,10 @@ watch(
            the cards and the product page already show. -->
       <div class="explore-hero hidden lg:flex items-center justify-between gap-6 py-2 max-h-[120px]">
         <div class="min-w-0">
-          <h1 class="explore-hero-title m-0 font-serif text-3xl font-bold tracking-tight text-brand-text dark:text-stone-100">Explore</h1>
-          <p class="explore-hero-line m-0 mt-1 text-sm text-stone-600 dark:text-stone-300">Every product in our catalogue, with ingredient breakdowns and a match for your skin type.</p>
+          <h1 class="explore-hero-title rise-in m-0 font-serif text-3xl font-bold tracking-tight text-brand-text dark:text-stone-100" style="--rise-delay: 0ms">Explore</h1>
+          <p class="explore-hero-line rise-in m-0 mt-1 text-sm text-stone-600 dark:text-stone-300" style="--rise-delay: 70ms">Every product in our catalogue, with ingredient breakdowns and a match for your skin type.</p>
         </div>
-        <div class="explore-hero-thumbs w-[19rem] max-w-[40%] shrink-0 min-w-0">
+        <div class="explore-hero-thumbs rise-in w-[19rem] max-w-[40%] shrink-0 min-w-0" style="--rise-delay: 140ms">
           <ProductShowcaseMarquee :products="catalog" :is-loading="isLoading" />
         </div>
       </div>
@@ -581,9 +582,13 @@ watch(
         <section class="explore-filters hidden lg:block" aria-label="Filter products">
           <!-- The heading is the category in view, with how many products there are. -->
           <div class="catalog-heading flex flex-wrap items-baseline justify-between gap-x-3">
-            <h2 class="catalog-title m-0 font-serif text-3xl font-bold text-brand-text dark:text-stone-100">{{ headingTitle }}</h2>
+            <Transition name="swap-fade" mode="out-in">
+              <h2 :key="headingTitle" class="catalog-title m-0 font-serif text-3xl font-bold text-brand-text dark:text-stone-100">{{ headingTitle }}</h2>
+            </Transition>
             <span class="catalog-count min-h-5 text-sm text-stone-600 dark:text-stone-300" aria-live="polite">
-              <span v-if="countText" class="inline-block">{{ countText }}</span>
+              <Transition name="swap-fade" mode="out-in">
+                <span v-if="countText" :key="countText" class="inline-block">{{ countText }}</span>
+              </Transition>
             </span>
           </div>
 
@@ -608,7 +613,7 @@ watch(
                 <!-- A real select, drawn as a button: the select itself is
                      invisible over the label, so the keyboard and the screen
                      reader get the native one. -->
-                <label :class="['toolbar-brand relative min-h-11 pl-3.5 pr-3 rounded-xl border inline-flex items-center gap-2 text-sm cursor-pointer focus-within:ring-2 focus-within:ring-brand-primary-strong dark:focus-within:ring-brand-primary', brandActive ? TOOLBAR_ACTIVE : TOOLBAR_IDLE]">
+                <label :class="['toolbar-brand relative min-h-11 pl-3.5 pr-3 rounded-xl border inline-flex items-center gap-2 text-sm cursor-pointer transition-colors duration-150 motion-reduce:transition-none focus-within:ring-2 focus-within:ring-brand-primary-strong dark:focus-within:ring-brand-primary', brandActive ? TOOLBAR_ACTIVE : TOOLBAR_IDLE]">
                   <span aria-hidden="true" class="toolbar-brand-text font-bold">Brand: {{ selectedBrand === 'All' ? 'All' : selectedBrand }}</span>
                   <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
                   <select
@@ -625,24 +630,25 @@ watch(
                 <button
                   ref="priceButton"
                   type="button"
-                  :class="['toolbar-price min-h-11 pl-3.5 pr-3 rounded-xl border inline-flex items-center gap-2 text-sm font-bold', priceOpen || priceFiltered ? TOOLBAR_ACTIVE : TOOLBAR_IDLE]"
+                  :class="['toolbar-price min-h-11 pl-3.5 pr-3 rounded-xl border inline-flex items-center gap-2 text-sm font-bold transition-colors duration-150 motion-reduce:transition-none', priceOpen || priceFiltered ? TOOLBAR_ACTIVE : TOOLBAR_IDLE]"
                   aria-haspopup="dialog"
                   :aria-expanded="priceOpen ? 'true' : 'false'"
                   @click="togglePrice"
                 >
                   {{ priceButtonText }}
-                  <svg :class="['toolbar-price-chevron w-3.5 h-3.5 shrink-0', priceOpen ? 'rotate-180' : '']" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  <svg :class="['toolbar-price-chevron w-3.5 h-3.5 shrink-0 transition-transform duration-150 motion-reduce:transition-none', priceOpen ? 'rotate-180' : '']" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
                 </button>
               </div>
             </div>
 
             <!-- The only overlay: below the sticky top bar (z-50), above the cards. -->
-            <div
+            <Transition name="menu-drop">
+              <div
                 v-if="priceOpen"
                 ref="pricePopover"
                 role="dialog"
                 aria-label="Price range"
-                class="price-popover absolute right-0 top-full mt-2 z-30 w-[400px] max-w-full rounded-[20px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl p-[18px]"
+                class="price-popover absolute right-0 top-full mt-2 z-30 w-[400px] max-w-full origin-top-right rounded-[20px] border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark shadow-xl p-[18px]"
               >
                 <PriceRangeSlider
                   variant="popover"
@@ -652,17 +658,19 @@ watch(
                   @clear="handlePriceClear"
                 />
               </div>
+            </Transition>
           </div>
 
           <!-- The filters in use, each removable. Folds open with the first chip
                and shut with the last. -->
+          <CollapseTransition>
             <div v-if="activeChips.length" class="active-filters-bar">
-              <div class="active-filters flex flex-wrap items-center gap-2 pt-3">
+              <TransitionGroup tag="div" name="chip-pop" class="active-filters flex flex-wrap items-center gap-2 pt-3">
                 <button
                   v-for="chip in activeChips"
                   :key="chip.key"
                   type="button"
-                  class="desktop-filter-chip min-h-9 pl-3 pr-1.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100 hover:border-brand-primary-strong dark:hover:border-brand-primary"
+                  class="desktop-filter-chip min-h-9 pl-3 pr-1.5 rounded-full inline-flex items-center gap-1.5 text-[13px] font-bold border border-brand-surface-border dark:border-stone-600 bg-brand-surface-light dark:bg-brand-surface-dark text-stone-800 dark:text-stone-100 transition-colors hover:border-brand-primary-strong dark:hover:border-brand-primary"
                   :aria-label="`Remove filter: ${chip.label}`"
                   @click="chip.remove()"
                 >
@@ -677,9 +685,12 @@ watch(
                 >
                   Clear all
                 </button>
-              </div>
-              <p v-if="priceFiltered" class="unpriced-note-bar m-0 mt-2 text-xs leading-normal text-stone-600 dark:text-stone-300">{{ UNPRICED_NOTE }}</p>
+              </TransitionGroup>
+              <Transition name="swap-fade">
+                <p v-if="priceFiltered" class="unpriced-note-bar m-0 mt-2 text-xs leading-normal text-stone-600 dark:text-stone-300">{{ UNPRICED_NOTE }}</p>
+              </Transition>
             </div>
+          </CollapseTransition>
 
           <!-- What % Match is, folded by default (feat/23). On a phone the same
                words open in a sheet from "What's % Match?" in the filter bar.
