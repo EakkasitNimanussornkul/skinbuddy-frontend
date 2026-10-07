@@ -67,15 +67,11 @@ const widthPercent = computed(() => {
 })
 
 // --- Sheet variant --------------------------------------------------------------
-// The panel's rules (the 20 baht gap, the ceiling), then the handle moved back
-// to the value they kept, since an unchanged value does not re-render it, and
-// the range reported to the sheet.
-const onSheetInput = (event: Event, handle: 'min' | 'max') => {
+// The panel's rules (the 20 baht gap, the ceiling), then the range reported to
+// the sheet. A handle pushed past the gap is put back by v-model's re-render.
+const onSheetInput = (handle: 'min' | 'max') => {
   if (handle === 'min') handleMinChange()
   else handleMaxChange()
-  const input = event.target as HTMLInputElement
-  const kept = String(handle === 'min' ? localMin.value : localMax.value)
-  if (input.value !== kept) input.value = kept
   emit('update:range', { min: localMin.value, max: localMax.value })
 }
 
@@ -189,7 +185,7 @@ const handleClear = () => {
         aria-label="Lowest price"
         :aria-valuetext="spokenBaht(localMin)"
         :class="['sheet-range sheet-range-min absolute inset-0 w-full h-11 m-0 appearance-none bg-transparent pointer-events-none outline-none', lowerOnTop ? 'z-30' : 'z-20']"
-        @input="onSheetInput($event, 'min')"
+        @input="onSheetInput('min')"
       />
       <input
         v-model.number="localMax"
@@ -200,7 +196,7 @@ const handleClear = () => {
         aria-label="Highest price"
         :aria-valuetext="spokenBaht(localMax)"
         class="sheet-range sheet-range-max absolute inset-0 w-full h-11 m-0 appearance-none bg-transparent pointer-events-none outline-none z-20"
-        @input="onSheetInput($event, 'max')"
+        @input="onSheetInput('max')"
       />
     </div>
   </div>

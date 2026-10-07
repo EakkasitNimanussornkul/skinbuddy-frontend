@@ -188,6 +188,17 @@ describe('feat/26 the phone Filters sheet price slider', () => {
       expect(sheetRules).not.toMatch(/transition|animation/)
       expect(w.findAll('*').some((el) => el.classes().some((c) => /^(transition|animate|duration)/.test(c)))).toBe(false)
     })
+
+    it('stacks the range label above the track on screen as well as in reading order', () => {
+      const w = mountSlider({ variant: 'sheet' })
+      const root = w.get('.price-slider-sheet')
+
+      // A plain top-to-bottom column, the label first: nothing reorders them visually.
+      expect(root.classes()).toContain('flex-col')
+      expect(root.classes().some((c) => /(^|:)(flex-col-reverse|order-)/.test(c))).toBe(false)
+      expect(root.element.firstElementChild).toBe(w.get('.price-range-label').element)
+      expect(w.findAll('.price-slider-sheet *').some((el) => el.classes().some((c) => /(^|:)order-/.test(c)))).toBe(false)
+    })
   })
 
   describe('ExploreView (filters sheet with the real slider)', () => {
