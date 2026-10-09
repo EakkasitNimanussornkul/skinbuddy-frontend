@@ -164,7 +164,7 @@ const handleConfirmCompare = () => {
         >
           <div class="flex items-center gap-3.5 min-w-0">
             <div class="w-12 h-12 rounded-xl bg-white dark:bg-brand-surface-dark p-1.5 flex items-center justify-center flex-shrink-0 border border-brand-surface-border dark:border-stone-800">
-              <img v-if="prod.image_url" :src="prod.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+              <img v-if="prod.image_url" :src="prod.image_url" loading="lazy" decoding="async" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
               <svg v-else class="w-6 h-6 text-brand-text-muted/60 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
             </div>
             <div class="min-w-0">

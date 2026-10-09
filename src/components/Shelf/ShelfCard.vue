@@ -90,7 +90,7 @@ const expirationInfo = computed<{ label: string; badgeType: BadgeType; dateText:
 
       <!-- Larger, Responsive Product Image Box -->
       <div class="w-24 h-24 sm:w-24 sm:h-24 lg:w-28 lg:h-28 sm:mx-auto rounded-2xl bg-brand-bg-light dark:bg-brand-bg-dark border border-brand-surface-border dark:border-stone-800/60 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform p-3">
-        <img v-if="item.products?.image_url" :src="item.products.image_url" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+        <img v-if="item.products?.image_url" :src="item.products.image_url" loading="lazy" decoding="async" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
         <svg v-else class="w-10 h-10 text-brand-text-muted/60 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
       </div>
 

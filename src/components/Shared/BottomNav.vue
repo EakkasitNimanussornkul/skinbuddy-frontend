@@ -34,7 +34,7 @@ import { RouterLink } from 'vue-router'
       <!-- 3. CENTER SPOTLIGHT: SkinBuddy AI -->
       <RouterLink to="/chat" class="flex flex-col items-center group flex-1 -mt-4 sm:-mt-5 relative" active-class="is-active">
         <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-brand-primary text-white flex items-center justify-center p-2.5 sm:p-3 shadow-lg shadow-brand-primary/30 group-[.is-active]:scale-110 group-[.is-active]:ring-4 ring-brand-primary/30 transition-all">
-          <img src="/images/jelly.png" alt="SkinBuddy AI Mascot" class="w-full h-full object-contain animate-jelly-bounce" />
+          <img src="/images/jelly-small.png" alt="SkinBuddy AI Mascot" class="w-full h-full object-contain animate-jelly-bounce" />
         </div>
         <span class="text-[9px] sm:text-[10px] font-black tracking-wider text-brand-primary dark:text-brand-primary-accent group-[.is-active]:text-brand-primary transition-colors mt-1">SkinBuddy AI</span>
       </RouterLink>

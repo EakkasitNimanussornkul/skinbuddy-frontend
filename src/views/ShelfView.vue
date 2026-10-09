@@ -329,7 +329,7 @@ const executeDelete = async () => {
         @action="router.push('/explore')"
       >
         <template #icon>
-          <img src="/images/jelly.png" alt="SkinBuddy Mascot" class="w-16 h-16 object-contain animate-float drop-shadow-md" />
+          <img src="/images/jelly-small.png" alt="SkinBuddy Mascot" class="w-16 h-16 object-contain animate-float drop-shadow-md" />
         </template>
       </EmptyState>
 

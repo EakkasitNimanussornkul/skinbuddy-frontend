@@ -130,7 +130,7 @@ const linkClass = (current: boolean) => [
     <nav aria-label="Main" class="sidebar-scroll scroll-thin [scrollbar-gutter:stable] flex-1 min-h-0 overflow-y-auto px-3.5 pt-5 pb-3 flex flex-col gap-[18px]">
       <!-- Not marked current: Home below is the one link that says so. -->
       <RouterLink to="/" class="sidebar-brand min-h-12 px-2 flex items-center gap-2.5 rounded-[14px]" :aria-current="undefined">
-        <img src="/images/jelly.png" alt="" class="w-[42px] h-[42px] object-contain" />
+        <img src="/images/jelly-small.png" alt="" class="w-[42px] h-[42px] object-contain" />
         <span class="font-serif text-xl font-bold text-stone-800 dark:text-stone-100">SkinBuddy</span>
       </RouterLink>
 

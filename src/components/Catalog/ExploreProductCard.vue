@@ -52,7 +52,7 @@ const ingredientsSummary = computed(() => {
         <span
           :title="badgeTitle"
           :class="[
-            'match-badge inline-flex items-center gap-1 sm:gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm backdrop-blur-sm',
+            'match-badge inline-flex items-center gap-1 sm:gap-1.5 font-black rounded-full border font-mono tracking-wide shadow-sm dark:backdrop-blur-sm',
             // A score nobody computed (a guest, or no skin type) stays small: it
             // is a note, not a result to draw the eye to.
             matchInfo.kind === 'unavailable' ? 'text-[10px] px-2.5 py-1' : 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5',
@@ -70,7 +70,7 @@ const ingredientsSummary = computed(() => {
         <!-- What the percentage is built on, beside it (owner request). -->
         <span
           v-if="matchInfo.kind === 'scored' && matchInfo.fraction"
-          class="match-fraction hidden sm:inline text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm backdrop-blur-sm"
+          class="match-fraction hidden sm:inline text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-surface-light/90 dark:bg-stone-900/90 border border-brand-surface-border dark:border-stone-700 text-brand-text-muted shadow-sm"
         >
           {{ matchInfo.fraction }}
         </span>
@@ -79,7 +79,7 @@ const ingredientsSummary = computed(() => {
       <!-- Left Box: Large Scaled Premium Asset Frame -->
       <div class="w-full sm:w-44 md:w-48 aspect-[4/3] sm:aspect-square bg-brand-bg-light dark:bg-stone-900 rounded-2xl border border-brand-surface-border/60 dark:border-stone-800 flex items-center justify-center p-4 flex-shrink-0 group-hover:scale-[1.02] transition-transform overflow-hidden relative">
         <div class="absolute inset-0 bg-brand-primary/0 group-hover:bg-brand-primary/5 transition-colors pointer-events-none" />
-        <img v-if="product.image_url" :src="product.image_url" class="max-w-full max-h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+        <img v-if="product.image_url" :src="product.image_url" loading="lazy" decoding="async" class="max-w-full max-h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
         <svg v-else class="w-12 h-12 text-brand-text-muted/40 stroke-[1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>

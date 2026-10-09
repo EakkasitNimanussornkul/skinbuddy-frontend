@@ -1,6 +1,30 @@
 import { apiClient } from './index'
 import { readConsent, type ConsentState } from './consentApi'
 
+// One GET /auth/me at a time per login. A signed-in hard reload of a protected
+// page asks for the role (the sidebar) and for the consent state (the router)
+// together; both read the same answer. Kept only until it settles, so a later
+// read is a fresh request.
+let pendingMe: Promise<unknown> | null = null
+let pendingMeToken: string | null = null
+
+const getMe = (): Promise<unknown> => {
+  const token = localStorage.getItem('access_token')
+  if (pendingMe && pendingMeToken === token) return pendingMe
+
+  const request: Promise<unknown> = apiClient.get('/auth/me').then((response) => response.data)
+  pendingMe = request
+  pendingMeToken = token
+  const settled = () => {
+    if (pendingMe === request) {
+      pendingMe = null
+      pendingMeToken = null
+    }
+  }
+  request.then(settled, settled)
+  return request
+}
+
 const readRole = (data: unknown): string | null => {
   const role = (data as { role?: unknown } | null)?.role
   return typeof role === 'string' && role.length > 0 ? role : null
@@ -17,8 +41,7 @@ const readRole = (data: unknown): string | null => {
  * Null when the answer carries no role.
  */
 export const fetchMyRole = async (): Promise<string | null> => {
-  const response = await apiClient.get('/auth/me')
-  return readRole(response.data)
+  return readRole(await getMe())
 }
 
 export interface MyAccount {
@@ -33,7 +56,6 @@ export interface MyAccount {
  * Failures are thrown as they came: a 404 here means the account is gone.
  */
 export const fetchMyAccount = async (): Promise<MyAccount> => {
-  const response = await apiClient.get('/auth/me')
-  const data = response.data as { consent?: unknown } | null
+  const data = (await getMe()) as { consent?: unknown } | null
   return { role: readRole(data), consent: readConsent(data?.consent) }
 }

@@ -26,16 +26,31 @@ export interface CompareResponse {
 }
 
 
+const inFlightSearches = new Map<string, ReturnType<typeof getWithGuestFallback>>()
+
 /**
  * Search the product catalog with dynamic Baumann skin-match scoring
  */
-export const searchProducts = async (query: string = '', minPrice?: number, maxPrice?: number) => {
+export const searchProducts = (query: string = '', minPrice?: number, maxPrice?: number) => {
   const params: any = {}
   if (query) params.q = query
   if (minPrice !== undefined && minPrice !== null) params.min_price = minPrice
   if (maxPrice !== undefined && maxPrice !== null) params.max_price = maxPrice
 
-  return getWithGuestFallback('/products/search', { params })
+  // The same search asked for again while it is still on its way (Explore's grid
+  // and its "Recommended" shortlist both ask for the whole catalogue on load, a
+  // 488 kB reply) shares the one request. Kept only until it settles, so nothing
+  // is ever served from a stored answer, and keyed on the login too, because the
+  // match scores in the reply are per user.
+  const key = JSON.stringify([params, localStorage.getItem('access_token')])
+  const pending = inFlightSearches.get(key)
+  if (pending) return pending
+
+  const request = getWithGuestFallback('/products/search', { params })
+  inFlightSearches.set(key, request)
+  const settled = () => { if (inFlightSearches.get(key) === request) inFlightSearches.delete(key) }
+  request.then(settled, settled)
+  return request
 }
 
 /**

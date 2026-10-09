@@ -108,7 +108,12 @@ let fetchedQuery = ''
 const resultsRegion = ref<HTMLElement | null>(null)
 const heldHeight = ref<number | null>(null)
 
+// Counts the catalogue requests. Price Apply, a search from the top bar and Retry
+// can overlap, and the slowest answer used to win; only the latest is used now.
+let latestCatalogRequest = 0
+
 const fetchCatalog = async () => {
+  const mine = ++latestCatalogRequest
   heldHeight.value = resultsRegion.value?.offsetHeight || null
   isLoading.value = true
   catalogFailed.value = false
@@ -122,8 +127,14 @@ const fetchCatalog = async () => {
       activeMinPrice.value > PRICE_FLOOR ? activeMinPrice.value : undefined,
       activeMaxCap.value ?? undefined,
     )
-    catalog.value = data || []
+    if (mine !== latestCatalogRequest) return
+    // A reply that is not a list (an error page, a changed shape) is a failed
+    // request, not a catalogue: it would throw on .map below. No reply at all
+    // stays an empty list, as before.
+    if (data != null && !Array.isArray(data)) throw new Error('The catalogue reply was not a list.')
+    catalog.value = data ?? []
   } catch {
+    if (mine !== latestCatalogRequest) return
     // Clear rather than keep. A failed re-request from the price controls would
     // otherwise leave the previous bounds' results on screen while the controls
     // show the new ones, presenting stale data as current with only a
@@ -132,10 +143,14 @@ const fetchCatalog = async () => {
     catalogFailed.value = true
     addToast('Failed to load product catalog.', 'error')
   } finally {
-    isLoading.value = false
-    // Released once the new results are drawn, so the region then takes their
-    // own height - shorter or longer - rather than the old one.
-    nextTick(() => { heldHeight.value = null })
+    // An answer that was superseded leaves the loading state, and the held
+    // height, to the request that replaced it.
+    if (mine === latestCatalogRequest) {
+      isLoading.value = false
+      // Released once the new results are drawn, so the region then takes their
+      // own height - shorter or longer - rather than the old one.
+      nextTick(() => { heldHeight.value = null })
+    }
   }
 }
 

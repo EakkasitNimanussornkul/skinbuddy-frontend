@@ -18,26 +18,36 @@ const isFocused = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
 let debounceTimeout: any = null
+// Counts the changes to the term. A response is used only if the term has not
+// changed since it was sent, so a slow answer for "ce" cannot overwrite the list
+// for "cerave", and the spinner stays until the latest request lands.
+let latestRequest = 0
 
 watch(searchQuery, (newVal) => {
   emit('search-submit', newVal)
 
+  const mine = ++latestRequest
+  // Cleared before the early return: the timer from an earlier, longer term would
+  // otherwise still fire and fill the list for a term the box no longer holds.
+  clearTimeout(debounceTimeout)
+
   if (!newVal.trim() || newVal.trim().length < 2) {
     results.value = []
+    isLoading.value = false
     return
   }
 
-  clearTimeout(debounceTimeout)
   isLoading.value = true
 
   debounceTimeout = setTimeout(async () => {
     try {
       const data = await searchProducts(newVal.trim())
-      results.value = (data || []).slice(0, 7)
+      if (mine !== latestRequest) return
+      results.value = (Array.isArray(data) ? data : []).slice(0, 7)
     } catch (error) {
       console.error("Autocomplete search failed:", error)
     } finally {
-      isLoading.value = false
+      if (mine === latestRequest) isLoading.value = false
     }
   }, 250)
 })
@@ -67,7 +77,10 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(() => document.addEventListener('mousedown', handleClickOutside))
-onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
+onUnmounted(() => {
+  document.removeEventListener('mousedown', handleClickOutside)
+  clearTimeout(debounceTimeout)
+})
 </script>
 
 <template>
@@ -161,7 +174,7 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 >
   <!-- Product Image (Enlarged to 80px: w-16 h-16 sm:w-20 sm:h-20) -->
   <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white dark:bg-stone-900 border border-brand-surface-border dark:border-stone-800 p-2 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-inner">
-    <img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-contain" />
+    <img v-if="product.image_url" :src="product.image_url" loading="lazy" decoding="async" class="w-full h-full object-contain" />
     <svg v-else class="w-7 h-7 text-brand-text-muted stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
     </svg>

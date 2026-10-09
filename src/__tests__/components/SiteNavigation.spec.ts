@@ -82,7 +82,7 @@ describe('feat/23 desktop sidebar, search bar and entry points', () => {
       const { w } = await mountSidebar()
 
       expect(w.get('a.sidebar-brand').attributes('href')).toBe('/')
-      expect(w.get('a.sidebar-brand img').attributes('src')).toBe('/images/jelly.png')
+      expect(w.get('a.sidebar-brand img').attributes('src')).toBe('/images/jelly-small.png')
       expect(w.get('a.sidebar-brand').text()).toBe('SkinBuddy')
       expect(w.findAll('a.sidebar-link').map((a) => [a.text(), a.attributes('href')])).toEqual([
         ['Home', '/'],

@@ -5,7 +5,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-brand-bg-light dark:bg-brand-bg-dark backdrop-blur-xl transition-colors duration-500">
+  <div class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-brand-bg-light dark:bg-brand-bg-dark transition-colors duration-500">
 
     <!-- Ambient Lighting Effect -->
     <div class="absolute w-64 h-64 bg-brand-primary/10 dark:bg-brand-primary/5 rounded-full blur-[80px] animate-ambient-pulse pointer-events-none"></div>
