@@ -27,7 +27,7 @@ const PATHS: Record<MetaKey, string> = {
 const cache = new Map<MetaKey, Promise<string[]>>()
 
 /** The list under `key`, keeping only strings; an older or odd answer reads as empty. */
-const readList = (data: unknown, key: MetaKey): string[] => {
+const readList = (data: unknown, key: string): string[] => {
   const list = (data as Record<string, unknown> | null | undefined)?.[key]
   return Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string' && item.length > 0) : []
 }
@@ -48,8 +48,43 @@ export const getCategories = (): Promise<string[]> => load('categories')
 export const getConcernTags = (): Promise<string[]> => load('concern_tags')
 export const getFunctionalGroups = (): Promise<string[]> => load('functional_groups')
 
+/**
+ * GET /meta/facets: the categories and brands that have at least one product,
+ * and the product total. Explore's filter chips come from it, so they do not
+ * change as pages of products load. Public and cached like the lists above; a
+ * failure (an older backend answers 404) is thrown for the page to fall back
+ * on, and is not cached. A reply that is not an object reads as null.
+ */
+export interface Facets {
+  categories: string[]
+  brands: string[]
+  total: number | null
+}
+
+let facetsRequest: Promise<Facets | null> | null = null
+
+export const getFacets = (): Promise<Facets | null> => {
+  if (facetsRequest) return facetsRequest
+
+  const request = axios.get(`${import.meta.env.VITE_API_URL}/meta/facets`).then((response) => {
+    const data = response.data as Record<string, unknown> | null | undefined
+    if (!data || typeof data !== 'object') return null
+    return {
+      categories: readList(data, 'categories'),
+      brands: readList(data, 'brands'),
+      total: typeof data.total === 'number' ? data.total : null,
+    }
+  })
+  facetsRequest = request
+  request.catch(() => { if (facetsRequest === request) facetsRequest = null })
+  return request
+}
+
 /** Forget every cached list. For tests, and for a screen that must re-read. */
-export const clearMetaCache = () => cache.clear()
+export const clearMetaCache = () => {
+  cache.clear()
+  facetsRequest = null
+}
 
 export interface PolicyVersions {
   terms_version: string | null

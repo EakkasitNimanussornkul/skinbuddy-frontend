@@ -1,4 +1,4 @@
-import { getWithGuestFallback } from './optionalAuth'
+import { getWithGuestFallback, getResponseWithGuestFallback } from './optionalAuth'
 
 // The product routes here are optional-auth on the backend (a guest gets an
 // unscored result; an expired or invalid login gets 401). Every call to one
@@ -48,16 +48,41 @@ export interface ProductCard extends ScoredProduct {
   [key: string]: unknown
 }
 
-/** Options for searchProducts. `card` asks for the lean list shape. */
+/** Options for searchProducts. */
 export interface SearchOptions {
+  /** `card` asks for the lean list. */
   view?: 'card'
+  /** A page: at most `limit` rows (the backend allows 1 to 100), from row `offset`. */
+  limit?: number
+  offset?: number
+  /** Narrow the list on the server, before it is ranked and paged. 'All' and '' mean no filter. */
+  category?: string
+  brand?: string
+  /**
+   * Called with the X-Total-Count header (the number of matches before limit and
+   * offset), or null when the reply has none (an older backend). Giving it makes
+   * this a paged request: it reads the reply's headers and is not shared with an
+   * identical one in flight, since a shared reply would not call this twice.
+   */
+  onTotal?: (total: number | null) => void
 }
+
+/** X-Total-Count as a whole number, or null if it is absent or not one. */
+export const readTotalCount = (headers: unknown): number | null => {
+  const raw = (headers as Record<string, unknown> | null | undefined)?.['x-total-count']
+  // Number('') is 0, so an empty header is turned away before it is read as a count.
+  const total = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : Number.NaN
+  return Number.isInteger(total) && total >= 0 ? total : null
+}
+
+/** A filter value that narrows the list: not empty and not the page's own 'All'. */
+const narrows = (value: string | undefined): value is string => !!value && value.trim() !== '' && value !== 'All'
 
 /**
  * Search the product catalog with dynamic Baumann skin-match scoring.
  *
- * `{ view: 'card' }` asks for the lean list. `view` is sent only when asked, so
- * a call without options sends exactly what it always did.
+ * `{ view: 'card' }` asks for the lean list. Every option is sent only when
+ * given, so a call without options sends exactly what it always did.
  */
 export const searchProducts = (
   query: string = '',
@@ -70,13 +95,24 @@ export const searchProducts = (
   if (minPrice !== undefined && minPrice !== null) params.min_price = minPrice
   if (maxPrice !== undefined && maxPrice !== null) params.max_price = maxPrice
   if (options?.view === 'card') params.view = 'card'
+  if (typeof options?.limit === 'number') params.limit = options.limit
+  if (typeof options?.offset === 'number') params.offset = options.offset
+  if (narrows(options?.category)) params.category = options.category.trim()
+  if (narrows(options?.brand)) params.brand = options.brand.trim()
 
-  // The same search asked for again while it is still on its way (Explore's grid
-  // and its "Recommended" shortlist both ask for the whole catalogue on load, a
-  // 488 kB reply) shares the one request. Kept only until it settles, so nothing
-  // is ever served from a stored answer, and keyed on the login too, because the
-  // match scores in the reply are per user. `view` is in `params`, so a lean and
-  // a full request for the same search never share a promise.
+  const { onTotal } = options ?? {}
+  if (onTotal) {
+    return getResponseWithGuestFallback('/products/search', { params }).then((response) => {
+      onTotal(readTotalCount(response.headers))
+      return response.data
+    })
+  }
+
+  // The same search asked for again while it is still on its way shares the one
+  // request. Kept only until it settles, so nothing is ever served from a stored
+  // answer, and keyed on the login too, because the match scores in the reply are
+  // per user. `view` is in `params`, so a lean and a full request for the same
+  // search never share a promise.
   const key = JSON.stringify([params, localStorage.getItem('access_token')])
   const pending = inFlightSearches.get(key)
   if (pending) return pending

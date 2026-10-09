@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { apiClient } from './index'
 
 /**
@@ -28,18 +28,27 @@ import { apiClient } from './index'
  * `config` is passed on only when given, so a call without one reaches axios
  * exactly as `get(path)`.
  */
-export const getWithGuestFallback = async <T = any>(path: string, config?: AxiosRequestConfig): Promise<T> => {
-  const asGuest = async (): Promise<T> => {
+export const getWithGuestFallback = async <T = any>(path: string, config?: AxiosRequestConfig): Promise<T> =>
+  (await getResponseWithGuestFallback<T>(path, config)).data
+
+/**
+ * The same request and the same fallback as getWithGuestFallback, returning the
+ * whole response so a caller can read its headers (Explore reads X-Total-Count).
+ * getWithGuestFallback is this with `.data` taken.
+ */
+export const getResponseWithGuestFallback = async <T = unknown>(
+  path: string,
+  config?: AxiosRequestConfig,
+): Promise<AxiosResponse<T>> => {
+  const asGuest = () => {
     const url = `${import.meta.env.VITE_API_URL}${path}`
-    const response = config === undefined ? await axios.get(url) : await axios.get(url, config)
-    return response.data
+    return config === undefined ? axios.get<T>(url) : axios.get<T>(url, config)
   }
 
   if (!localStorage.getItem('access_token')) return asGuest()
 
   try {
-    const response = config === undefined ? await apiClient.get(path) : await apiClient.get(path, config)
-    return response.data
+    return config === undefined ? await apiClient.get<T>(path) : await apiClient.get<T>(path, config)
   } catch (error: unknown) {
     if ((error as { response?: { status?: number } } | null)?.response?.status === 401) return asGuest()
     throw error
