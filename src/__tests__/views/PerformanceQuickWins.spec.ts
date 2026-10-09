@@ -26,6 +26,7 @@ import ExploreView from '../../views/ExploreView.vue'
 import ExploreProductCard from '../../components/Catalog/ExploreProductCard.vue'
 import SearchAutocompleteInput from '../../components/Shared/SearchAutocompleteInput.vue'
 import SkinTypeRecommendationsWidget from '../../components/Shared/SkinTypeRecommendationsWidget.vue'
+import RouterSource from '../../router/index.ts?raw'
 import AppSidebarSource from '../../components/Shared/AppSidebar.vue?raw'
 import BottomNavSource from '../../components/Shared/BottomNav.vue?raw'
 import ShelfViewSource from '../../views/ShelfView.vue?raw'
@@ -727,6 +728,29 @@ describe('feat/28 performance quick wins', () => {
 
     it.each(EAGER)('keeps the page for the %s route in the main file, as before', (name) => {
       expect(typeof page(name)).toBe('object')
+    })
+
+    it.each([
+      ['quiz', 'SkinQuizView'],
+      ['SkinTypeLanding', 'SkinTypeLanding'],
+      ['shelf', 'ShelfView'],
+      ['settings', 'SettingsView'],
+      ['skin-profile', 'SkinProfileView'],
+      ['explore', 'ExploreView'],
+      ['ProductDetail', 'ProductDetailView'],
+      ['match-methodology', 'MatchMethodologyView'],
+      ['Compare', 'CompareView'],
+      ['submit-product', 'SubmitProductView'],
+      ['my-submissions', 'MySubmissionsView'],
+      ['admin-submissions', 'AdminSubmissionsView'],
+      ['product-edit', 'ProductEditView'],
+      ['privacy', 'PrivacyPolicyView'],
+      ['terms', 'TermsView'],
+    ])('loads the %s route from the same page file it used before (%s)', (name, file) => {
+      const lines = RouterSource.split('\n')
+      const at = lines.findIndex((l) => l.includes(`name: '${name}',`))
+
+      expect(lines[at + 1]).toContain(`component: () => import('../views/${file}.vue'),`)
     })
 
     it('resolves a lazy route to its page component when it is opened', async () => {
