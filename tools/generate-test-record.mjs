@@ -1002,6 +1002,14 @@ const SPEC_MAP = [
       'The real searchProducts with the one function every optional-auth GET goes through (getWithGuestFallback) replaced by requests a test holds open; the pages and modals mounted with searchProducts mocked, to read what each asks for; the card mounted with a real lean item (the shape the backend sends for ?view=card) and with the same product in the older full shape. No network access.',
     note: 'The lean product list (feat/29). searchProducts takes an optional view: view=card is sent only when asked, a lean and a default request for the same search never share a promise, and a call without options sends what it always did. The Explore card writes its "Formulated with ..." line from top_ingredients and ingredient_count, and from product_ingredients when an older backend sends the full tree, in the same words. Explore (grid and recommendations), the skin profile recommendations, the compare selector and the search suggestions ask for the lean list; the shelf Add product (which shows key actives on choosing a product) and the routine Add step keep the full one. Not checked here: the live card view, which was not yet deployed.',
   },
+  {
+    file: 'src/__tests__/components/QuickInspectLoading.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/products (prefetchProductBySlug, needsProductDetail), components/Catalog/UniversalProductModal, components/Catalog/ExploreProductCard, views/ExploreView',
+    prerequisite:
+      'The real prefetch and modal with the one function every optional-auth GET goes through (getWithGuestFallback) replaced by requests a test holds open and answers or fails; the spec content stubbed; ExploreView mounted on a memory history with its other components stubbed and the card emitting the events under test. No network access.',
+    note: 'Quick Inspect for a product from the lean list (feat/29), which carries no ingredient tree. The modal opens at once, with no request, when the product has its tree (an older backend, or one already fetched); otherwise it fetches the full product by slug and shows a loading state in the shape of the content, then the product, or a plain error state with Try Again (never a blank modal). The fetch is started when the pointer or focus reaches the card, once per slug, kept for the visit and forgotten on a failure, and the modal reuses it. Explore forgets earlier fetches when it opens, so a retaken quiz is not shown stale. Not checked here: timing against the live server.',
+  },
 ]
 
 function runSuite() {

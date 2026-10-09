@@ -7,7 +7,9 @@ const props = defineProps<{
   product: any
 }>()
 
-const emit = defineEmits(['inspect'])
+// `prefetch`: the pointer or focus has reached the card, so a host that has to
+// fetch the product before it can inspect it may start now.
+const emit = defineEmits(['inspect', 'prefetch'])
 
 // The skin match badge. Thresholds are resolveMatchBand's (FE-DEF-12), and the
 // look is shared with the recommendation cards on the same page.
@@ -51,6 +53,8 @@ const ingredientsSummary = computed(() => {
     <!-- Clickable base framework triggering main detail inspection modal -->
     <div
       @click="emit('inspect', product)"
+      @pointerenter="emit('prefetch', product)"
+      @focusin="emit('prefetch', product)"
       class="w-full bg-brand-surface-light dark:bg-brand-surface-dark rounded-[2rem] border border-brand-surface-border dark:border-stone-800 shadow-sm flex flex-col sm:flex-row gap-5 p-5 hover:-translate-y-1 hover:shadow-lg hover:border-brand-primary/40 transition-all duration-300 text-left group cursor-pointer relative"
     >
 

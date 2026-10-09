@@ -747,6 +747,39 @@ export const getProductBySlug = async (slug: string) => {
   return getWithGuestFallback(`/products/slug/${encodeURIComponent(slug)}`)
 }
 
+const prefetchedProducts = new Map<string, ReturnType<typeof getProductBySlug>>()
+
+/**
+ * getProductBySlug, once per slug: for Quick Inspect, which starts it when the
+ * pointer reaches a card and reuses it when the modal opens, so the lean list
+ * (which carries no ingredient tree) costs the user no wait.
+ *
+ * A failed fetch is forgotten, so the retry asks again. Keyed on the login as
+ * well, because the match score in the reply is per user. Cleared when Explore
+ * opens (clearPrefetchedProducts), so a quiz retaken since is not shown stale.
+ */
+export const prefetchProductBySlug = (slug: string) => {
+  const key = JSON.stringify([slug, localStorage.getItem('access_token')])
+  const known = prefetchedProducts.get(key)
+  if (known) return known
+
+  const request = getProductBySlug(slug)
+  prefetchedProducts.set(key, request)
+  request.catch(() => { if (prefetchedProducts.get(key) === request) prefetchedProducts.delete(key) })
+  return request
+}
+
+export const clearPrefetchedProducts = () => prefetchedProducts.clear()
+
+/**
+ * Whether Quick Inspect has to fetch this product before it can show it: it
+ * has a slug to fetch by and no ingredient tree, which a lean-list item never
+ * has. An item with the tree (an older backend, or one already fetched) opens
+ * as it is.
+ */
+export const needsProductDetail = (product: Record<string, unknown> | null | undefined) =>
+  !!product?.slug && !Array.isArray(product.product_ingredients)
+
 /**
  * Backwards-compatible helper: Resolves product details whether passed a UUID or a slug
  */

@@ -3,6 +3,9 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } 
 import { useRoute, useRouter } from 'vue-router'
 import {
   searchProducts,
+  prefetchProductBySlug,
+  clearPrefetchedProducts,
+  needsProductDetail,
   pickTopRecommendations,
   resolveCatalogState,
   MATCH_SCORE_BASIS,
@@ -55,6 +58,13 @@ const activeMinPrice = ref(PRICE_FLOOR)
 const activeMaxCap = ref<number | null>(null)
 
 const selectedForInspection = ref<any>(null)
+
+// A lean-list item has no ingredient tree, which Quick Inspect shows. The fetch
+// starts when the pointer or focus reaches the card, so it is usually back by the
+// time the card is pressed; the modal reuses the same request.
+const prefetchForInspect = (product: Record<string, unknown>) => {
+  if (needsProductDetail(product)) prefetchProductBySlug(product.slug as string)
+}
 const baseProductForCompare = ref<any | null>(null)
 
 const cleanString = (str: string) => {
@@ -397,6 +407,9 @@ onMounted(() => {
   // outside that first page was invisible to an exact search and the page said
   // "No Formulation Matches" about a product the catalogue holds.
   syncFiltersFromURL()
+  // A fresh visit starts without products fetched on an earlier one, whose match
+  // scores may be out of date (a quiz retaken since).
+  clearPrefetchedProducts()
   fetchCatalog()
   loadRecommendations()
 })
@@ -810,6 +823,7 @@ watch(
           :product="product"
           :style="cardFlowDelay(index)"
           @inspect="selectedForInspection = product"
+          @prefetch="prefetchForInspect"
         />
       </TransitionGroup>
 
