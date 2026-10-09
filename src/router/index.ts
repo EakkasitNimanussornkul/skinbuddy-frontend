@@ -5,33 +5,23 @@ import { useAdmin } from '../composables/useAdmin'
 import { scrollBehavior } from './scroll'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 import ChatbotView from '../views/ChatbotView.vue'
-import CompareView from '../views/CompareView.vue'
 import ErrorView from '../views/ErrorView.vue'
-import ExploreView from '../views/ExploreView.vue'
 import HomeView from '../views/HomeView.vue'
-import ProductDetailView from '../views/ProductDetailView.vue'
-import MatchMethodologyView from '../views/MatchMethodologyView.vue'
 import RoutineView from '../views/RoutineView.vue'
 import RoutineHistoryView from '../views/RoutineHistoryView.vue'
-import SettingsView from '../views/SettingsView.vue'
-import ShelfView from '../views/ShelfView.vue'
 import SkinAnalysisView from '../views/SkinAnalysisView.vue'
-import SkinProfileView from '../views/SkinProfileView.vue'
-import SkinQuizView from '../views/SkinQuizView.vue'
-import SkinTypeLanding from '../views/SkinTypeLanding.vue'
 import WeeklyCheckInView from '../views/WeeklyCheckInView.vue'
-import SubmitProductView from '../views/SubmitProductView.vue'
-import MySubmissionsView from '../views/MySubmissionsView.vue'
-import AdminSubmissionsView from '../views/AdminSubmissionsView.vue'
-import ProductEditView from '../views/ProductEditView.vue'
 import ConsentWelcomeView from '../views/ConsentWelcomeView.vue'
 import HealthConsentView from '../views/HealthConsentView.vue'
 import AccountDeleteCallbackView from '../views/AccountDeleteCallbackView.vue'
 import AccountDeletedView from '../views/AccountDeletedView.vue'
-import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
-import TermsView from '../views/TermsView.vue'
 import { useConsent } from '../composables/useConsent'
 
+// Each page of the site is its own file, fetched when the page is first opened,
+// so a visitor does not download every page to see the home page. Home and the
+// error page stay in the main file (the first page, and the fallback), and so do
+// the chat, routine, sign-in callback, skin analysis, weekly check-in, consent
+// and account-deletion routes, which are not ours to change.
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior,
@@ -44,13 +34,13 @@ const router = createRouter({
     {
       path: '/quiz',
       name: 'quiz',
-      component: SkinQuizView,
+      component: () => import('../views/SkinQuizView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/setup-profile',
       name: 'SkinTypeLanding',
-      component: SkinTypeLanding,
+      component: () => import('../views/SkinTypeLanding.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -66,19 +56,19 @@ const router = createRouter({
     {
       path: '/shelf',
       name: 'shelf',
-      component: ShelfView,
+      component: () => import('../views/ShelfView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/settings',
       name: 'settings',
-      component: SettingsView,
+      component: () => import('../views/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/profile',
       name: 'skin-profile',
-      component: SkinProfileView,
+      component: () => import('../views/SkinProfileView.vue'),
       // No requiresSkinType: a user without a type, or with one the page cannot
       // read, gets the page's own empty state, which offers the quiz and the
       // type selector in place.
@@ -87,7 +77,7 @@ const router = createRouter({
     {
       path: '/explore',
       name: 'explore',
-      component: ExploreView,
+      component: () => import('../views/ExploreView.vue'),
       // Category chips write ?category= here; see router/scroll.ts.
       meta: { keepScrollOnQueryChange: true },
     },
@@ -112,19 +102,19 @@ const router = createRouter({
     {
       path: '/product/:slug',
       name: 'ProductDetail',
-      component: ProductDetailView,
+      component: () => import('../views/ProductDetailView.vue'),
     },
     {
       // How % Match works and where its data comes from. Public: a guest sees
       // the score explained on Explore too.
       path: '/how-match-works',
       name: 'match-methodology',
-      component: MatchMethodologyView,
+      component: () => import('../views/MatchMethodologyView.vue'),
     },
     {
       path: '/compare',
       name: 'Compare',
-      component: CompareView,
+      component: () => import('../views/CompareView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -145,13 +135,13 @@ const router = createRouter({
       // (by meta, so /submissions/new/ is full screen as well).
       path: '/submissions/new',
       name: 'submit-product',
-      component: SubmitProductView,
+      component: () => import('../views/SubmitProductView.vue'),
       meta: { requiresAuth: true, fullScreen: true },
     },
     {
       path: '/submissions',
       name: 'my-submissions',
-      component: MySubmissionsView,
+      component: () => import('../views/MySubmissionsView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -160,7 +150,7 @@ const router = createRouter({
       // about what the page offers; the backend answers 403 to anyone else.
       path: '/admin/submissions/:id?',
       name: 'admin-submissions',
-      component: AdminSubmissionsView,
+      component: () => import('../views/AdminSubmissionsView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
@@ -168,7 +158,7 @@ const router = createRouter({
       // own Cancel and save bar. The backend answers 403 to anyone else.
       path: '/products/:slug/edit',
       name: 'product-edit',
-      component: ProductEditView,
+      component: () => import('../views/ProductEditView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true, fullScreen: true },
     },
 
@@ -207,12 +197,12 @@ const router = createRouter({
       // User Data Policy 2.4), and open to a user who has not agreed yet.
       path: '/privacy',
       name: 'privacy',
-      component: PrivacyPolicyView,
+      component: () => import('../views/PrivacyPolicyView.vue'),
     },
     {
       path: '/terms',
       name: 'terms',
-      component: TermsView,
+      component: () => import('../views/TermsView.vue'),
     },
 
     {

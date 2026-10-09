@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { createRouter, createMemoryHistory, type Router } from 'vue-router'
 import { readFileSync, statSync } from 'node:fs'
 
 // No network: the one function every optional-auth GET goes through, and the
@@ -664,6 +664,78 @@ describe('feat/28 performance quick wins', () => {
 
       expect(wrapper.find('.match-fraction').exists()).toBe(true)
       expect(wrapper.get('.match-fraction').classes().join(' ')).not.toContain('backdrop-blur')
+    })
+  })
+
+  describe('router/index (pages load on demand)', () => {
+    // The real router, imported by a path held in a variable so vue-tsc does not
+    // follow it into every view (see profileRoute.spec.ts).
+    const ROUTER_MODULE = '../../router/index'
+    let router: Router
+    beforeAll(async () => {
+      router = ((await import(/* @vite-ignore */ ROUTER_MODULE)) as { default: Router }).default
+    }, 60_000)
+
+    // Home is the first page and the error page is the fallback; the others are
+    // the chat, routine, sign-in callback, skin analysis and weekly check-in
+    // (a teammate's) and the consent and account-deletion routes (unfinished),
+    // whose route lines were left as they were.
+    const EAGER = [
+      'home',
+      'error',
+      'not-found',
+      'authCallback',
+      'chat',
+      'routine',
+      'routine-history',
+      'weekly-checkin',
+      'skin-analysis',
+      'welcome',
+      'consent-health',
+      'account-delete-callback',
+      'account-deleted',
+    ]
+    const LAZY = [
+      'quiz',
+      'SkinTypeLanding',
+      'shelf',
+      'settings',
+      'skin-profile',
+      'explore',
+      'ProductDetail',
+      'match-methodology',
+      'Compare',
+      'submit-product',
+      'my-submissions',
+      'admin-submissions',
+      'product-edit',
+      'privacy',
+      'terms',
+    ]
+    const page = (name: string) => router.getRoutes().find((r) => r.name === name)!.components!.default
+
+    it('names every route once, so none was dropped or added by the change', () => {
+      const names = router.getRoutes().map((r) => r.name)
+
+      expect(names).toHaveLength(EAGER.length + LAZY.length)
+      expect(new Set(names)).toEqual(new Set([...EAGER, ...LAZY]))
+    })
+
+    it.each(LAZY)('loads the page for the %s route when it is first opened, not with the main file', (name) => {
+      expect(typeof page(name)).toBe('function')
+    })
+
+    it.each(EAGER)('keeps the page for the %s route in the main file, as before', (name) => {
+      expect(typeof page(name)).toBe('object')
+    })
+
+    it('resolves a lazy route to its page component when it is opened', async () => {
+      await router.push('/terms')
+      await router.isReady()
+
+      const matched = router.currentRoute.value.matched[0]!
+      expect(matched.name).toBe('terms')
+      expect(typeof matched.components!.default).toBe('object')
     })
   })
 })
