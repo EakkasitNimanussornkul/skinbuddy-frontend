@@ -36,7 +36,7 @@ const ingredientsSummary = computed(() => {
   const count = props.product.ingredient_count
   if (typeof count === 'number') {
     const names = Array.isArray(props.product.top_ingredients) ? props.product.top_ingredients.filter(Boolean).slice(0, 3) : []
-    if (!count || !names.length) return 'Active formula composition.'
+    if (!names.length) return 'Active formula composition.'
     return `Formulated with ${names.join(', ')}${count > 3 ? ', and more' : ''}.`
   }
   if (!props.product.product_ingredients?.length) return 'Active formula composition.'

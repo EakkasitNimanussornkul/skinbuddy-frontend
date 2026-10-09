@@ -205,6 +205,33 @@ describe('feat/29 Quick Inspect with a lean product', () => {
       expect(spec(w).props('product').skin_match_score).toBe(78)
     })
 
+    it('keeps the fields the card had when the full product leaves one out', async () => {
+      const { skin_match_score: _score, ...withoutScore } = FULL
+      const w = await mountModal(LEAN)
+      opened[0]!.resolve(withoutScore)
+      await flushPromises()
+
+      expect(spec(w).props('product').skin_match_score).toBe(78)
+      expect(spec(w).props('product').product_ingredients).toEqual(FULL.product_ingredients)
+    })
+
+    it('ignores the answer for a product the modal no longer shows, and waits for the one it does', async () => {
+      const other = { ...LEAN, id: 'p-2', slug: 'other-serum', name: 'Other Serum' }
+      const w = await mountModal(LEAN)
+      await w.setProps({ product: other })
+      await flushPromises()
+      expect(opened.map((o) => o.path)).toEqual(['/products/slug/paulas-choice-glycolic-serum', '/products/slug/other-serum'])
+
+      opened[0]!.resolve(FULL)
+      await flushPromises()
+      expect(loadingLine(w).exists()).toBe(true)
+      expect(spec(w).exists()).toBe(false)
+
+      opened[1]!.resolve({ ...other, product_ingredients: [] })
+      await flushPromises()
+      expect(spec(w).props('product').slug).toBe('other-serum')
+    })
+
     it('shows the plain error state with a Try Again, never a blank modal, when the fetch fails', async () => {
       const w = await mountModal(LEAN)
       opened[0]!.reject(new Error('offline'))
