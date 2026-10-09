@@ -284,6 +284,18 @@ describe('feat/30 Explore loads the list a page at a time', () => {
       expect(asked()).toHaveLength(2)
     })
 
+    it('starts the next page after the rows the first page brought, even when it brought fewer than 12', async () => {
+      vi.mocked(searchProducts).mockImplementationOnce((async (_q: string, _a?: number, _b?: number, options?: SearchOptions) => {
+        options?.onTotal?.(34)
+        return PRODUCTS.slice(0, 8)
+      }) as never)
+      const { wrapper } = await mountExplore()
+
+      await showMore(wrapper)
+
+      expect(lastAsked()).toMatchObject({ offset: 8 })
+    })
+
     it('staggers the new cards from the top of their own page, not from the top of the list', async () => {
       const { wrapper } = await mountExplore()
       await showMore(wrapper)
@@ -427,6 +439,21 @@ describe('feat/30 Explore loads the list a page at a time', () => {
       await brandSelect(wrapper).setValue('CeraVe')
       await flushPromises()
       page.reject(new Error('late'))
+      await flushPromises()
+
+      expect(wrapper.find('.load-more [role="alert"]').exists()).toBe(false)
+      expect(stripText(wrapper)).toBe('Showing 12 of 17 products')
+    })
+
+    it('clears a failed page when the list starts again', async () => {
+      const { wrapper } = await mountExplore()
+      const page = hold()
+      await stripButton(wrapper).trigger('click')
+      page.reject(new Error('offline'))
+      await flushPromises()
+      expect(wrapper.find('.load-more [role="alert"]').exists()).toBe(true)
+
+      await brandSelect(wrapper).setValue('CeraVe')
       await flushPromises()
 
       expect(wrapper.find('.load-more [role="alert"]').exists()).toBe(false)

@@ -215,11 +215,11 @@ const fetchCatalog = async () => {
 }
 
 // The next page, added under the products already shown. Not while the list is
-// being replaced or a page is already on its way, and not when there is no
-// total (an older backend sent everything in the first reply). A failure keeps
-// what is shown and leaves the strip offering the same page again.
+// being replaced or a page is already on its way. Only the strip asks, and it is
+// there only when the server gave a total. A failure keeps what is shown and
+// leaves the strip offering the same page again.
 const loadMore = async () => {
-  if (isLoading.value || loadingMore.value || serverTotal.value === null) return
+  if (isLoading.value || loadingMore.value) return
   const mine = latestCatalogRequest
   loadingMore.value = true
   loadMoreFailed.value = false

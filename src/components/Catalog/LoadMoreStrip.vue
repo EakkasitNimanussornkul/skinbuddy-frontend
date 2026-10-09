@@ -108,7 +108,7 @@ const BUTTON_LOOK: Record<typeof props.status, string> = {
         >
           <div
             :class="['strip-fill h-full rounded-full bg-brand-primary-strong dark:bg-brand-primary', status === 'loading' ? 'motion-safe:animate-pulse' : '']"
-            :style="{ width: `${status === 'done' ? 100 : percent}%` }"
+            :style="{ width: `${percent}%` }"
           ></div>
         </div>
       </div>
