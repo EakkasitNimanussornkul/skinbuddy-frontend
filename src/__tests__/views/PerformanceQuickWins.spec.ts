@@ -296,8 +296,10 @@ describe('feat/28 performance quick wins', () => {
       await flushPromises()
 
       expect(shownIds(wrapper)).toEqual([])
+      expect(wrapper.find('[aria-busy="true"]').exists()).toBe(true)
       pending[1]!.resolve([product('new')])
       await flushPromises()
+      expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false)
       expect(shownIds(wrapper)).toEqual(['new'])
     })
 
@@ -336,6 +338,17 @@ describe('feat/28 performance quick wins', () => {
 
       expect(shownIds(wrapper)).toEqual([])
       expect(toasts.value.map((t) => t.message)).toContain('Failed to load product catalog.')
+    })
+
+    it('reads no reply at all as an empty catalogue, as before, not a failure', async () => {
+      const pending = makePending()
+      const { wrapper } = await mountExplore()
+
+      pending[0]!.resolve(null)
+      await flushPromises()
+
+      expect(shownIds(wrapper)).toEqual([])
+      expect(toasts.value).toHaveLength(0)
     })
 
     it('still reads an empty list as an empty catalogue, not a failure', async () => {
@@ -424,6 +437,18 @@ describe('feat/28 performance quick wins', () => {
       await type(wrapper, 'ce')
 
       expect(wrapper.find('.search-results').text()).not.toContain('Product late')
+      wrapper.unmount()
+    })
+
+    it('stops the loading line when the box is cleared while a request is still out', async () => {
+      makePending()
+      const wrapper = mountSearch()
+
+      await type(wrapper, 'cerave')
+      await vi.advanceTimersByTimeAsync(250)
+      await type(wrapper, '')
+
+      expect((wrapper.vm as unknown as { isLoading: boolean }).isLoading).toBe(false)
       wrapper.unmount()
     })
 
