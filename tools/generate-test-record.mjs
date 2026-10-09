@@ -1010,6 +1010,14 @@ const SPEC_MAP = [
       'The real prefetch and modal with the one function every optional-auth GET goes through (getWithGuestFallback) replaced by requests a test holds open and answers or fails; the spec content stubbed; ExploreView mounted on a memory history with its other components stubbed and the card emitting the events under test. No network access.',
     note: 'Quick Inspect for a product from the lean list (feat/29), which carries no ingredient tree. The modal opens at once, with no request, when the product has its tree (an older backend, or one already fetched); otherwise it fetches the full product by slug and shows a loading state in the shape of the content, then the product, or a plain error state with Try Again (never a blank modal). The fetch is started when the pointer or focus reaches the card, once per slug, kept for the visit and forgotten on a failure, and the modal reuses it. Explore forgets earlier fetches when it opens, so a retaken quiz is not shown stale. Not checked here: timing against the live server.',
   },
+  {
+    file: 'src/__tests__/components/LoadMoreStrip.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'components/Catalog/LoadMoreStrip',
+    prerequisite:
+      'The component mounted alone with @vue/test-utils and given its state, counts and page size as props; window.scrollTo is replaced by a spy. The suite reports prefers-reduced-motion, so the smooth-scroll case sets it back for that case only. Layout by breakpoint is read from the classes, since jsdom applies no CSS. No store, no router, no network.',
+    note: 'The strip at the end of the Explore grid (feat/30), in its four states: ready (the count, a progress bar and a button that names the next batch, "Show the last N" at the end), loading (the range on its way, the button busy and kept as the same element so the focus stays on it, placeholder cards under the strip), failed (an alert, the products already shown stay, Try again asks for the same page) and all shown (a tick, a full bar, Back to top, and Clear filters when a filter is on). The page decides the state; the strip only reports presses. Every pulse and spin is a motion-safe class, so it stops under prefers-reduced-motion. The look is checked in a real browser.',
+  },
 ]
 
 function runSuite() {
