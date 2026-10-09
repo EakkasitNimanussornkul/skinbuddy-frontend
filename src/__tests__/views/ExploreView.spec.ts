@@ -88,7 +88,7 @@ const mountExplore = async (
 
 /** Only fetchCatalog passes the price bounds, so this counts its calls alone. */
 const catalogRequests = () =>
-  vi.mocked(searchProducts).mock.calls.filter((args) => args.length === 3)
+  vi.mocked(searchProducts).mock.calls.filter((args) => args[0] !== undefined).map((args) => args.slice(0, 3))
 
 const cards = (wrapper: VueWrapper) => wrapper.findAllComponents(ExploreProductCard)
 
@@ -246,7 +246,7 @@ describe('src/views/ExploreView.vue', () => {
       // Fetched unfiltered rather than derived from the catalogue on screen:
       // fetchCatalog sends the active term and price bounds, so recommendations
       // taken from its result would shift as the user filters.
-      expect(searchProducts).toHaveBeenCalledWith()
+      expect(searchProducts).toHaveBeenCalledWith(undefined, undefined, undefined, { view: 'card' })
     })
 
     it('tells the widget the ranking failed rather than showing it empty', async () => {

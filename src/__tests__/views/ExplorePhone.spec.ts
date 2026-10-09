@@ -72,7 +72,7 @@ const mountExplore = async (address = '/explore') => {
   return { wrapper, router }
 }
 
-const catalogRequests = () => vi.mocked(searchProducts).mock.calls.filter((args) => args.length === 3)
+const catalogRequests = () => vi.mocked(searchProducts).mock.calls.filter((args) => args[0] !== undefined).map((args) => args.slice(0, 3))
 const lastRequest = () => catalogRequests()[catalogRequests().length - 1]
 const filtersButton = (w: VueWrapper) => w.get('button.filters-button')
 const sheet = (w: VueWrapper) => w.find('[role="dialog"]')

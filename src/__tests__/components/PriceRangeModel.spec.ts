@@ -129,8 +129,12 @@ describe('feat/27 the price model: a bar to 1,500+ that means no upper limit', (
       return wrapper
     }
 
-    /** The query strings sent so far; a guest, so the bare axios call carries them. */
-    const sentParams = () => vi.mocked(axios.get).mock.calls.map((call) => (call[1] as { params: Record<string, unknown> }).params)
+    /** The query strings sent so far; a guest, so the bare axios call carries them. The lean-list `view` is left out: these cases are about the price bounds. */
+    const sentParams = () =>
+      vi.mocked(axios.get).mock.calls.map((call) => {
+        const { view: _view, ...bounds } = (call[1] as { params: Record<string, unknown> }).params
+        return bounds
+      })
 
     /** Opens the phone Filters sheet and types into its price boxes, as a shopper would. */
     const typeInSheet = async (w: VueWrapper, box: 'low' | 'high', text: string) => {

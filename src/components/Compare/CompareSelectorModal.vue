@@ -27,7 +27,7 @@ const loadSuggestions = async () => {
   isLoading.value = true
   loadFailed.value = false
   try {
-    const data = await searchProducts('')
+    const data = await searchProducts('', undefined, undefined, { view: 'card' })
     // Filter out the base product itself
     allProducts.value = (data || []).filter((p: any) => p.id !== props.baseProduct.id)
   } catch (error) {

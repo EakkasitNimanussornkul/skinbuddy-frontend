@@ -41,7 +41,7 @@ watch(searchQuery, (newVal) => {
 
   debounceTimeout = setTimeout(async () => {
     try {
-      const data = await searchProducts(newVal.trim())
+      const data = await searchProducts(newVal.trim(), undefined, undefined, { view: 'card' })
       if (mine !== latestRequest) return
       results.value = (Array.isArray(data) ? data : []).slice(0, 7)
     } catch (error) {

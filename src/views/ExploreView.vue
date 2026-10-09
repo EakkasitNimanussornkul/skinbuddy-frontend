@@ -126,6 +126,9 @@ const fetchCatalog = async () => {
       searchQuery.value,
       activeMinPrice.value > PRICE_FLOOR ? activeMinPrice.value : undefined,
       activeMaxCap.value ?? undefined,
+      // The grid and the shortlist read card fields only; the ingredient tree
+      // is fetched when a product is opened (UniversalProductModal).
+      { view: 'card' },
     )
     if (mine !== latestCatalogRequest) return
     // A reply that is not a list (an error page, a changed shape) is a failed
@@ -369,7 +372,9 @@ const loadRecommendations = async () => {
   recommendationsFailed.value = false
 
   try {
-    const results = await searchProducts()
+    // No term or bounds: the same lean request as an unfiltered grid, so the two
+    // share one reply on load.
+    const results = await searchProducts(undefined, undefined, undefined, { view: 'card' })
     recommendedProducts.value = pickTopRecommendations(results)
   } catch (error) {
     console.error('Failed to load recommended products:', error)

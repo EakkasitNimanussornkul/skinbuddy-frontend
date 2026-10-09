@@ -269,7 +269,7 @@ describe('feat/28 performance quick wins', () => {
       const pending = makePending()
       await mountExplore('/explore?q=retinol', true)
 
-      expect(pending.map((p) => p.params)).toEqual([{ q: 'retinol' }, {}])
+      expect(pending.map((p) => p.params)).toEqual([{ q: 'retinol', view: 'card' }, { view: 'card' }])
     })
 
     it('shows the answer to the latest request when an older one answers last', async () => {

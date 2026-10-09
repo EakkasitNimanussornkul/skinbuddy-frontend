@@ -40,7 +40,7 @@ const move = async (input: ReturnType<typeof lowest>, value: number) => {
   await input.trigger('input')
 }
 
-const catalogRequests = () => vi.mocked(searchProducts).mock.calls.filter((args) => args.length === 3)
+const catalogRequests = () => vi.mocked(searchProducts).mock.calls.filter((args) => args[0] !== undefined).map((args) => args.slice(0, 3))
 const lastRequest = () => catalogRequests()[catalogRequests().length - 1]
 
 /** Explore with the real slider, Teleport stubbed so the sheet renders in the wrapper. */

@@ -24,8 +24,19 @@ const badgeTitle = computed(() => {
   return undefined
 })
 
-// Build dynamic overview summary fallback string from components
+// Build dynamic overview summary fallback string from components.
+//
+// The lean list (?view=card) carries no ingredient tree: the first three names
+// arrive as `top_ingredients` and the total as `ingredient_count`. An older
+// backend ignores the lean view and sends `product_ingredients` instead, so the
+// tree is the fallback; both give the same words.
 const ingredientsSummary = computed(() => {
+  const count = props.product.ingredient_count
+  if (typeof count === 'number') {
+    const names = Array.isArray(props.product.top_ingredients) ? props.product.top_ingredients.filter(Boolean).slice(0, 3) : []
+    if (!count || !names.length) return 'Active formula composition.'
+    return `Formulated with ${names.join(', ')}${count > 3 ? ', and more' : ''}.`
+  }
   if (!props.product.product_ingredients?.length) return 'Active formula composition.'
   const list = props.product.product_ingredients
     .map((pi: any) => pi.ingredients?.name)

@@ -29,19 +29,54 @@ export interface CompareResponse {
 const inFlightSearches = new Map<string, ReturnType<typeof getWithGuestFallback>>()
 
 /**
- * Search the product catalog with dynamic Baumann skin-match scoring
+ * One row of a lean product list (`GET /products/search?view=card`).
+ *
+ * The card view drops the ingredient tree and the source list (about 90% of the
+ * default reply) and adds `ingredient_count`. `top_ingredients` is in both
+ * shapes. Everything is optional because an older backend ignores `view` and
+ * answers with the full objects, where `product_ingredients` is present and
+ * `ingredient_count` is not; a card reads whichever it finds.
  */
-export const searchProducts = (query: string = '', minPrice?: number, maxPrice?: number) => {
+export interface ProductCard extends ScoredProduct {
+  category?: string | null
+  description?: string | null
+  price_thb?: number | null
+  price_usd?: number | null
+  top_ingredients?: string[]
+  ingredient_count?: number
+  product_ingredients?: unknown[]
+  [key: string]: unknown
+}
+
+/** Options for searchProducts. `card` asks for the lean list shape. */
+export interface SearchOptions {
+  view?: 'card'
+}
+
+/**
+ * Search the product catalog with dynamic Baumann skin-match scoring.
+ *
+ * `{ view: 'card' }` asks for the lean list. `view` is sent only when asked, so
+ * a call without options sends exactly what it always did.
+ */
+export const searchProducts = (
+  query: string = '',
+  minPrice?: number,
+  maxPrice?: number,
+  options?: SearchOptions,
+) => {
   const params: any = {}
   if (query) params.q = query
   if (minPrice !== undefined && minPrice !== null) params.min_price = minPrice
   if (maxPrice !== undefined && maxPrice !== null) params.max_price = maxPrice
+  if (options?.view === 'card') params.view = 'card'
 
   // The same search asked for again while it is still on its way (Explore's grid
   // and its "Recommended" shortlist both ask for the whole catalogue on load, a
   // 488 kB reply) shares the one request. Kept only until it settles, so nothing
   // is ever served from a stored answer, and keyed on the login too, because the
-  // match scores in the reply are per user.
+  // match scores in the reply are per user. `view` is in `params`, so a lean and
+  // a full request for the same search never share a promise.
   const key = JSON.stringify([params, localStorage.getItem('access_token')])
   const pending = inFlightSearches.get(key)
   if (pending) return pending

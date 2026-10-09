@@ -141,7 +141,8 @@ const loadRecommendations = async () => {
   recommendationsFailed.value = false
 
   try {
-    const results = await searchProducts()
+    // Scores only, so the lean list.
+    const results = await searchProducts(undefined, undefined, undefined, { view: 'card' })
     recommendedProducts.value = pickTopRecommendations(results)
   } catch (error) {
     console.error('Failed to load recommended products:', error)
