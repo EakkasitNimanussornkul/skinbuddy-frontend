@@ -1026,6 +1026,14 @@ const SPEC_MAP = [
       'ExploreView mounted on a memory history with its other components stubbed (the strip is real), attached to the document so focus can be read. searchProducts is replaced by a small stand-in for the backend that filters by category and brand, cuts the page and reports the total through onTotal, or by a request a test holds open and answers or fails; getFacets is mocked, with the live /meta/facets answer of 2026-10-10 as the fixture. No network access.',
     note: 'Explore loads its list 12 at a time (feat/30). The first request is limit 12, offset 0, in the lean shape; Show more asks from the rows already received and adds the page under the first, never twice at once and never a product twice. A failed page keeps what is shown and Try again asks for the same page. A new search term, category, brand, price or Clear all starts the list again from its first page, and a page that was still on its way is thrown away, whether it then answers or fails. The heading counts from the total the server reports. A backend that predates paging (no total, the whole list at once) gets no strip and the browser still narrows by category and brand. The category and brand lists come from /meta/facets, so they do not change as pages load, and fall back to the products on the page if the facets cannot be read. Not checked here: the live server, the look of the strip, and the scroll position after a page loads.',
   },
+  {
+    file: 'src/__tests__/api/PagedProductSearch.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'api/optionalAuth (getResponseWithGuestFallback), api/products (searchProducts options, readTotalCount), api/metaApi (getFacets)',
+    prerequisite:
+      'Both HTTP paths mocked: the shared axios client and the bare axios call used for anonymous requests. localStorage and the facets cache cleared per test so the token branch and the cache are controlled. No network access.',
+    note: 'The api layer for the paging of Explore (feat/30), in a file of its own so the groups of the older specs keep their numbers. getResponseWithGuestFallback is the guest fallback returning the whole response, so headers can be read; getWithGuestFallback is it with the body taken. searchProducts takes limit, offset, category and brand, each sent only when given (an offset of 0 is kept; All, empty and blank category or brand send nothing), and onTotal receives X-Total-Count or null, which makes the request a paged one that is not shared with an identical request in flight. A call with no options sends what it always did. readTotalCount reads the header as a whole number and anything else as null. getFacets reads GET /meta/facets from the public route with no login, caches the answer, does not cache a failure, and reads a reply that is not an object as null.',
+  },
 ]
 
 function runSuite() {

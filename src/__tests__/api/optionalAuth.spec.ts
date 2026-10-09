@@ -10,7 +10,7 @@ vi.mock('axios', () => ({
 
 import axios from 'axios'
 import { apiClient } from '../../api/index'
-import { getWithGuestFallback, getResponseWithGuestFallback } from '../../api/optionalAuth'
+import { getWithGuestFallback } from '../../api/optionalAuth'
 
 const BASE = import.meta.env.VITE_API_URL
 const config = { params: { q: 'serum' } }
@@ -117,43 +117,6 @@ describe('src/api/optionalAuth.ts', () => {
         .map(([file]) => file)
 
       expect(others).toEqual([])
-    })
-  })
-
-  describe('getResponseWithGuestFallback()', () => {
-    it('returns the whole response, headers included, for a guest', async () => {
-      const response = { data: ['guest'], headers: { 'x-total-count': '34' } }
-      vi.mocked(axios.get).mockResolvedValue(response)
-
-      await expect(getResponseWithGuestFallback('/products/search', config)).resolves.toBe(response)
-      expect(axios.get).toHaveBeenCalledWith(`${BASE}/products/search`, config)
-      expect(apiClient.get).not.toHaveBeenCalled()
-    })
-
-    it('returns the whole response from apiClient when a login is stored', async () => {
-      localStorage.setItem('access_token', 'token-1')
-      const response = { data: ['personalised'], headers: { 'x-total-count': '34' } }
-      vi.mocked(apiClient.get).mockResolvedValue(response)
-
-      await expect(getResponseWithGuestFallback('/products/search', config)).resolves.toBe(response)
-      expect(apiClient.get).toHaveBeenCalledWith('/products/search', config)
-    })
-
-    it('repeats the request as a guest on 401 and rethrows any other failure', async () => {
-      localStorage.setItem('access_token', 'expired-token')
-      vi.mocked(apiClient.get).mockRejectedValueOnce(unauthorized)
-      vi.mocked(axios.get).mockResolvedValue({ data: ['guest'], headers: {} })
-
-      await expect(getResponseWithGuestFallback('/products/search', config)).resolves.toMatchObject({ data: ['guest'] })
-
-      vi.mocked(apiClient.get).mockRejectedValueOnce({ response: { status: 500 } })
-      await expect(getResponseWithGuestFallback('/products/search', config)).rejects.toEqual({ response: { status: 500 } })
-    })
-
-    it('leaves getWithGuestFallback returning the body only', async () => {
-      vi.mocked(axios.get).mockResolvedValue({ data: ['guest'], headers: { 'x-total-count': '34' } })
-
-      await expect(getWithGuestFallback('/products/search', config)).resolves.toEqual(['guest'])
     })
   })
 })

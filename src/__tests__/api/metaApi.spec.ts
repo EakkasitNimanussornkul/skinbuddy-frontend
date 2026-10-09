@@ -11,7 +11,7 @@ vi.mock('axios', () => ({
 
 import axios from 'axios'
 import { apiClient } from '../../api/index'
-import { clearMetaCache, getCategories, getConcernTags, getFunctionalGroups, getFacets } from '../../api/metaApi'
+import { clearMetaCache, getCategories, getConcernTags, getFunctionalGroups } from '../../api/metaApi'
 
 const BASE = import.meta.env.VITE_API_URL
 
@@ -67,45 +67,6 @@ describe('src/api/metaApi.ts', () => {
 
       vi.mocked(axios.get).mockResolvedValueOnce({ data: { concern_tags: ['Oily', 3, null, '', 'Redness'] } })
       await expect(getConcernTags()).resolves.toEqual(['Oily', 'Redness'])
-    })
-  })
-
-  describe('getFacets()', () => {
-    it('reads the categories, brands and total from the public /meta/facets route, with no login', async () => {
-      localStorage.setItem('access_token', 'token-1')
-      vi.mocked(axios.get).mockResolvedValue({ data: { categories: ['Serums', 'Toners'], brands: ['CeraVe', 'Anessa'], total: 34 } })
-
-      await expect(getFacets()).resolves.toEqual({ categories: ['Serums', 'Toners'], brands: ['CeraVe', 'Anessa'], total: 34 })
-      expect(axios.get).toHaveBeenCalledWith(`${BASE}/meta/facets`)
-      expect(apiClient.get).not.toHaveBeenCalled()
-    })
-
-    it('asks once and serves the cached answer after that, even to two callers at once', async () => {
-      vi.mocked(axios.get).mockResolvedValue({ data: { categories: ['Serums'], brands: [], total: 1 } })
-
-      const [a, b] = await Promise.all([getFacets(), getFacets()])
-      await getFacets()
-
-      expect(a).toBe(b)
-      expect(axios.get).toHaveBeenCalledTimes(1)
-    })
-
-    it('does not cache a failure (an older backend answers 404), so trying again asks again', async () => {
-      vi.mocked(axios.get).mockRejectedValueOnce({ response: { status: 404 } })
-      vi.mocked(axios.get).mockResolvedValueOnce({ data: { categories: ['Masks'], brands: [], total: 1 } })
-
-      await expect(getFacets()).rejects.toEqual({ response: { status: 404 } })
-      await expect(getFacets()).resolves.toMatchObject({ categories: ['Masks'] })
-      expect(axios.get).toHaveBeenCalledTimes(2)
-    })
-
-    it('keeps only text entries, reads a missing total as null, and reads a reply that is not an object as null', async () => {
-      vi.mocked(axios.get).mockResolvedValueOnce({ data: { categories: ['Serums', 3, '', null], brands: 'CeraVe' } })
-      await expect(getFacets()).resolves.toEqual({ categories: ['Serums'], brands: [], total: null })
-
-      clearMetaCache()
-      vi.mocked(axios.get).mockResolvedValueOnce({ data: '<html></html>' })
-      await expect(getFacets()).resolves.toBeNull()
     })
   })
 })
