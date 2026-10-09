@@ -7,8 +7,23 @@ import { readFileSync, statSync } from 'node:fs'
 // No network: the one function every optional-auth GET goes through, and the
 // shared client the protected ones use, are replaced. searchProducts and the
 // account readers are the real ones, so what is counted is the request that
-// would have left the page.
-vi.mock('../../api/optionalAuth', () => ({ getWithGuestFallback: vi.fn() }))
+// would have left the page. A paged request (the grid's) goes through the sibling
+// that returns the whole response; here it is answered by the same held-open
+// request, with no headers, so both kinds are counted and answered alike.
+vi.mock('../../api/optionalAuth', () => {
+  const getWithGuestFallback = vi.fn()
+  return {
+    getWithGuestFallback,
+    getResponseWithGuestFallback: (...args: unknown[]) =>
+      Promise.resolve((getWithGuestFallback as (...a: unknown[]) => unknown)(...args)).then((data) => ({ data, headers: {} })),
+  }
+})
+// The filter chips ask for /meta/facets; no network here, so it fails and the
+// chips are derived from the products, as before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
 vi.mock('../../api/index', () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }))
@@ -251,15 +266,18 @@ describe('feat/28 performance quick wins', () => {
   })
 
   describe('ExploreView (catalogue requests)', () => {
-    it('asks for the whole catalogue once, not twice, when a signed-in user with a skin type opens Explore', async () => {
+    it('asks for the first page for the grid and the whole list for the shortlist, once each, when a signed-in user with a skin type opens Explore', async () => {
       const pending = makePending()
       const { wrapper } = await mountExplore('/explore', true)
 
+      // Moved in feat/30: the grid asks for 12, so it no longer shares the
+      // shortlist's request, which has to see every product to pick the best few.
+      expect(pending.map((p) => p.params)).toEqual([{ view: 'card', limit: 12, offset: 0 }, { view: 'card' }])
       pending[0]!.resolve([product('a'), product('b', { skin_match_score: 95 })])
+      pending[1]!.resolve([product('a'), product('b', { skin_match_score: 95 })])
       await flushPromises()
 
-      expect(getWithGuestFallback).toHaveBeenCalledTimes(1)
-      // Both the grid and the shortlist are drawn from that one answer.
+      expect(getWithGuestFallback).toHaveBeenCalledTimes(2)
       expect(shownIds(wrapper)).toEqual(['a', 'b'])
       const widget = wrapper.findComponent(SkinTypeRecommendationsWidget)
       expect(widget.props('products').map((p: { id: string }) => p.id)).toEqual(['b', 'a'])
@@ -269,7 +287,7 @@ describe('feat/28 performance quick wins', () => {
       const pending = makePending()
       await mountExplore('/explore?q=retinol', true)
 
-      expect(pending.map((p) => p.params)).toEqual([{ q: 'retinol', view: 'card' }, { view: 'card' }])
+      expect(pending.map((p) => p.params)).toEqual([{ q: 'retinol', view: 'card', limit: 12, offset: 0 }, { view: 'card' }])
     })
 
     it('shows the answer to the latest request when an older one answers last', async () => {

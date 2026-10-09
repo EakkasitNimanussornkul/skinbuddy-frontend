@@ -11,6 +11,13 @@ vi.mock('../../api/products.ts', async (importOriginal) => ({
 import { searchProducts } from '../../api/products.ts'
 import ExploreView from '../../views/ExploreView.vue'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 const product = (id: string, brand: string, category: string) => ({
   id,
   brand,
@@ -236,9 +243,14 @@ describe('feat/27 the desktop filter bar', () => {
     it('narrows the list to the brand, and shows every brand again on "All brands"', async () => {
       const { wrapper } = await mountExplore()
 
+      // Since feat/30 a brand change is a request (the server filters); the mock
+      // answers with every product either way, so the count here is the page's own
+      // second pass, which keeps the grid right on a backend that ignores brand.
       await brandSelect(wrapper).setValue('CeraVe')
+      await flushPromises()
       expect(wrapper.get('.catalog-count').text()).toBe('2 products')
       await brandSelect(wrapper).setValue('All')
+      await flushPromises()
       expect(wrapper.get('.catalog-count').text()).toBe('4 products')
     })
   })

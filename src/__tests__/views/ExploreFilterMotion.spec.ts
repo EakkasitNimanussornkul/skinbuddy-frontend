@@ -16,6 +16,13 @@ import ExploreView from '../../views/ExploreView.vue'
 import CollapseTransition from '../../components/Shared/CollapseTransition.vue'
 import { declared, reducedMotionBlocks } from '../fixtures/styleRules'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 const CATALOGUE = [
   { id: 'c1', brand: 'CeraVe', name: 'A', category: 'Cleanser', slug: 'a', product_ingredients: [] },
   { id: 't1', brand: 'COSRX', name: 'B', category: 'Toner', slug: 'b', product_ingredients: [] },

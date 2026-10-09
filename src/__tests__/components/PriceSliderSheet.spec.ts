@@ -15,6 +15,13 @@ import PriceRangeSlider from '../../components/Catalog/PriceRangeSlider.vue'
 import ExploreView from '../../views/ExploreView.vue'
 import { declared } from '../fixtures/styleRules'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 // The component's scoped styles, as text: jsdom draws no range handles.
 const SLIDER_SOURCE = readFileSync(join(process.cwd(), 'src', 'components', 'Catalog', 'PriceRangeSlider.vue'), 'utf8')
 const SLIDER_STYLE = SLIDER_SOURCE.slice(SLIDER_SOURCE.indexOf('<style'))

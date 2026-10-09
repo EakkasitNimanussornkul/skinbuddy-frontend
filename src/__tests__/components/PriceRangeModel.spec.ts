@@ -27,6 +27,13 @@ import {
 } from '../../components/Catalog/priceRange'
 import ExploreView from '../../views/ExploreView.vue'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 describe('feat/27 the price model: a bar to 1,500+ that means no upper limit', () => {
   describe('priceRange (the pure rules)', () => {
     it('ends the default bar at 1,500, which stands for no upper limit', () => {
@@ -129,10 +136,10 @@ describe('feat/27 the price model: a bar to 1,500+ that means no upper limit', (
       return wrapper
     }
 
-    /** The query strings sent so far; a guest, so the bare axios call carries them. The lean-list `view` is left out: these cases are about the price bounds. */
+    /** The query strings sent so far; a guest, so the bare axios call carries them. The lean-list `view` and the paging (`limit`, `offset`, added in feat/30) are left out: these cases are about the price bounds. */
     const sentParams = () =>
       vi.mocked(axios.get).mock.calls.map((call) => {
-        const { view: _view, ...bounds } = (call[1] as { params: Record<string, unknown> }).params
+        const { view: _view, limit: _limit, offset: _offset, ...bounds } = (call[1] as { params: Record<string, unknown> }).params
         return bounds
       })
 

@@ -24,6 +24,13 @@ import ExploreProductCard from '../../components/Catalog/ExploreProductCard.vue'
 import EmptyState from '../../components/Shared/EmptyState.vue'
 import ExploreView from '../../views/ExploreView.vue'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 /** A lean-list item: no ingredient tree. */
 const LEAN = {
   id: 'p-1',

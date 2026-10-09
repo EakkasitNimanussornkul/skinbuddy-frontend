@@ -21,6 +21,13 @@ import AppSidebar from '../../components/Shared/AppSidebar.vue'
 import MobileTopBar from '../../components/Shared/MobileTopBar.vue'
 import App from '../../App.vue'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 const makeRouter = async (address = '/') => {
   const router: Router = createRouter({
     history: createMemoryHistory(),

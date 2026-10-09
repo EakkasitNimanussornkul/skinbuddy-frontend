@@ -17,6 +17,13 @@ import ExploreProductCard from '../../components/Catalog/ExploreProductCard.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useToast } from '../../composables/useToast'
 
+// Explore's filter chips ask for /meta/facets. There is no network here, so the
+// call fails and the chips are derived from the products, as they were before.
+vi.mock('../../api/metaApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/metaApi')>()),
+  getFacets: () => Promise.reject(new Error('no facets')),
+}))
+
 const { toasts } = useToast()
 
 const catalogProduct = (overrides: Record<string, unknown> = {}) => ({
@@ -204,16 +211,17 @@ describe('src/views/ExploreView.vue', () => {
       ])
     })
 
-    it('does not put a request behind a category change', async () => {
-      // Category and brand are applied client-side over the same response, and
-      // only `q` and the price bounds are sent, so re-fetching for them would
-      // cost a round trip and change nothing on screen.
+    it('puts a request behind a category change, asking the server for that category', async () => {
+      // Reversed in feat/30. Category and brand used to be applied in the browser
+      // over one response; with pages of 12 the server has to filter them, so a
+      // change starts the list again from its first page.
       const { router } = await mountExplore()
 
       await router.push('/explore?category=Cleansers')
       await flushPromises()
 
-      expect(catalogRequests()).toHaveLength(1)
+      expect(catalogRequests()).toHaveLength(2)
+      expect(vi.mocked(searchProducts).mock.calls[1]![3]).toMatchObject({ category: 'Cleansers', offset: 0 })
     })
   })
 

@@ -1018,6 +1018,14 @@ const SPEC_MAP = [
       'The component mounted alone with @vue/test-utils and given its state, counts and page size as props; window.scrollTo is replaced by a spy. The suite reports prefers-reduced-motion, so the smooth-scroll case sets it back for that case only. Layout by breakpoint is read from the classes, since jsdom applies no CSS. No store, no router, no network.',
     note: 'The strip at the end of the Explore grid (feat/30), in its four states: ready (the count, a progress bar and a button that names the next batch, "Show the last N" at the end), loading (the range on its way, the button busy and kept as the same element so the focus stays on it, placeholder cards under the strip), failed (an alert, the products already shown stay, Try again asks for the same page) and all shown (a tick, a full bar, Back to top, and Clear filters when a filter is on). The page decides the state; the strip only reports presses. Every pulse and spin is a motion-safe class, so it stops under prefers-reduced-motion. The look is checked in a real browser.',
   },
+  {
+    file: 'src/__tests__/views/ExploreLoadMore.spec.ts',
+    feature: '#4 Search and compare',
+    module: 'views/ExploreView, components/Catalog/LoadMoreStrip, api/metaApi (getFacets)',
+    prerequisite:
+      'ExploreView mounted on a memory history with its other components stubbed (the strip is real), attached to the document so focus can be read. searchProducts is replaced by a small stand-in for the backend that filters by category and brand, cuts the page and reports the total through onTotal, or by a request a test holds open and answers or fails; getFacets is mocked, with the live /meta/facets answer of 2026-10-10 as the fixture. No network access.',
+    note: 'Explore loads its list 12 at a time (feat/30). The first request is limit 12, offset 0, in the lean shape; Show more asks from the rows already received and adds the page under the first, never twice at once and never a product twice. A failed page keeps what is shown and Try again asks for the same page. A new search term, category, brand, price or Clear all starts the list again from its first page, and a page that was still on its way is thrown away, whether it then answers or fails. The heading counts from the total the server reports. A backend that predates paging (no total, the whole list at once) gets no strip and the browser still narrows by category and brand. The category and brand lists come from /meta/facets, so they do not change as pages load, and fall back to the products on the page if the facets cannot be read. Not checked here: the live server, the look of the strip, and the scroll position after a page loads.',
+  },
 ]
 
 function runSuite() {

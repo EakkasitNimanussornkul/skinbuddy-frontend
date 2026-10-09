@@ -13,11 +13,13 @@ import {
   MATCH_SCORE_DISCLAIMER,
   type ScoredProduct,
 } from '../api/products.ts'
+import { getFacets, type Facets } from '../api/metaApi.ts'
 import { useAuthStore } from '../stores/auth.ts'
 import { useToast } from '../composables/useToast.ts'
 import SkinTypeRecommendationsWidget from '../components/Shared/SkinTypeRecommendationsWidget.vue'
 import ExploreProductCard from '../components/Catalog/ExploreProductCard.vue'
 import ExploreCategoryBar from '../components/Catalog/ExploreCategoryBar.vue'
+import LoadMoreStrip from '../components/Catalog/LoadMoreStrip.vue'
 import UniversalProductModal from '../components/Catalog/UniversalProductModal.vue'
 import CompareSelectorModal from '../components/Compare/CompareSelectorModal.vue'
 import PriceRangeSlider from '../components/Catalog/PriceRangeSlider.vue'
@@ -42,7 +44,19 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { addToast } = useToast()
 
+// How many products one request, and one press of "Show more", brings.
+const PAGE_SIZE = 12
+
+// The products on the page: the first page, then each page the button added.
 const catalog = ref<any[]>([])
+// The server's count of products for this search and these filters (the
+// X-Total-Count header), or null when the reply carried none - an older backend,
+// which answers with the whole list at once and so needs no paging.
+const serverTotal = ref<number | null>(null)
+// Where the next page starts: the rows received so far, whatever the page held.
+let nextOffset = 0
+const loadingMore = ref(false)
+const loadMoreFailed = ref(false)
 const isLoading = ref(true)
 // Tracked separately from `catalog` because the array alone cannot say whether
 // it is empty by result or empty by failure - FE-DEF-09.
@@ -103,13 +117,15 @@ const syncFiltersFromURL = () => {
 // (CompareSelectorModal) and from the similar-products widget, both of which
 // pick exactly two products and route through buildComparePath.
 
-// The term the catalogue on screen was actually requested with. Compared
-// against `searchQuery` to decide whether an address change needs a new
-// request; see the watcher at the bottom of this file. Held rather than derived
-// from the watcher's own previous value, which depends on vue-router replacing
-// the query object rather than mutating it - true today, and not something this
-// file should quietly rely on.
-let fetchedQuery = ''
+// What the catalogue on screen was actually requested with: the term, the
+// category and the brand. Compared against the same three now to decide whether
+// a change needs a new request; see the watcher at the bottom of this file. Held
+// rather than derived from the watcher's own previous value, which depends on
+// vue-router replacing the query object rather than mutating it - true today,
+// and not something this file should quietly rely on. The price bounds are not
+// in it: their handlers request directly.
+const requestKey = () => [searchQuery.value, selectedCategory.value, selectedBrand.value].join('\n')
+let fetchedKey = ''
 
 // The results area's height while a re-request is in flight. The grid gives way
 // to a short loading line, so without this the page shrank under the user, the
@@ -118,34 +134,64 @@ let fetchedQuery = ''
 const resultsRegion = ref<HTMLElement | null>(null)
 const heldHeight = ref<number | null>(null)
 
-// Counts the catalogue requests. Price Apply, a search from the top bar and Retry
-// can overlap, and the slowest answer used to win; only the latest is used now.
+// Counts the catalogue requests. Price Apply, a search from the top bar, a filter
+// and Retry can overlap, and the slowest answer used to win; only the latest is
+// used now. A page of "Show more" is held to the same count: it keeps the number
+// it started under, so any request that starts a new list while it is on its way
+// makes its answer stale.
 let latestCatalogRequest = 0
 
+// One page of the list as the page now asks for it. The category and brand go to
+// the server because a page of 12 cannot be filtered in the browser. `total`
+// stays null when the reply has no X-Total-Count.
+const askForPage = async (offset: number) => {
+  const got: { total: number | null } = { total: null }
+  const data = await searchProducts(
+    searchQuery.value,
+    activeMinPrice.value > PRICE_FLOOR ? activeMinPrice.value : undefined,
+    activeMaxCap.value ?? undefined,
+    // The grid and the shortlist read card fields only; the ingredient tree
+    // is fetched when a product is opened (UniversalProductModal).
+    {
+      view: 'card',
+      limit: PAGE_SIZE,
+      offset,
+      category: selectedCategory.value,
+      brand: selectedBrand.value,
+      onTotal: (total) => { got.total = total },
+    },
+  )
+  return { data, total: got.total }
+}
+
+// A reply that is not a list (an error page, a changed shape) is a failed
+// request, not a catalogue: it would throw on .map below. No reply at all stays
+// an empty list, as before.
+const asList = (data: unknown): Record<string, unknown>[] => {
+  if (data != null && !Array.isArray(data)) throw new Error('The catalogue reply was not a list.')
+  return (data as Record<string, unknown>[] | null) ?? []
+}
+
+// Always the first page: a new search, a filter, a price change and Retry all
+// start the list again.
 const fetchCatalog = async () => {
   const mine = ++latestCatalogRequest
   heldHeight.value = resultsRegion.value?.offsetHeight || null
   isLoading.value = true
   catalogFailed.value = false
+  loadingMore.value = false
+  loadMoreFailed.value = false
   // Recorded before the await, not after. A failure leaves the failed state on
-  // screen for this term rather than re-requesting it on the next unrelated
+  // screen for these filters rather than re-requesting them on the next unrelated
   // address change.
-  fetchedQuery = searchQuery.value
+  fetchedKey = requestKey()
   try {
-    const data = await searchProducts(
-      searchQuery.value,
-      activeMinPrice.value > PRICE_FLOOR ? activeMinPrice.value : undefined,
-      activeMaxCap.value ?? undefined,
-      // The grid and the shortlist read card fields only; the ingredient tree
-      // is fetched when a product is opened (UniversalProductModal).
-      { view: 'card' },
-    )
+    const { data, total } = await askForPage(0)
     if (mine !== latestCatalogRequest) return
-    // A reply that is not a list (an error page, a changed shape) is a failed
-    // request, not a catalogue: it would throw on .map below. No reply at all
-    // stays an empty list, as before.
-    if (data != null && !Array.isArray(data)) throw new Error('The catalogue reply was not a list.')
-    catalog.value = data ?? []
+    const items = asList(data)
+    catalog.value = items
+    nextOffset = items.length
+    serverTotal.value = total
   } catch {
     if (mine !== latestCatalogRequest) return
     // Clear rather than keep. A failed re-request from the price controls would
@@ -153,6 +199,7 @@ const fetchCatalog = async () => {
     // show the new ones, presenting stale data as current with only a
     // self-dismissing toast to say otherwise.
     catalog.value = []
+    serverTotal.value = null
     catalogFailed.value = true
     addToast('Failed to load product catalog.', 'error')
   } finally {
@@ -164,6 +211,35 @@ const fetchCatalog = async () => {
       // own height - shorter or longer - rather than the old one.
       nextTick(() => { heldHeight.value = null })
     }
+  }
+}
+
+// The next page, added under the products already shown. Not while the list is
+// being replaced or a page is already on its way, and not when there is no
+// total (an older backend sent everything in the first reply). A failure keeps
+// what is shown and leaves the strip offering the same page again.
+const loadMore = async () => {
+  if (isLoading.value || loadingMore.value || serverTotal.value === null) return
+  const mine = latestCatalogRequest
+  loadingMore.value = true
+  loadMoreFailed.value = false
+  try {
+    const { data, total } = await askForPage(nextOffset)
+    if (mine !== latestCatalogRequest) return
+    const items = asList(data)
+    // The catalogue can change between two pages; a product already shown is not
+    // shown twice.
+    const seen = new Set(catalog.value.map((p) => p?.id))
+    catalog.value = [...catalog.value, ...items.filter((p) => !seen.has(p?.id))]
+    nextOffset += items.length
+    // A page that comes back empty while the total says more is the list's end as
+    // far as this page can tell: stop offering it rather than ask for nothing again.
+    serverTotal.value = items.length ? (total ?? serverTotal.value) : nextOffset
+  } catch {
+    if (mine !== latestCatalogRequest) return
+    loadMoreFailed.value = true
+  } finally {
+    if (mine === latestCatalogRequest) loadingMore.value = false
   }
 }
 
@@ -235,9 +311,14 @@ const applyFilters = () => {
   // The same guards as any price change: a value that is not a number cannot
   // reach the request, and a range the wrong way round is put in order.
   const range = normalizePriceRange(filterDraft.min, filterDraft.maxCap)
-  if (range.min !== activeMinPrice.value || range.maxCap !== activeMaxCap.value) handlePriceApply(range)
+  // The brand and category are set first, so a price request made just below
+  // already carries them and the one request answers every change at once (the
+  // address catches up to the category a moment later).
+  const categoryChanged = filterDraft.category !== selectedCategory.value
   selectedBrand.value = filterDraft.brand
-  if (filterDraft.category !== selectedCategory.value) handleCategoryUpdate(filterDraft.category)
+  selectedCategory.value = filterDraft.category
+  if (range.min !== activeMinPrice.value || range.maxCap !== activeMaxCap.value) handlePriceApply(range)
+  if (categoryChanged) handleCategoryUpdate(filterDraft.category)
 }
 
 const removeBrandFilter = () => {
@@ -246,8 +327,9 @@ const removeBrandFilter = () => {
 
 // --- The filter bar (lg and up) ---------------------------------------------------
 // The heading: the category in view (spelled as the chip is, whatever the address
-// said), with how many products the list holds. The count is read off the list
-// itself, so it is whatever the server returned, and is blank while loading or
+// said), with how many products match. The count is the server's own
+// (X-Total-Count) when the reply carried one, since the list holds only the pages
+// shown so far; otherwise it is read off the list itself. Blank while loading or
 // when the catalogue could not be reached.
 const headingTitle = computed(() => {
   if (selectedCategory.value === 'All') return 'All formulations'
@@ -256,7 +338,7 @@ const headingTitle = computed(() => {
 })
 const countText = computed(() => {
   if (catalogState.value !== 'results' && catalogState.value !== 'empty') return ''
-  const count = filteredCatalog.value.length
+  const count = serverTotal.value ?? filteredCatalog.value.length
   return `${count} ${count === 1 ? 'product' : 'products'}`
 })
 
@@ -332,7 +414,9 @@ const activeChips = computed(() => {
 // Clears the category, the brand and the price. A brand or category carried by
 // the address goes from it too, or the address would put it straight back.
 const clearAllFilters = () => {
+  // Both set before the price request, so it asks for the cleared list at once.
   selectedBrand.value = 'All'
+  selectedCategory.value = 'All'
   if (priceFiltered.value) handlePriceClear()
   if (route.query.category || route.query.brand) {
     router.push({ path: route.path, query: { ...route.query, category: undefined, brand: undefined } })
@@ -412,19 +496,31 @@ onMounted(() => {
   clearPrefetchedProducts()
   fetchCatalog()
   loadRecommendations()
+  // The chips come from the whole catalogue, not from the pages loaded so far. If
+  // the call fails (an older backend has no such route) they are derived from the
+  // products on the page, as they were before.
+  getFacets().then((found) => { facets.value = found }, () => {})
 })
+
+// The server's lists of categories and brands, or null until they arrive or when
+// they could not be read.
+const facets = ref<Facets | null>(null)
 
 const uniqueCategories = computed(() => {
   const core = ['Cleansers', 'Toners', 'Serums', 'Treatments', 'Exfoliators', 'Sun Care']
-  const dbCats = catalog.value.map(p => p.category).filter(Boolean)
+  const dbCats = facets.value ? facets.value.categories : catalog.value.map(p => p.category).filter(Boolean)
   return ['All', ...new Set([...core, ...dbCats])]
 })
 
 const uniqueBrands = computed(() => {
-  const brands = catalog.value.map(p => p.brand).filter(Boolean)
+  const brands = facets.value ? facets.value.brands : catalog.value.map(p => p.brand).filter(Boolean)
   return ['All', ...[...new Set(brands)].sort((a, b) => a.localeCompare(b))]
 })
 
+// The search term, category and brand are sent to the server, which has already
+// applied them. This second pass over the same rows changes nothing then. It stays
+// for a backend that ignores those parameters and sends everything, so the grid
+// is right on either.
 const filteredCatalog = computed(() => {
   return catalog.value.filter(product => {
     const query = searchQuery.value.toLowerCase().trim()
@@ -447,30 +543,39 @@ const catalogState = computed(() =>
   resolveCatalogState(isLoading.value, catalogFailed.value, filteredCatalog.value.length),
 )
 
+// The strip under the grid (feat/30). Only when the server said how many there
+// are: without a total (an older backend that sent the whole list) there is
+// nothing to page.
+const showLoadMore = computed(() => catalogState.value === 'results' && serverTotal.value !== null)
+const loadMoreStatus = computed(() => {
+  if (loadMoreFailed.value) return 'failed'
+  if (loadingMore.value) return 'loading'
+  return catalog.value.length >= (serverTotal.value ?? 0) ? 'done' : 'ready'
+})
+// A search term or a filter is on, so the end of the list says "matching".
+const resultsNarrowed = computed(() => searchQuery.value.trim() !== '' || activeChips.value.length > 0)
+
 watch(
   () => route.query,
   () => {
     syncFiltersFromURL()
-
-    // The second half of FE-DEF-30, and the half the entry's ordering fix does
-    // not reach. `SearchAutocompleteInput` pushes /explore?q=... - so for a user
-    // already on Explore, searching again changes only the address, and this
-    // watcher used to update `searchQuery` and stop there. The catalogue was
-    // never re-requested, leaving the new term to filter the previous term's
-    // results in memory. The first search of a session reached the server after
-    // the fix above; every one after it still would not have.
-    //
-    // Guarded on the term rather than firing on any query change, because `q`
-    // and the price bounds are the only parameters fetchCatalog sends. Category
-    // and brand are applied client-side over the same response, so re-fetching
-    // for them would put a network request behind every filter chip and change
-    // nothing on screen.
-    if (searchQuery.value !== fetchedQuery) {
-      fetchCatalog()
-    }
   },
   { deep: true }
 )
+
+// A new term, category or brand starts the list again from its first page. This
+// is the second half of FE-DEF-30, and the half the entry's ordering fix does not
+// reach: `SearchAutocompleteInput` pushes /explore?q=..., so for a user already
+// on Explore a new search changes only the address, and the term used to filter
+// the previous term's results in memory. Watching the values rather than the
+// address catches every writer - an address change, the brand picker, a chip -
+// and compares with what was last requested, so a change a handler has already
+// requested for is not requested twice. Before feat/30 only `q` and the price
+// bounds were sent and the category and brand filtered in memory, so a chip did
+// not reach the network; with pages of 12 it has to.
+watch(requestKey, () => {
+  if (requestKey() !== fetchedKey) fetchCatalog()
+})
 </script>
 
 <template>
@@ -821,7 +926,7 @@ watch(
           v-for="(product, index) in filteredCatalog"
           :key="product.id"
           :product="product"
-          :style="cardFlowDelay(index)"
+          :style="cardFlowDelay(index % PAGE_SIZE)"
           @inspect="selectedForInspection = product"
           @prefetch="prefetchForInspect"
         />
@@ -832,7 +937,7 @@ watch(
           title="No Formulation Matches"
           message="No curated cosmetic items align with your selected target pricing intervals or catalog filtering boundaries."
           action-label="Reset Filter Criteria"
-          @action="handlePriceClear(); selectedCategory = 'All'; selectedBrand = 'All'; router.push('/explore')"
+          @action="selectedCategory = 'All'; selectedBrand = 'All'; handlePriceClear(); router.push('/explore')"
         />
         <!-- Not in the catalogue at all? Product submissions (feat/22). -->
         <p class="text-sm text-stone-600 dark:text-stone-300 text-center">Can't find it? Tell us about it.</p>
@@ -845,6 +950,21 @@ watch(
         </router-link>
       </div>
       </div>
+
+      <!-- The end of the grid: how far through it you are, and the next page. -->
+      <LoadMoreStrip
+        v-if="showLoadMore"
+        class="mt-6"
+        :status="loadMoreStatus"
+        :shown="catalog.length"
+        :total="serverTotal ?? 0"
+        :page-size="PAGE_SIZE"
+        :matching="resultsNarrowed"
+        :clearable="activeChips.length > 0"
+        @load-more="loadMore"
+        @retry="loadMore"
+        @clear-filters="clearAllFilters"
+      />
 
       <!-- Under the results: a way to send a product the catalogue lacks. -->
       <router-link
